@@ -1,0 +1,1613 @@
+<html>
+<TITLE>Definition of SwissProt Format</TITLE>
+<!-- Changed by: Astrid Reinhardt,  7-Feb-1996 -->
+
+<body bgcolor=#ffffff  alink=#d9d919 vlink=#994499 link=#aa00aa >
+
+<CENTER>
+<H1>
+<B>
+                  2. CONVENTIONS USED IN THE DATA BANK
+
+</B>
+</H1>
+</CENTER>
+<br>
+<BR>
+The following sections describes the general conventions used in SWISS-<br>
+PROT to  achieve uniformity  of presentation.  Experienced users of the<br>
+EMBL Database can skip these sections and directly refer to Appendix C,<br>
+which lists  the minor  differences in  format  between  the  two  data<br>
+collections.<br>
+<H2>   2.1 General structure of the data bank<br></H2>
+ The SWISS-PROT  protein sequence  data bank  is  composed  of  sequence<br>
+entries. Each  entry corresponds  to a  single contiguous  sequence  as<br>
+contributed to  the bank  or reported in the literature. In some cases,<br>
+entries have been assembled from several papers that report overlapping<br>
+sequence regions.  Conversely, a  single paper  can  provide  data  for<br>
+several entries,  e.g. when  related sequences from different organisms<br>
+are reported.<br>
+<br>
+References to  positions within  a sequence  are made  using sequential<br>
+numbering, beginning with 1 at the N-terminal end of the sequence.<br>
+<br>
+Except for  initiator N-terminal  methionine residues,  which  are  not<br>
+included in  a sequence when their absence from the mature sequence has<br>
+been proven,  the sequence  data correspond  to the precursor form of a<br>
+protein before post-translational modifications and processing.<br>
+<br>
+<br>
+<br>
+2.2 Classes of data<br>
+<br>
+In order  to attempt  to make  data available  to users  as quickly  as<br>
+possible after  publication, SWISS-PROT  entries may be released before<br>
+all their  details are finalized. The concept of data classes gives the<br>
+user some  idea of  the areas  in which  the data still require further<br>
+work. The  class of  each entry  is indicated on the first (ID) line of<br>
+the entry. At present two classes are supported:<br>
+<br>
+STANDARD   :   Data which  are complete  to the  standards laid down by<br>
+               the SWISS-PROT data bank.<br>
+<br>
+PRELIMINARY:   Data for  which  only  the  sequence  and  bibliographic<br>
+               information have been submitted to thorough checks.<br>
+<br>
+<br>
+2.3 Structure of a sequence entry<br>
+<br>
+The entries  in the  SWISS-PROT data  bank are  structured so  as to be<br>
+usable  by   human  readers  as  well  as  by  computer  programs.  The<br>
+explanations, descriptions,  classifications and  other comments are in<br>
+ordinary English.  Wherever possible,  symbols familiar to biochemists,<br>
+protein chemists and molecular biologists are used.<br>
+<br>
+Each sequence  entry is  composed of  lines. Different  types of lines,<br>
+each with  their own  format, are used to record the various data which<br>
+make up  the entry.  A sample sequence entry is shown in the next three<br>
+pages.<br>
+<br>
+ID   TNFA_HUMAN     STANDARD;      PRT;   233 AA.<br>
+AC   P01375;<br>
+DT   21-JUL-1986 (REL. 01, CREATED)<br>
+DT   21-JUL-1986 (REL. 01, LAST SEQUENCE UPDATE)<br>
+DT   01-FEB-1995 (REL. 31, LAST ANNOTATION UPDATE)<br>
+DE   TUMOR NECROSIS FACTOR PRECURSOR (TNF-ALPHA) (CACHECTIN).<br>
+GN   TNFA.<br>
+OS   HOMO SAPIENS (HUMAN).<br>
+OC   EUKARYOTA; METAZOA; CHORDATA; VERTEBRATA; TETRAPODA; MAMMALIA;<br>
+OC   EUTHERIA; PRIMATES.<br>
+RN   [1]<br>
+RP   SEQUENCE FROM N.A.<br>
+RX   MEDLINE; 87217060.<br>
+RA   NEDOSPASOV S.A., SHAKHOV A.N., TURETSKAYA R.L., METT V.A.,<br>
+RA   AZIZOV M.M., GEORGIEV G.P., KOROBKO V.G., DOBRYNIN V.N.,<br>
+RA   FILIPPOV S.A., BYSTROV N.S., BOLDYREVA E.F., CHUVPILO S.A.,<br>
+RA   CHUMAKOV A.M., SHINGAROVA L.N., OVCHINNIKOV Y.A.;<br>
+RL   COLD SPRING HARB. SYMP. QUANT. BIOL. 51:611-624(1986).<br>
+RN   [2]<br>
+RP   SEQUENCE FROM N.A.<br>
+RX   MEDLINE; 85086244.<br>
+RA   PENNICA D., NEDWIN G.E., HAYFLICK J.S., SEEBURG P.H., DERYNCK R.,<br>
+RA   PALLADINO M.A., KOHR W.J., AGGARWAL B.B., GOEDDEL D.V.;<br>
+RL   NATURE 312:724-729(1984).<br>
+RN   [3]<br>
+RP   SEQUENCE FROM N.A.<br>
+RX   MEDLINE; 85137898.<br>
+RA   SHIRAI T., YAMAGUCHI H., ITO H., TODD C.W., WALLACE R.B.;<br>
+RL   NATURE 313:803-806(1985).<br>
+RN   [4]<br>
+RP   SEQUENCE FROM N.A.<br>
+RX   MEDLINE; 86016093.<br>
+RA   NEDWIN G.E., NAYLOR S.L., SAKAGUCHI A.Y., SMITH D.H.,<br>
+RA   JARRETT-NEDWIN J., PENNICA D., GOEDDEL D.V., GRAY P.W.;<br>
+RL   NUCLEIC ACIDS RES. 13:6361-6373(1985).<br>
+RN   [5]<br>
+RP   SEQUENCE FROM N.A.<br>
+RX   MEDLINE; 85142190.<br>
+RA   WANG A.M., CREASEY A.A., LADNER M.B., LIN L.S., STRICKLER J.,<br>
+RA   VAN ARSDELL J.N., YAMAMOTO R., MARK D.F.;<br>
+RL   SCIENCE 228:149-154(1985).<br>
+RN   [6]<br>
+RP   X-RAY CRYSTALLOGRAPHY (2.6 ANGSTROMS).<br>
+RX   MEDLINE; 90008932.<br>
+RA   ECK M.J., SPRANG S.R.;<br>
+RL   J. BIOL. CHEM. 264:17595-17605(1989).<br>
+RN   [7]<br>
+RP   X-RAY CRYSTALLOGRAPHY (2.9 ANGSTROMS).<br>
+RX   MEDLINE; 91193276.<br>
+RA   JONES E.Y., STUART D.I., WALKER N.P.;<br>
+RL   J. CELL SCI. SUPPL. 13:11-18(1990).<br>
+RN   [8]<br>
+RP   X-RAY CRYSTALLOGRAPHY (2.6 ANGSTROMS).<br>
+RX   MEDLINE; 90008932.<br>
+RA   ECK M.J., SPRANG S.R.;<br>
+RL   J. BIOL. CHEM. 264:17595-17605(1989).<br>
+RN   [9]<br>
+RP   MUTAGENESIS.<br>
+RX   MEDLINE; 91184128.<br>
+RA   OSTADE X.V., TAVERNIER J., PRANGE T., FIERS W.;<br>
+RL   EMBO J. 10:827-836(1991).<br>
+RN   [10]<br>
+RP   MYRISTOYLATION.<br>
+RX   MEDLINE; 93018820.<br>
+RA   STEVENSON F.T., BURSTEN S.L., LOCKSLEY R.M., LOVETT D.H.;<br>
+RL   J. EXP. MED. 176:1053-1062(1992).<br>
+CC   -!- FUNCTION: CYTOKINE WITH A WIDE VARIETY OF FUNCTIONS: IT CAN<br>
+CC       CAUSE CYTOLYSIS OF CERTAIN TUMOR CELL LINES, IT IS IMPLICATED<br>
+CC       IN THE INDUCTION OF CACHEXIA, IT IS A POTENT PYROGEN CAUSING<br>
+CC       FEVER BY DIRECT ACTION OR BY STIMULATION OF IL-1 SECRETION, IT<br>
+CC       CAN STIMULATE CELL PROLIFERATION & INDUCE CELL DIFFERENTIATION<br>
+CC       UNDER CERTAIN CONDITIONS.<br>
+CC   -!- SUBUNIT: HOMOTRIMER.<br>
+CC   -!- SUBCELLULAR LOCATION: TYPE II MEMBRANE PROTEIN. ALSO EXISTS AS<br>
+CC       AN EXTRACELLULAR SOLUBLE FORM.<br>
+CC   -!- PTM: THE SOLUBLE FORM DERIVES FROM THE MEMBRANE FORM BY<br>
+CC       PROTEOLYTIC PROCESSING.<br>
+CC   -!- DISEASE: CACHEXIA ACCOMPANIES A VARIETY OF DISEASES, INCLUDING<br>
+CC       CANCER AND INFECTION, AND IS CHARACTERIZED BY GENERAL ILL<br>
+CC       HEALTH AND MALNUTRITION.<br>
+CC   -!- SIMILARITY: BELONGS TO THE TUMOR NECROSIS FACTOR FAMILY.<br>
+DR   EMBL; X02910; HSTNFA.<br>
+DR   EMBL; M16441; HSTNFAB.<br>
+DR   EMBL; X01394; HSTNFR.<br>
+DR   EMBL; M10988; HSTNFAA.<br>
+DR   PIR; B23784; QWHUN.<br>
+DR   PIR; A44189; A44189.<br>
+DR   PDB; 1TNF; 15-JAN-91.<br>
+DR   PDB; 2TUN; 31-JAN-94.<br>
+DR   MIM; 191160; 11TH EDITION.<br>
+DR   PROSITE; PS00251; TNF.<br>
+KW   CYTOKINE; CYTOTOXIN; TRANSMEMBRANE; GLYCOPROTEIN; SIGNAL-ANCHOR;<br>
+KW   MYRISTYLATION; 3D-STRUCTURE.<br>
+FT   PROPEP        1     76<br>
+FT   CHAIN        77    233       TUMOR NECROSIS FACTOR.<br>
+FT   TRANSMEM     36     56       SIGNAL-ANCHOR (TYPE-II PROTEIN).<br>
+FT   LIPID        19     19       MYRISTATE.<br>
+FT   LIPID        20     20       MYRISTATE.<br>
+FT   DISULFID    145    177<br>
+FT   MUTAGEN     108    108       R->W: BIOLOGICALLY INACTIVE.<br>
+FT   MUTAGEN     112    112       L->F: BIOLOGICALLY INACTIVE.<br>
+FT   MUTAGEN     162    162       S->F: BIOLOGICALLY INACTIVE.<br>
+FT   MUTAGEN     167    167       V->A,D: BIOLOGICALLY INACTIVE.<br>
+FT   MUTAGEN     222    222       E->K: BIOLOGICALLY INACTIVE.<br>
+FT   CONFLICT     63     63       F -> S (IN REF. 5).<br>
+FT   STRAND       89     93<br>
+FT   TURN         99    100<br>
+FT   TURN        109    110<br>
+FT   STRAND      112    113<br>
+FT   TURN        115    116<br>
+FT   STRAND      118    119<br>
+FT   STRAND      124    125<br>
+FT   STRAND      130    143<br>
+FT   STRAND      152    159<br>
+FT   STRAND      166    170<br>
+FT   STRAND      173    174<br>
+FT   TURN        183    184<br>
+FT   STRAND      189    202<br>
+FT   TURN        204    205<br>
+FT   STRAND      207    212<br>
+FT   HELIX       215    217<br>
+FT   STRAND      218    218<br>
+FT   STRAND      227    232<br>
+SQ   SEQUENCE   233 AA;  25644 MW;  279986 CN;<br>
+     MSTESMIRDV ELAEEALPKK TGGPQGSRRC LFLSLFSFLI VAGATTLFCL LHFGVIGPQR<br>
+     EEFPRDLSLI SPLAQAVRSS SRTPSDKPVA HVVANPQAEG QLQWLNRRAN ALLANGVELR<br>
+     DNQLVVPSEG LYLIYSQVLF KGQGCPSTHV LLTHTISRIA VSYQTKVNLL SAIKSPCQRE<br>
+     TPEGAEAKPW YEPIYLGGVF QLEKGDRLSA EINRPDYLDF AESGQVYFGI IAL<br>
+    //<br>
+<br>
+<br>
+Each line  begins with  a two-character  line code, which indicates the<br>
+type of  data contained  in the  line. The  current line types and line<br>
+codes and the order in which they appear in an entry, are shown below:<br>
+<br>
+ID     - Identification.<br>
+AC     - Accession number(s).<br>
+DT     - Date.<br>
+DE     - Description.<br>
+GN     - Gene name(s).<br>
+OS     - Organism species.<br>
+OG     - Organelle.<br>
+OC     - Organism classification.<br>
+RN     - Reference number.<br>
+RP     - Reference position.<br>
+RC     - Reference comments.<br>
+RX     - Reference cross-references.<br>
+RA     - Reference authors.<br>
+RL     - Reference location.<br>
+CC     - Comments or notes.<br>
+DR     - Database cross-references.<br>
+KW     - Keywords.<br>
+FT     - Feature table data.<br>
+SQ     - Sequence header.<br>
+       - (blanks) sequence data.<br>
+//     - Termination line.<br>
+<br>
+<br>
+Some entries  do not contain all of the line types, and some line types<br>
+occur many  times in  a single  entry. Each  entry must  begin with  an<br>
+identification line  (ID) and  end with  a  terminator  line  (//).  In<br>
+addition the  following line  types are  always present in an entry: AC<br>
+(once), DT  (3 times),  DE (1 or more), OS (1 or more), OC (1 or more),<br>
+RN (1  or more),  RP (1  or more),  RA (1  or more), RL (1 or more), SQ<br>
+(once), and  at least one sequence data line. The other line types (GN,<br>
+OG, RC, RM, CC, DR, KW and FT) are optional.<br>
+<br>
+A detailed  description of  each line type is given in the next section<br>
+of this document.<br>
+<br>
+It must  be noted  that all  SWISS-PROT line  types exist  in the  EMBL<br>
+Database. A  description of  the format  differences between the SWISS-<br>
+PROT and EMBL data banks is given in Appendix C of this document.<br>
+<br>
+The two-character  line type  code which  begins each  line  is  always<br>
+followed by  three blanks,  so that  the actual information begins with<br>
+the sixth  character. Information  is  not  extended  beyond  character<br>
+position 75.<br>
+<br>
+<br>
+                   3. THE DIFFERENT LINE TYPES<br>
+<br>
+<br>
+3.1 The ID line<br>
+<br>
+The ID  (IDentification) line is always the first line of an entry. The<br>
+general form of the ID line is:<br>
+<br>
+ID   ENTRY_NAME   DATA_CLASS; MOLECULE_TYPE; SEQUENCE_LENGTH.<br>
+<br>
+     3.1.1 Entry Name<br>
+<br>
+The first  item on  the ID line is the entry name of the sequence. This<br>
+name is  a useful  means of  identifying a  sequence.  The  entry  name<br>
+consists of up to ten uppercase alphanumeric characters.<br>
+<br>
+SWISS-PROT uses  a general  purpose  naming  convention  which  can  be<br>
+symbolized as X_Y, where<br>
+<br>
+X  is a mnemonic code of at most 4 alphanumeric characters representing<br>
+   the protein name. Examples: B2MG is for Beta-2-microglobulin, HBA is<br>
+   for Hemoglobin alpha chain and INS is for Insulin.<br>
+<br>
+The `_' sign serves as a separator.<br>
+<br>
+Y  is a  mnemonic species identification code of at most 5 alphanumeric<br>
+   characters representing  the biological  source of the protein. This<br>
+   code is  generally made  of the first three letters of the genus and<br>
+   the first  two letters  of  the  species.  Examples:  PSEPU  is  for<br>
+   Pseudomonas putida and NAJNI is for Naja nivea.<br>
+<br>
+   However, for  species commonly  encountered in  the data bank, self-<br>
+   explanatory codes  are used.  There are 16 of those codes. They are:<br>
+   BOVIN for  Bovine, CHICK  for Chicken,  ECOLI for  Escherichia coli,<br>
+   HORSE for Horse, HUMAN for Human, MAIZE for Maize (Zea mays) , MOUSE<br>
+   for Mouse,  PEA for  Garden pea  (Pisum sativum), PIG for Pig, RABIT<br>
+   for Rabbit, RAT for Rat, SHEEP for Sheep, SOYBN for Soybean (Glycine<br>
+   max), TOBAC  for Common  tobacco (Nicotina tabacum), WHEAT for Wheat<br>
+   (Triticum  aestivum),   YEAST  for   Baker's  yeast   (Saccharomyces<br>
+   cerevisiae).<br>
+<br>
+   As it  was not  possible to  apply the  above rules to viruses, they<br>
+   were given arbitrary, but generally easy to remember, identification<br>
+   codes. In some cases it was not possible to assign a definitive code<br>
+   to a species. In these cases a temporary code was chosen.<br>
+<br>
+Examples of  complete protein  sequence entry  names are: RL1_ECOLI for<br>
+ribosomal protein  L1 from  Escherichia coli,  FER_HALHA for ferredoxin<br>
+from Halobacterium halobium.<br>
+<br>
+The name  of all the presently defined species identification codes are<br>
+listed in the SWISS-PROT document file SPECLIST.TXT.<br>
+<br>
+<br>
+     3.1.2 Data class<br>
+<br>
+The second  item on  the ID  line indicates the data class of the entry<br>
+(see section 2.2).<br>
+<br>
+     3.1.3 Molecule type<br>
+<br>
+The third  item on  the ID  line is a three letter code which indicates<br>
+the type  of molecule  of the  entry: in  SWISS-PROT  it  is  PRT  (for<br>
+PRoTein).<br>
+<br>
+     3.1.4 Length of the molecule<br>
+<br>
+The fourth  and last item of the ID line is the length of the molecule,<br>
+which is  the total  number of amino acids in the sequence. This number<br>
+includes the  positions reported  to be present but which have not been<br>
+determined (coded as `X'). The length is followed by the letter code AA<br>
+(Amino Acids).<br>
+<br>
+     3.1.5 Examples of identification lines<br>
+<br>
+Two examples of ID lines are shown below:<br>
+<br>
+ID   CYC_BOVIN      STANDARD;      PRT;   104 AA.<br>
+ID   GIA2_GIALA     PRELIMINARY;   PRT;   296 AA.<br>
+<br>
+<br>
+3.2 The AC line<br>
+<br>
+The AC  (ACcession number)  line lists the accession numbers associated<br>
+with an entry. An example of an accession number line is shown below:<br>
+<br>
+AC   P00321; P05348;<br>
+<br>
+The accession  numbers are  separated by  semicolons and  the  list  is<br>
+terminated by  a semicolon. If necessary, more then one AC line will be<br>
+used.  Most   SWISS-PROT  sequence  entries  currently  have  only  one<br>
+accession number.<br>
+<br>
+The purpose  of accession  numbers  is  to  provide  a  stable  way  of<br>
+identifying entries  from release to release. It is sometimes necessary<br>
+for reasons  of consistency  to change  the names  of the  entries, for<br>
+example, to ensure that related entries have similar names. However, an<br>
+accession number  is always conserved, and therefore allows unambiguous<br>
+citation of SWISS-PROT entries.<br>
+<br>
+Researchers who  wish to  cite entries  in  their  publications  should<br>
+always cite the first accession number.<br>
+<br>
+Entries will  have more  than one  accession number  if they  have been<br>
+merged or  split. For  example, when two entries are merged into one, a<br>
+new accession  number goes  at the start of the AC line, and those from<br>
+the merged entries are listed after this one. Similarly, if an existing<br>
+entry is  split into  two or  more entries  (a  rare  occurrence),  the<br>
+original accession number list is retained in all the derived entries.<br>
+<br>
+An accession  number is  dropped only  when the  data to  which it  was<br>
+assigned have been completely removed from the data bank.<br>
+<br>
+<br>
+<br>
+3.3 The DT line<br>
+<br>
+The DT  (DaTe) lines show the date of entry or last modification of the<br>
+sequence entry. The format of the DT lines is:<br>
+<br>
+DT   DD-MMM-YEAR (REL. XX, COMMENT)<br>
+<br>
+where `DD'  is the  day, `MMM' the month, `YEAR' the year, and `XX' the<br>
+SWISS-PROT release  number. The  comment portion  of the line indicates<br>
+the action  taken on that date. There are ALWAYS three DT lines in each<br>
+entry, each of them is associated with a specific comment:<br>
+<br>
+-  The first  DT line  indicates when  the entry  first appeared in the<br>
+   data bank. The associated comment is `CREATED'.<br>
+-  The second  DT line  indicates  when  the  sequence  data  was  last<br>
+   modified. The associated comment is `LAST SEQUENCE UPDATE'.<br>
+-  The third  DT line  indicates when  any data other then the sequence<br>
+   was last  modified.  The  associated  comment  is  `LAST  ANNOTATION<br>
+   UPDATE'.<br>
+<br>
+Example of a block of DT lines:<br>
+<br>
+DT   01-JAN-1988 (REL. 06, CREATED)<br>
+DT   01-JUL-1989 (REL. 11, LAST SEQUENCE UPDATE)<br>
+DT   01-AUG-1992 (REL. 23, LAST ANNOTATION UPDATE)<br>
+<br>
+<br>
+3.4 The DE line<br>
+<br>
+The DE  (DEscription) lines  contain  general  descriptive  information<br>
+about the  sequence stored. This information is generally sufficient to<br>
+identify the sequence precisely. The format of the DE lines is:<br>
+<br>
+DE   DESCRIPTION.<br>
+<br>
+The description  is given  in ordinary  English and  is free-format. In<br>
+some cases,  more than  one DE line is required; in this case, the text<br>
+is divided  only between  words and only the last DE line is terminated<br>
+by a period.<br>
+<br>
+When the  complete sequence  was not  determined the  last  information<br>
+given on the DE lines will be `(FRAGMENT)' or `(FRAGMENTS)'.<br>
+<br>
+Two examples of description lines are given here:<br>
+<br>
+DE   NADH DEHYDROGENASE (EC 1.6.99.3).<br>
+<br>
+DE   LYSOPINE DEHYDROGENASE (EC 1.5.1.16) (OCTOPINE SYNTHASE)<br>
+DE   (LYSOPINE SYNTHASE) (FRAGMENT).<br>
+<br>
+<br>
+<br>
+3.5 The GN line<br>
+<br>
+The GN (Gene Name) line contains the name(s) of the gene(s) that encode<br>
+for the stored protein sequence. The format of the GN line is:<br>
+<br>
+GN   NAME1[ AND|OR NAME2...].<br>
+<br>
+Examples:<br>
+<br>
+GN   ALB.<br>
+GN   REX-1.<br>
+<br>
+It often  occurs that  more than  one gene name has been assigned to an<br>
+individual locus.  In that  case all  the synonyms  will be listed. The<br>
+word `OR'  separates the  different designations. The first name in the<br>
+list is  assumed to  be the most correct (or most current) designation.<br>
+Example:<br>
+<br>
+GN   HNS OR DRDX OR OSMZ OR BGLY.<br>
+<br>
+In a  few  cases,  multiple  genes  encode  for  an  identical  protein<br>
+sequence. In that case all the different gene names will be listed. The<br>
+word `AND' separates the designations. Example:<br>
+<br>
+GN   CECA1 AND CECA2.<br>
+<br>
+In very  rare cases  `AND' and  `OR' can  both be present. In that case<br>
+parenthesis are used as shown in the following example:<br>
+<br>
+GN   GVPA AND (GVPB OR GVPA2).<br>
+<br>
+<br>
+<br>
+3.6 The KW line<br>
+<br>
+The KW  (KeyWord) lines  provide  information  which  can  be  used  to<br>
+generate cross-reference  indexes of  the  sequence  entries  based  on<br>
+functional, structural,  or other  categories. The  keywords chosen for<br>
+each entry serve as a subject reference for the sequence. Often several<br>
+KW lines  are necessary  for a single entry. The format of the KW lines<br>
+is:<br>
+<br>
+KW   KEYWORD[; KEYWORD...].<br>
+<br>
+More than  one keyword  may be listed on each KW line; the keywords are<br>
+separated by  semicolons, and the last keyword is followed by a period.<br>
+Keywords may  consist of  more than one word (they may contain blanks),<br>
+but are never split between lines. An example of a KW line is:<br>
+<br>
+KW   EYE LENS PROTEIN; ACETYLATION.<br>
+<br>
+The order  of the  keywords is not significant. The above example could<br>
+also have been written:<br>
+<br>
+KW   ACETYLATION; EYE LENS PROTEIN.<br>
+<br>
+<br>
+<br>
+3.7 The OS line<br>
+<br>
+The OS  (Organism Species) line specifies the organism(s) which was the<br>
+source of  the stored  sequence. In the rare case where all the species<br>
+information will  not fit  on a  single line  more than  one OS line is<br>
+used. The last OS line is terminated by a period.<br>
+<br>
+The species designation consists, in most cases, of the Latin genus and<br>
+species designation  followed by the English name (in parentheses). For<br>
+viruses, only  the common  English name  is given.  In  cases  where  a<br>
+protein sequence  is identical  in more then one species the OS line(s)<br>
+will list the names of all those species.<br>
+<br>
+Examples of OS lines are shown here:<br>
+<br>
+OS   ESCHERICHIA COLI.<br>
+OS   HOMO SAPIENS (HUMAN).<br>
+OS   ROUS SARCOMA VIRUS (STRAIN SCHMIDT-RUPPIN).<br>
+OS   NAJA NAJA (INDIAN COBRA), AND NAJA NIVEA (CAPE COBRA).<br>
+<br>
+<br>
+<br>
+3.8 The OG line<br>
+<br>
+The OG  (OrGanelle) lines  indicate if  the gene  coding for  a protein<br>
+originates from  the mitochondria,  the chloroplast,  a cyanelle,  or a<br>
+plasmid. The format of the OG line is:<br>
+<br>
+OG   CHLOROPLAST.<br>
+OG   CYANELLE.<br>
+OG   MITOCHONDRION.<br>
+OG   PLASMID name.<br>
+<br>
+Where 'name' is the name of the plasmid.<br>
+<br>
+<br>
+3.9 The OC line<br>
+<br>
+The  OC   (Organism  Classification)   lines  contain   the   taxonomic<br>
+classification of  the source  organism. The  classification is  listed<br>
+top-down as  nodes in  a taxonomic  tree  in  which  the  most  general<br>
+grouping is  given first.  The classification  may be  distributed over<br>
+several OC  lines, but nodes are not split or hyphenated between lines.<br>
+The individual  items are  separated by  semicolons  and  the  list  is<br>
+terminated by a period. The format of the OC lines is:<br>
+<br>
+OC   NODE[; NODE...].<br>
+<br>
+For example the classification lines for a human sequence would be:<br>
+<br>
+OC   EUKARYOTA; METAZOA; CHORDATA; VERTEBRATA; TETRAPODA; MAMMALIA;<br>
+OC   EUTHERIA; PRIMATES.<br>
+<br>
+<br>
+3.10 The reference (RN, RP, RC, RX, RA, RL) lines<br>
+<br>
+These lines  comprise the  literature citations  within SWISS-PROT. The<br>
+citations indicate  the papers from which the data has been abstracted.<br>
+The reference  lines for  a given  citation occur  in a  block, and are<br>
+always in  the order RN, RP, RC, RM, RA, RL. Within each such reference<br>
+block the  RN and  RP lines occur once, the RC line occurs zero or more<br>
+times, the  RM line  occurs zero  or once, and the RA and RL lines each<br>
+occur one or more times. If several references are given, there will be<br>
+a reference block for each.<br>
+<br>
+An example of a complete reference is:<br>
+<br>
+RN   [1]<br>
+RP   SEQUENCE FROM N.A., AND SEQUENCE OF 1-15.<br>
+RC   STRAIN=SPRAGUE-DAWLEY; TISSUE=LIVER;<br>
+RM   91002678<br>
+RA   CHAN Y.-L., PAZ V., OLVERA J., WOOL I.G.;<br>
+RL   BIOCHIM. BIOPHYS. ACTA 1050:69-73(1990).<br>
+<br>
+The formats of the individual lines are explained below.<br>
+<br>
+     3.10.1 The RN line<br>
+<br>
+The RN  (Reference Number)  line gives  a  sequential  number  to  each<br>
+reference citation  in an  entry. This  number is  used to indicate the<br>
+reference in  comments and  feature table  notes. The  format of the RN<br>
+line is:<br>
+<br>
+RN   [N]<br>
+<br>
+where N  denotes the nth reference for this entry. The reference number<br>
+is always enclosed in square brackets.<br>
+<br>
+     3.10.2 The RP line<br>
+<br>
+The RP  (Reference Position)  line describes  the extent  of  the  work<br>
+carried out by the authors of the reference cited. The format of the RP<br>
+line is:<br>
+<br>
+RP   COMMENT.<br>
+<br>
+Typical examples of RP lines are shown below:<br>
+<br>
+RP   SEQUENCE FROM N.A.<br>
+RP   SEQUENCE FROM N.A., AND SEQUENCE OF 12-35.<br>
+RP   SEQUENCE OF 34-56; 67-73 AND 123-345, AND DISULFIDE BONDS.<br>
+RP   REVISIONS TO 67-89.<br>
+RP   STRUCTURE BY NMR.<br>
+RP   X-RAY CRYSTALLOGRAPHY (1.8 ANGSTROMS).<br>
+RP   CHARACTERIZATION.<br>
+RP   MUTAGENESIS OF TYR-56.<br>
+RP   REVIEW.<br>
+RP   VARIANT ALA-58.<br>
+RP   VARIANTS XLI LEU-341; ARG-372 AND TYR-446.<br>
+<br>
+<br>
+<br>
+     3.10.3 The RC line<br>
+<br>
+The RC  (Reference Comment)  lines are optional lines which are used to<br>
+store comments  relevant to  the reference  cited. The format of the RC<br>
+line is:<br>
+<br>
+RC   TOKEN1=TEXT; TOKEN2=TEXT; .....<br>
+<br>
+Where the currently defined tokens are:<br>
+<br>
+     PLASMID<br>
+     SPECIES<br>
+     STRAIN<br>
+     TISSUE<br>
+     TRANSPOSON<br>
+<br>
+The `SPECIES'  token is  only used  when an  entry describes a sequence<br>
+which is identical in more than one species; similarly the `PLASMID' is<br>
+only used  if an  entry describes a sequence identical in more than one<br>
+plasmid.<br>
+<br>
+An example of an RC line is:<br>
+<br>
+RC   STRAIN=SPRAGUE-DAWLEY; TISSUE=LIVER;<br>
+  3.10.4 The RX line<br>
+<br>
+The RX  (Reference cross-reference)  line is  an optional line which is<br>
+used to  indicate the  identifier assigned to a specific reference in a<br>
+bibliographic database. The format of the RX line is:<br>
+<br>
+RX   BIBLIOGRAPHIC_DATABASE_NAME; IDENTIFIER.<br>
+<br>
+where the  valid bibliographic  database  names  and  their  associated<br>
+identifier are:<br>
+<br>
+Name:       MEDLINE<br>
+Database:   Medline from the National Library of Medicine (NLM)<br>
+Identifier: Eight digit Medline Unique Identifier (UID)<br>
+<br>
+Example of RX line:<br>
+<br>
+RX   MEDLINE; 91002678.<br>
+<br>
+     3.10.5 The RA line<br>
+<br>
+The RA (Reference Author) lines list the authors of the paper (or other<br>
+work) cited.  All of  the authors  are included,  and are listed in the<br>
+order given  in the  paper. The names are listed surname first followed<br>
+by a  blank followed by initial(s) with periods. The authors' names are<br>
+separated by commas and terminated by a semicolon. Author names are not<br>
+split between lines. An example of the use of RA lines is shown below:<br>
+<br>
+RA   YANOFSKY C., PLATT T., CRAWFORD I.P., NICHOLS B.P., CHRISTIE G.E.,<br>
+RA   HOROWITZ H., VAN CLEEMPUT M., WU A.M.;<br>
+<br>
+As many RA lines as necessary are included for each reference.<br>
+<br>
+     3.10.6 The RL line<br>
+<br>
+The RL  (Reference Location)  lines contain  the conventional  citation<br>
+information for  the reference.  In general,  the RL  lines  alone  are<br>
+sufficient to find the paper in question.<br>
+<br>
+a) Journal citations<br>
+<br>
+The RL  line for  a journal citation includes the journal abbreviation,<br>
+the volume  number, the page range, and the year. The format for such a<br>
+RL line is:<br>
+<br>
+RL   JOURNAL VOL:PP-PP(YEAR).<br>
+<br>
+Journal names  are abbreviated according to the conventions used by the<br>
+National Library  of Medicine  (NLM) and  are based on the existing ISO<br>
+and ANSI  standards. A  list of  the abbreviations  currently in use is<br>
+given in the SWISS-PROT document file JOURLIST.TXT.<br>
+<br>
+<br>
+An example of an RL line is:<br>
+<br>
+RL   J. MOL. BIOL. 168:321-331(1983).<br>
+<br>
+When a  reference is  made to  a paper  which is `in press' at the time<br>
+when the  data bank  is released,  the page  range, and  eventually the<br>
+volume number  are indicated  as '0' (zero). An example of a RL line of<br>
+such type is shown here:<br>
+<br>
+RL   NUCLEIC ACIDS RES. 22:0-0(1994).<br>
+<br>
+b) Book citations<br>
+<br>
+A variation  of the RL line format is used for papers found in books or<br>
+other similar publications, which are cited as shown below:<br>
+<br>
+RL   (IN) THE ENZYMES, 3RD ED., VOL.11, PART A, BOYER P.D., ED.,<br>
+RL   PP.397-547, ACADEMIC PRESS, NEW YORK, (1975).<br>
+<br>
+The first RL line contains the designation `(IN)', which indicates that<br>
+this is  a  book  reference.  These  citations  generally  include  the<br>
+following  information:  the  title  of  the  book,  the  name  of  the<br>
+editor(s), the  page range,  the publisher  name, the  city where it is<br>
+published, and  the year  of publication (which is always shown between<br>
+parenthesis).<br>
+<br>
+c) Unpublished results<br>
+<br>
+RL lines  for unpublished  results follows  the  format  shown  in  the<br>
+following example:<br>
+<br>
+RL   UNPUBLISHED RESULTS, CITED BY:<br>
+RL   ULRICH E.L., KROGMANN D.W., MARKLEY J.L.;<br>
+RL   J. BIOL. CHEM. 257:9356-9364(1982).<br>
+<br>
+d) Unpublished observations<br>
+<br>
+For unpublished observations the format of the RL line is:<br>
+<br>
+RL   UNPUBLISHED OBSERVATIONS (MMM-YEAR).<br>
+<br>
+Where `MMM' is the month and `YEAR' is the year.<br>
+<br>
+We use the `unpublished observations' RL line to cite communications by<br>
+scientists to  SWISS-PROT of unpublished information concerning various<br>
+aspects of a sequence entry.<br>
+<br>
+e) Thesis<br>
+<br>
+For Ph.D. theses the format of the RL line is:<br>
+<br>
+RL   THESIS (YEAR), INSTITUTION_NAME, COUNTRY.<br>
+   <br>
+<br>
+An example of such a line is given here:<br>
+<br>
+RL   THESIS (1972), GEORGE WASHINGTON UNIVERSITY, U.S.A.<br>
+<br>
+f) Patent applications<br>
+<br>
+For patent applications the format of the RL line is:<br>
+<br>
+RL   PATENT NUMBER PAT_NUMB, DD-MMM-YYYY.<br>
+<br>
+Where `PAT_NUMB' is the international publication number of the patent,<br>
+`DD' is the day, `MMM' is the month and `YEAR' is the year.<br>
+<br>
+g) Submissions<br>
+<br>
+The final  form that  an RL line can take is that used for submissions.<br>
+The format of such a RL line is:<br>
+<br>
+RL   SUBMITTED (MMM-YEAR) TO DATABASE_NAME.<br>
+<br>
+Where `MMM' is the month, `YEAR' is the year and `DATABASE_NAME' is one<br>
+of the following:<br>
+<br>
+     EMBL/GENBANK/DDBJ DATA BANKS<br>
+     THE SWISS-PROT DATA BANK<br>
+     THE ECOSEQ DATA BANK<br>
+     THE HIV DATA BANK<br>
+     THE MIM DATA BANK<br>
+     THE NEWAT DATA BANK<br>
+     THE PDB DATA BANK<br>
+     THE PIR DATA BANK<br>
+<br>
+Two examples of submission RL lines are given here:<br>
+<br>
+RL   SUBMITTED (APR-1994) TO EMBL/GENBANK/DDBJ DATA BANKS.<br>
+RL   SUBMITTED (FEB-1995) TO THE SWISS-PROT DATA BANK.<br>
+<br>
+<br>
+3.11 The DR line<br>
+<br>
+     3.11.1 Definition<br>
+<br>
+The DR  (Database  cross-Reference)  lines  are  used  as  pointers  to<br>
+information related to SWISS-PROT entries and found in data collections<br>
+other than SWISS-PROT.<br>
+<br>
+For example,  if the  X-ray crystallographic  atomic coordinates  of  a<br>
+sequence are  stored in  the Brookhaven  Protein Data  Bank (PDB) there<br>
+will be DR line(s) pointing to the corresponding entri(es) in that data<br>
+bank. For a sequence translated from a nucleotide sequence there can be<br>
+DR lines  pointing to  entries in  the EMBL or Genbank data banks which<br>
+correspond to  the DNA or RNA sequence(s) from which it was translated.<br>
+   <br>
+The format of the DR line is:<br>
+<br>
+DR   DATA_BANK_IDENTIFIER; PRIMARY_IDENTIFIER; SECONDARY_IDENTIFIER.<br>
+<br>
+<br>
+     3.11.2 Data bank identifier<br>
+<br>
+The first  item on  the DR  line, the  data  bank  identifier,  is  the<br>
+abbreviated name of the data collection to which reference is made. The<br>
+currently defined data bank identifiers are the following:<br>
+<br>
+EMBL                Nucleotide sequence database of EMBL (EBI)<br>
+DICTYDB             Dictyostelium discoideum genome database<br>
+ECO2DBASE           Escherichia coli gene-protein database (2D gel<br>
+                        spots) (ECO2DBASE)<br>
+ECOGENE             Escherichia coli K12 genome database (EcoGene)<br>
+FLYBASE             Drosophila genome database (FlyBase)<br>
+GCRDB               G-protein--coupled receptor database (GCRDb)<br>
+HIV                 HIV sequence database<br>
+HSSP                Homology-derived secondary structure of proteins<br>
+                        database (HSSP).<br>
+LISTA               Yeast   (Saccharomyces    cerevisiae)   genome<br>
+                        database (LISTA)<br>
+MAIZEDB             Maize genome database (MaizeDB)<br>
+MIM                 Mendelian Inheritance in Man Database (MIM)<br>
+PDB                 Brookhaven Protein Data Bank (PDB)<br>
+PIR                 Protein sequence database of the Protein<br>
+                        Information Resource (PIR)<br>
+PROSITE             PROSITE dictionary of sites and patterns in<br>
+                        proteins<br>
+REBASE              Restriction enzyme database (REBASE)<br>
+AARHUS/GHENT-2DPAGE Human keratinocyte 2D gel protein database from<br>
+                        Aarhus and Ghent universities<br>
+SGD                 Saccharomyces Genome Database (SGD)<br>
+STYGENE             Salmonella typhimurium LT2 genome database<br>
+                        (StyGene)<br>
+SUBTILIST           Bacillus subtilis 168 genome database (SubtiList)<br>
+SWISS-2DPAGE        Human 2D  Gel Protein  Database from the University<br>
+                        of Geneva (SWISS-2DPAGE)<br>
+TRANSFAC            Transcription factor database (Transfac)<br>
+WORMPEP             Caenorhabditis elegans genome sequencing project<br>
+                        protein database (Wormpep)<br>
+YEPD                Yeast electrophoresis protein database (YEPD)<br>
+<br>
+<br>
+     3.11.3 The primary identifier<br>
+<br>
+The second  item  on  the  DR  line,  the  primary  identifier,  is  an<br>
+unambiguous pointer  to the information entry in the data bank to which<br>
+reference is being made.<br>
+<br>
+-  For an  EMBL, DictyDb,  EcoGene, FlyBase,  GCRDb, HIV,  LISTA,  PIR,<br>
+   PROSITE, SGD, StyGene, SubtiList, SWISS-2DPAGE or Transfac reference<br>
+   the primary identifier is the  first accession  number (also  called<br>
+   the Unique Identifier in some data  banks) of  the  entry  to  which<br>
+   reference is being made.<br>
+-  For a  MIM reference the primary identifier is the catalog number of<br>
+   the disease (or phenotype).<br>
+-  For a  PDB or  REBASE reference  the primary identifier is the entry<br>
+   name.<br>
+-  For an  AARHUS/GHENT-2DPAGE, ECO2DBASE or YEPD reference the primary<br>
+   identifier is the protein spot alphanumeric designation.<br>
+-  For a WormPep reference the primary identifier is the cosmid-derived<br>
+   name given  to that  protein  by  the  C.elegans  genome  sequencing<br>
+   project.<br>
+-  For a MaizeDB reference the primary identifier is the "Gene-product"<br>
+   accession ID.<br>
+-  For a  HSSP reference the primary identifier is the accession number<br>
+   of  a  SWISS-PROT  entry  cross-referenced  to  a  PDB  entry  whose<br>
+   structure is  expected to  be similar  to that of the entry in which<br>
+   the HSSP cross-reference is present.<br>
+<br>
+<br>
+     3.11.4 The secondary identifier<br>
+<br>
+The third  and last  item on  the DR line, the secondary identifier, is<br>
+used to complement the information given by the first identifier.<br>
+<br>
+-  For an  EMBL, GenBank,  HIV, PIR  or PROSITE reference the secondary<br>
+   identifier is the entry's name.<br>
+-  For a PDB reference the secondary identifier is the most recent date<br>
+   on which PDB revised the entry (last `REVDAT' record).<br>
+-  For  a  DictyDb,  EcoGene, FlyBase, LISTA, SGD, StyGene or SubtiList<br>
+   reference the  secondary identifier  is the gene designation. If the<br>
+   gene designation is not available a dash "-" is used.<br>
+   For a  MIM, REBASE,  or ECO2DBASE reference the secondary identifier<br>
+   is the  latest release  number or  edition of  the database that has<br>
+   been used to derive the cross-reference.<br>
+-  For a SWISS-2DPAGE reference the secondary identifier is the species<br>
+   of origin.<br>
+-  For an  AARHUS/GHENT-2DPAGE reference  the secondary  identifier  is<br>
+   either `IEF'  (for  isoelectric  focusing)  or  `NEPHGE'  (for  non-<br>
+   equilibrium pH gradient electrophoresis).<br>
+-  For a  WormPep  reference  the  secondary  identifier  is  a  number<br>
+   attributed by  the  C.elegans  genome  sequencing  project  to  that<br>
+   protein.<br>
+-  For a  GCRDb, MaizeDB,  Transfac or  YEPD  reference  the  secondary<br>
+   identifier is not defined and a dash "-" is stored in that field.<br>
+-  For a HSSP reference the secondary identifier is  the  entry name of<br>
+   the PDB structure  related  to  that  of the entry in which the HSSP<br>
+   cross-reference is present.<br>
+<br>
+<br>
+Examples of complete DR lines are shown here:<br>
+<br>
+DR   AARHUS/GHENT-2DPAGE; 8006; IEF.<br>
+DR   DICTYDB; DD01047; MYOA.<br>
+DR   EMBL; X01704; GMNOD23.<br>
+DR   ECO2DBASE; G052.0; 6TH EDITION.<br>
+DR   ECOGENE; EG10054; ARAC.<br>
+DR   FLYBASE; FBGN0000055; ADH.<br>
+DR   GCRDB; GCR_0087; -.<br>
+DR   HIV; K02013; NEF$BRU.<br>
+DR   HSSP; P00438; 1DOB.<br>
+DR   LISTA; SC00018; ACT1.<br>
+DR   MAIZEDB; 25342; -.<br>
+DR   MIM; 249900; 11TH EDITION.<br>
+DR   PDB; 3ADK; 16-APR-88.<br>
+DR   PIR; A02768; R5EC7.<br>
+DR   PROSITE; PS00021; KRINGLE.<br>
+DR   REBASE; BSURI; RELEASE 9410.<br>
+DR   SGD; L0000008; AAR2.<br>
+DR   STYGENE; SG10312; PROV.<br>
+DR   SUBTILIST; BG10774; OPPD.<br>
+DR   SWISS-2DPAGE; P10599; HUMAN.<br>
+DR   TRANSFAC; T00141; -.<br>
+DR   WORMPEP; ZK637.7; CE00437.<br>
+DR   YEPD; 4270; -.<br>
+<br>
+<br>
+3.12 The FT line<br>
+<br>
+The FT (Feature Table) lines provide a precise but simple means for the<br>
+annotation of  the sequence  data. The table describes regions or sites<br>
+of interest  in the  sequence. In general the feature table lists post-<br>
+translational modifications,  binding sites, enzyme active sites, local<br>
+secondary structure  or other  characteristics reported  in  the  cited<br>
+references. Sequence  conflicts between references are also included in<br>
+the feature table. The feature table is updated when more becomes known<br>
+about a given sequence.<br>
+<br>
+The FT  lines have a fixed format. The column numbers allocated to each<br>
+of the  data items within each FT line are shown in the following table<br>
+(column numbers  not referred  to in  the table  are always occupied by<br>
+blanks):<br>
+<br>
+   +---------------+-----------------------+<br>
+   |     Columns   |   Data item           |<br>
+   +---------------+-----------------------+<br>
+   |       1- 2    |   FT                  |<br>
+   |       6-13    |   Key name            |<br>
+   |      15-20    |   `FROM' endpoint     |<br>
+   |      22-27    |   `TO' endpoint       |<br>
+   |      35-75    |   Description         |<br>
+   +---------------+-----------------------+<br>
+<br>
+The key  name and  the endpoints  are always  on a single line, but the<br>
+description may  require continuation.  For this purpose, the next line<br>
+contains blanks in the key, the `FROM', and the `TO' columns positions,<br>
+and the  description is  continued in its normal position. Thus a blank<br>
+key always denotes a continuation of the previous description.<br>
+<br>
+An example of a feature table is shown below:<br>
+<br>
+FT   NON_TER       1      1<br>
+FT   PEPTIDE       1      9       ARG-VASOPRESSIN.<br>
+FT   PEPTIDE      13    107       NEUROPHYSIN 2.<br>
+FT   PEPTIDE     109    147       COPEPTIN.<br>
+FT   DISULFID      1      6<br>
+FT   MOD_RES       9      9       AMIDATION (ACTIVE ARG-VASOPRESSIN).<br>
+FT   CONFLICT    102    102       D -> S (IN REF. 2).<br>
+FT   CONFLICT    105    105       MISSING (IN REF. 3).<br>
+FT   CARBOHYD    114    114<br>
+<br>
+The first  item on  each FT  line is  the key  name, which  is a  fixed<br>
+abbreviation (up to 8 characters) with a defined meaning. A list of the<br>
+currently defined  key names  can  be  found  in  Appendix  A  of  this<br>
+document.<br>
+<br>
+Following the key name are the `FROM' and `TO' endpoint specifications.<br>
+These fields designate (inclusively) the endpoints of the feature named<br>
+in the  key field.  In general,  these fields  simply  contain  residue<br>
+numbers indicating positions in the sequence as listed. Note that these<br>
+positions are  always specified  assuming a  numbering  of  the  listed<br>
+sequence from  1 to  n; this  numbering is  not necessarily the same as<br>
+that used  in the  original reference(s). The following should be noted<br>
+in interpreting these endpoints:<br>
+<br>
+-  If the  `FROM'  and  `TO'  specifications  are  equal,  the  feature<br>
+   indicated consists of the single amino acid at that position.<br>
+<br>
+-  When a feature is known to extend beyond the end(s) of the sequenced<br>
+   region, the  endpoint  specification  will  be  preceded  by  <  for<br>
+   features which continue to the left end (N-terminal direction) or by<br>
+   >  for   features  which  continue  to  the  right  end  (C-terminal<br>
+   direction).<br>
+<br>
+-  Unknown endpoints are denoted by `?'.<br>
+<br>
+See also the notes concerning each of the key names in the appendix A.<br>
+<br>
+The remaining  portion of  the FT  line is a description which contains<br>
+additional information  about the  feature. For  example, for a residue<br>
+post-translational modification  (key MOD_RES)  the chemical  nature of<br>
+that modification  is  given,  while  for  a  sequence  variation  (key<br>
+VARIANT) the  nature of the variation is indicated. This portion of the<br>
+line is  generally in  free form,  and may  be continued  on additional<br>
+lines when necessary.<br>
+<br>
+<br>
+3.13 The SQ line<br>
+<br>
+The SQ  (SeQuence header) line marks the beginning of the sequence data<br>
+and gives a quick summary of its content. The format of the SQ line is:<br>
+<br>
+SQ   SEQUENCE  XXXX AA; XXXXX MW;  XXXXX CN;<br>
+<br>
+The line  contains the  length of  the  sequence  in  amino-acids  (AA)<br>
+followed by the molecular weight (MW) rounded to the nearest gram and a<br>
+checking number (CN) as defined in the following reference:<br>
+<br>
+Bairoch A.<br>
+Biochem. J. 203:527-528(1982).<br>
+<br>
+An example of an SQ line is shown here:<br>
+<br>
+SQ   SEQUENCE 104 AA; 11530 MW; 54319 CN;<br>
+<br>
+The information  in the  SQ line  can be used as a check on accuracy or<br>
+for statistical  purposes. The  word `SEQUENCE'  is present  solely for<br>
+readability.<br>
+<br>
+<br>
+3.14 The sequence data line<br>
+<br>
+The sequence  data line has a line code consisting of two blanks rather<br>
+than the two-letter codes used up until now. The sequence is written 60<br>
+amino acids  per line,  in groups  of  10  amino  acids,  beginning  in<br>
+position 6 of the line.<br>
+<br>
+The characters  used for  the amino  acids are  the standard  IUPAC one<br>
+letter codes (see Appendix B).<br>
+<br>
+An example of sequence data lines is shown here:<br>
+<br>
+     GDVEKGKKIF IMKCSQCHTV EKGGKHKTGP NLHGLFGRKT GQAPGYSYTA ANKNKGIIWG<br>
+     EDTLMEYLEN PKKYIPGTKM IFVGIKKKEE RADLIAYLKK ATNE<br>
+<br>
+<br>
+3.15 The CC line<br>
+<br>
+The CC  lines are  free text  comments on the entry, and may be used to<br>
+convey any  useful information.  The comments  always appears below the<br>
+last reference line and are grouped together in comment blocks, a block<br>
+being made  of 1 or more comment lines. The first line of a block start<br>
+is marked with the characters `-!-'.<br>
+<br>
+The format of a comment block is:<br>
+<br>
+CC   -!- FIRST LINE OF A COMMENT BLOCK.<br>
+CC       SECOND AND SUBSEQUENT LINES OF A COMMENT BLOCK.<br>
+<br>
+A major proportion of the comment blocks are arranged according to what<br>
+we designate  as 'topics`.  The format of a comment block which belongs<br>
+to a 'topic` is:<br>
+<br>
+CC    -!- TOPIC: FREE TEXT DESCRIPTION.<br>
+<br>
+<br>
+The current topics and their definition are:<br>
+<br>
+ALTERNATIVE PRODUCTS     Description  of   the  existence   of  related<br>
+                   protein sequence(s) produced by alternative splicing<br>
+                   of the  same gene(s)  or by  the use  of alternative<br>
+                   initiation codons.<br>
+CATALYTIC ACTIVITY Description  of  the  reaction(s)  catalysed  by  an<br>
+                   enzyme [*].<br>
+CAUTION            This topic  warns you  about possible  errors and/or<br>
+                   grounds for confusion.<br>
+COFACTOR           Description of an enzyme cofactor.<br>
+DEVELOPMENTAL STAGE Description   of    the   developmental    specific<br>
+                   expression of a protein.<br>
+DISEASE            Description of  the  disease(s)  associated  with  a<br>
+                   deficiency of a protein.<br>
+DOMAIN             Description of the domain structure of a protein.<br>
+ENZYME REGULATION  Description of an enzyme regulatory mechanism.<br>
+FUNCTION           General description of the function(s) of a protein.<br>
+INDUCTION          Description of  the compound(s)  which stimulate the<br>
+                   synthesis of a protein.<br>
+PATHWAY            Description of  the metabolic pathway(s) to which is<br>
+                   associated a protein.<br>
+POLYMORPHISM       Description of polymorphism(s).<br>
+PTM                Description of a post-translational modification.<br>
+SIMILARITY         Description  of   the  similariti(es)  (sequence  or<br>
+                   structural) of a protein with other proteins.<br>
+SUBCELLULAR LOCATION     Description of  the subcellular  location of a<br>
+                   mature protein product.<br>
+SUBUNIT            Description  of   the  quaternary   structure  of  a<br>
+                   protein.<br>
+TISSUE SPECIFICITY Description of the tissue specificity of a protein.<br>
+<br>
+We show here, for each of the topics defined above, two examples of its<br>
+usage:<br>
+<br>
+CC   -!- ALTERNATIVE PRODUCTS: SKELETAL MUSCLE AND FIBROBLAST<br>
+CC       TROPOMYOSINS ARE OBTAINED BY ALTERNATIVE MRNA SPLICING.<br>
+<br>
+CC   -!- ALTERNATIVE PRODUCTS: USING ALTERNATIVE INITIATION CODONS IN<br>
+CC       THE SAME READING FRAME, THE GENE TRANSLATES INTO THREE<br>
+CC       ISOZYMES: ALPHA, BETA AND BETA'.<br>
+<br>
+CC   -!- CATALYTIC ACTIVITY: ATP + L-GLUTAMATE + NH(3) = ADP +<br>
+CC       GLUTAMINE + ORTHOPHOSPHATE.<br>
+<br>
+CC   -!- CATALYTIC ACTIVITY: (R)-2,3-DIHYDROXY-3-METHYLBUTANOATE +<br>
+CC       NADP(+) = (S)-2-HYDROXY-2-METHYL-3-OXOBUTANOATE + NADPH.<br>
+<br>
+CC   -!- CAUTION: REF.2 SEQUENCE DIFFERS FROM THAT SHOWN IN POSITIONS<br>
+CC       92 TO 165 DUE TO A FRAMESHIFT.<br>
+<br>
+CC   -!- CAUTION: IT IS UNCERTAIN WHETHER MET-1 OR MET-3 IS THE<br>
+CC       INITIATOR.<br>
+<br>
+CC   -!- COFACTOR: PYRIDOXAL PHOSPHATE.<br>
+<br>
+CC   -!- COFACTOR: FAD FLAVOPROTEIN AND NONHEME IRON.<br>
+<br>
+CC   -!- DEVELOPMENTAL STAGE: EXPRESSED EARLY DURING CONIDIAL (DORMANT<br>
+CC       SPORES) DIFFERENTIATION.<br>
+<br>
+CC   -!- DEVELOPMENTAL STAGE: EXPRESSED IN EMBRYONIC AND EARLY LARVAL<br>
+CC       STAGES.<br>
+<br>
+CC   -!- DISEASE: DEFECTS IN PHKA1 ARE LINKED TO X-LINKED MUSCLE<br>
+CC       GLYCOGENOSIS, A DISEASE CHARACTERIZED BY SLOWLY PROGRESSIVE,<br>
+CC       PREDOMINANTLY DISTAL MUSCLE WEAKNESS AND ATROPHY.<br>
+<br>
+CC   -!- DISEASE: DEFECTS IN ALD ARE THE CAUSE OF X-LINKED<br>
+CC       ADRENOLEUKODYSTROPHY, A PEROXISOMAL DISORDER CHARACTERIZED BY<br>
+CC       PROGRESSIVE DEMYLEINATION OF THE CNS AND ADRENAL<br>
+CC       INSUFFICIENCY.<br>
+<br>
+CC   -!- DOMAIN: CONTAINS A COILED-COIL DOMAIN ESSENTIAL FOR VESICULAR<br>
+CC       TRANSPORT AND A DISPENSABLE C-TERMINAL REGION.<br>
+<br>
+CC   -!- DOMAIN: THE B CHAIN IS COMPOSED OF TWO DOMAINS, EACH DOMAIN<br>
+CC       CONSISTS OF 3 HOMOLOGOUS SUBDOMAINS (ALPHA, BETA, GAMMA).<br>
+<br>
+CC   -!- ENZYME REGULATION: THE ACTIVITY OF THIS ENZYME IS CONTROLLED<br>
+CC       BY ADENYLATION. THE FULLY ADENYLATED ENZYME IS INACTIVE.<br>
+<br>
+CC   -!- ENZYME REGULATION: ACTIVATED BY GRAM-NEGATIVE BACTERIAL<br>
+CC       LIPOPOLYSACCHARIDES AND CHYMOTRYPSIN.<br>
+<br>
+CC   -!- FUNCTION: PROFILIN PREVENTS THE POLYMERIZATION OF ACTIN.<br>
+<br>
+CC   -!- FUNCTION: INHIBITOR OF FUNGAL POLYGALACTURONASE. IT IS AN<br>
+CC       IMPORTANT FACTOR FOR PLANT RESISTANCE TO PHYTOPATHOGENIC<br>
+CC       FUNGI.<br>
+<br>
+CC   -!- INDUCTION: BY SALT STRESS AND BY ABSCISIC ACID (ABA).<br>
+<br>
+CC   -!- INDUCTION: BY INFECTION, PLANT WOUNDING, OR ELICITOR<br>
+CC       TREATEMENT OF CELL CULTURES.<br>
+<br>
+CC   -!- PATHWAY: FIRST STEP IN PROLINE BIOSYNTHESIS PATHWAY.<br>
+<br>
+CC   -!- PATHWAY: LAST STEP IN PROTOHEME BIOSYNTHESIS. IN ERYTHROID<br>
+CC       CELLS, FERROCHELATASE APPEARS TO BE THE RATE-LIMITING ENZYME.<br>
+<br>
+CC   -!- POLYMORPHISM: THE ALLELIC FORM OF THE ENZYME WITH GLN-191<br>
+CC       HYDROLYZES PARAOXON WITH A LOW TURNOVER NUMBER AND THE ONE<br>
+CC       WITH ARG-191 WITH A HIGH TURNOVER NUMBER.<br>
+<br>
+CC   -!- POLYMORPHISM: THE TWO MAIN ALLELES OF HP ARE CALLED HP1F<br>
+CC       (FAST) AND HP1S (SLOW). THE SEQUENCE SHOWN HERE IS THAT OF THE<br>
+CC       HP1S FORM.<br>
+<br>
+CC   -!- PTM: O-GLYCOSYLATED; AN UNUSUAL FEATURE AMONG VIRAL<br>
+CC       GLYCOPROTEINS.<br>
+<br>
+CC   -!- PTM: THE SOLUBLE FORM DERIVES FROM THE MEMBRANE FORM BY<br>
+CC       PROTEOLYTIC PROCESSING.<br>
+<br>
+CC   -!- SIMILARITY: BELONGS TO THE SUBTILASE PROTEASES FAMILY. STRONG<br>
+CC       SIMILARITY WITH OTHER FURIN-LIKE ENZYMES.<br>
+<br>
+CC   -!- SIMILARITY: BELONGS TO THE ATP-BINDING TRANSPORT PROTEIN<br>
+CC       FAMILY (ABC TRANSPORTERS). BELONGS TO THE MDR SUBFAMILY.<br>
+<br>
+CC   -!- SUBCELLULAR LOCATION: MITOCHONDRIAL MATRIX.<br>
+<br>
+CC   -!- SUBCELLULAR LOCATION: INTEGRAL MEMBRANE PROTEIN. INNER<br>
+CC       MEMBRANE.<br>
+<br>
+CC   -!- SUBUNIT: HOMOTETRAMER.<br>
+<br>
+CC   -!- SUBUNIT: HETERODIMER OF A LIGHT CHAIN AND A HEAVY CHAIN LINKED<br>
+CC       BY A DISULFIDE BOND.<br>
+<br>
+CC   -!- TISSUE SPECIFICITY: KIDNEY, SUBMAXILLARY GLAND, AND URINE.<br>
+<br>
+CC   -!- TISSUE SPECIFICITY: SHOOTS, ROOTS, AND COTYLEDON FROM<br>
+CC       DEHYDRATING SEEDLINGS.<br>
+<br>
+<br>
+[*]    Whenever it was possible we have used, to describe the catalytic<br>
+       activity of  an enzyme,  the recommendations of the Nomenclature<br>
+       Committee  of   the  International  Union  of  Biochemistry  and<br>
+       Molecular Biology (IUBMB) as published in:<br>
+<br>
+       Enzyme Nomenclature, NC-IUBMB, Academic Press, New-York, (1992).<br>
+<br>
+<br>
+3.16 The // line<br>
+<br>
+The //  (terminator) line  contains no  data or comments. It designates<br>
+the end of an entry.<br>
+<br>
+<br>
+                 APPENDIX A: FEATURE TABLE KEYS<br>
+<br>
+The definition  of each  of the  key names used in the feature table is<br>
+explained here. It is probable that new key names will be progressively<br>
+be added to this list. For each key a number of examples are presented.<br>
+<br>
+<br>
+<br>
+A.1 Change indicators<br>
+<br>
+CONFLICT - Different papers report differing sequences.<br>
+<br>
+Examples of CONFLICT key feature lines:<br>
+<br>
+FT   CONFLICT     33     33       MISSING (IN REF. 2).<br>
+FT   CONFLICT     60     60       P -> A (IN REF. 3 AND 4).<br>
+FT   CONFLICT     81     84       ASTQ -> GWT (IN REF. 3).<br>
+<br>
+<br>
+VARIANT - Authors report that sequence variants exist.<br>
+<br>
+Examples of VARIANT key feature lines:<br>
+<br>
+FT   VARIANT       3      3       V -> I.<br>
+FT   VARIANT      87     87       L -> T (IN STRAIN 2.3.1).<br>
+FT   VARIANT       1      2       MISSING (IN 25% OF THE CHAINS).<br>
+<br>
+<br>
+VARSPLIC -  Description of  sequence variants  produced by  alternative<br>
+splicing.<br>
+<br>
+Examples of VARSPLIC key feature lines:<br>
+<br>
+FT   VARSPLIC    194    196       GRP -> DVR (IN SHORT FORM).<br>
+FT   VARSPLIC    197    211       MISSING (IN SHORT FORM).<br>
+<br>
+<br>
+MUTAGEN - Site which has been experimentally altered.<br>
+<br>
+Examples of MUTAGEN key feature lines:<br>
+<br>
+FT   MUTAGEN      65     65       H->F: 100% LOSS OF ACTIVITY.<br>
+FT   MUTAGEN     123    123       G->R,L,M: DNA BINDING LOST.<br>
+<br>
+<br>
+A.2 Amino acid modifications<br>
+<br>
+MOD_RES  - Post-translational modification of a residue.<br>
+<br>
+The chemical  nature of  the modification  is given in the description.<br>
+<br>
+<br>
+The general format of the MOD_RES description field is:<br>
+<br>
+FT   MOD_RES     xxx    xxx       MODIFICATION (COMMENT).<br>
+<br>
+The most frequently occuring modifications are the following:<br>
+<br>
+ACETYLATION                    N-terminal or other.<br>
+AMIDATION                      Generally at  the C-terminal of a mature<br>
+                                   active peptide.<br>
+BLOCKED                        Undetermined N-  or C-terminal  blocking<br>
+                                   group.<br>
+FORMYLATION                    Of the N-terminal methionine.<br>
+GAMMA-CARBOXYGLUTAMIC ACID<br>
+HYDROXYLATION                  Of asparagine, aspartic acid, proline or<br>
+                                   lysine.<br>
+METHYLATION                    Generally of lysine or arginine.<br>
+PHOSPHORYLATION                Of serine, threonine, tyrosine, aspartic<br>
+                                   acid or histidine.<br>
+PYRROLIDONE CARBOXYLIC ACID    N-terminal glutamate which has formed an<br>
+                                   internal cyclic lactam.<br>
+SULFATATION                    Generally of tyrosine.<br>
+<br>
+Examples of MOD_RES key feature lines:<br>
+<br>
+FT   MOD_RES       1      1       ACETYLATION.<br>
+FT   MOD_RES      11     11       PHOSPHORYLATION (BY PKC).<br>
+FT   MOD_RES       2      2       SULFATATION (BY SIMILARITY).<br>
+FT   MOD_RES       8      8       AMIDATION (G-9 PROVIDE AMIDE GROUP).<br>
+FT   MOD_RES       9      9       METHYLATION (MONO-, DI- & TRI-).<br>
+<br>
+<br>
+LIPID  - Covalent binding of a lipidic moiety<br>
+<br>
+The chemical  nature  of  the  bound  lipid  moiety  is  given  in  the<br>
+description. The general format of the LIPID description field is:<br>
+<br>
+FT   LIPID       xxx    xxx       MODIFICATION (COMMENT).<br>
+<br>
+The modifications which are currently defined are the following:<br>
+<br>
+MYRISTATE          Myristate group  attached through  an amide  bond to<br>
+                   the N-terminal glycine residue of the mature form of<br>
+                   a protein [1,2] or to an internal lysine residue.<br>
+<br>
+PALMITATE          Palmitate group attached through a thioether bond to<br>
+                   a cysteine  residue or  through an  ester bond  to a<br>
+                   serine or threonine residue [1,2].<br>
+<br>
+FARNESYL           Farnesyl group  attached through a thioether bond to<br>
+                   a cysteine residue [3,4].<br>
+<br>
+GERANYL-GERANYL    Geranyl-geranyl group  attached through  a thioether<br>
+                   bond to a cysteine residue [3,4].<br>
+<br>
+GPI-ANCHOR         Glycosyl-phosphatidylinositol (GPI)  group linked to<br>
+                   the alpha-carboxyl  group of  the C-terminal residue<br>
+                   of the mature form of a protein [5,6].<br>
+<br>
+N-ACYL DIGLYCERIDE N-terminal  cysteine   of  the   mature  form  of  a<br>
+                   prokaryotic lipoprotein  with an  amide-linked fatty<br>
+                   acid and  a glyceryl  group to which two fatty acids<br>
+                   are linked by ester linkages [7].<br>
+<br>
+<UL>
+<LI>      [1] Grand R.J.A.<br>
+         Biochem. J. 258:626-638(1989).<br>
+     [2] McLhinney R.A.J.<br>
+         Trends Biochem. Sci. 15:387-391(1990).<br>
+     [3] Glomset J.A., Gelb M.H., Farnsworth C.C.<br>
+         Trends Biochem. Sci. 15:139-142(1990).<br>
+     [4] Sinensky M., Lutz R.J.<br>
+         BioEssays 14:25-31(1992).<br>
+     [5] Low M.G.<br>
+         FASEB J. 3:1600-1608(1989).<br>
+     [6] Low M.G.<br>
+         Biochim. Biophys. Acta 988:427-454(1989).<br>
+     [7] Hayashi S., Wu H.C.<br>
+         J. Bioenerg. Biomembr. 22:451-471(1990).<br>
+
+</UL><br>
+Examples of LIPID key feature lines:<br>
+<br>
+<TT>FT   LIPID         1      1       MYRISTATE.<br>
+FT   LIPID        65     65       PALMITATE (BY SIMILARITY).<br>
+FT   LIPID       354    354       GPI-ANCHOR.<br>
+</TT><br>
+<br>
+<B>DISULFID - Disulfide bond.<br></B>
+<br>
+The `FROM'  and `TO'  endpoints represent  the two  residues which  are<br>
+linked by  an intra-chain  disulfide  bond.  If  the  `FROM'  and  `TO'<br>
+endpoints are  identical, the  disulfide bond  is an interchain one and<br>
+the description  field indicates the nature of the cross-link. Examples<br>
+of DISULFID key feature lines:<br>
+<br>
+<TT>FT   DISULFID     27     44       PROBABLE.<br>
+FT   DISULFID     14     14       INTERCHAIN (WITH A LIGHT CHAIN).<br>
+</TT><br>
+<br>
+<B>THIOLEST - Thiolester bond.<br></B>
+<br>
+The `FROM'  and `TO'  endpoints represent  the two  residues which  are<br>
+linked by the thiolester bond.<br>
+<br>
+<B>THIOETH - Thioether bond.<br></B>
+<br>
+The `FROM'  and `TO'  endpoints represent  the two  residues which  are<br>
+linked by the thioether bond.<br>
+<br>
+<br>
+<B>CARBOHYD - Glycosylation site.<br></B>
+<br>
+The nature  of the  carbohydrate (if known) is given in the description<br>
+field. Examples of CARBOHYD key feature lines:<br>
+<br><TT>
+FT   CARBOHYD    103    103       GLUCOSYLGALACTOSE.<br>
+FT   CARBOHYD    256    256       POTENTIAL.<br>
+</TT><br>
+<br>
+<B>METAL - Binding site for a metal ion.<br></B>
+<br>
+The description  field indicates  the nature  of the metal. Examples of<br>
+METAL key feature lines:<br>
+<br><TT>
+FT   METAL        18     18       IRON (HEME AXIAL LIGAND).<br>
+FT   METAL        87     87       COPPER (POTENTIAL).<br>
+</TT><br>
+<br>
+<B>BINDING -  Binding site  for any  chemical group (co-enzyme, prosthetic<br>
+group, etc.).<br>
+</B><br>
+The chemical  nature of  the group  is given  in the description field.<br>
+Examples of BINDING key feature lines:<br>
+<br><TT>
+FT   BINDING      14     14       HEME (COVALENT).<br>
+FT   BINDING     250    250       PYRIDOXAL PHOSPHATE.<br>
+</TT><br>
+<br>
+<H3>A.3 Regions<br></H3>
+<br>
+SIGNAL - Extent of a signal sequence (prepeptide).<br>
+<br>
+<B>TRANSIT - Extent of a transit peptide (mitochondrial, chloroplastic, or<br>
+for a microbody).<br>
+</B><br>
+Examples of TRANSIT key feature lines:<br>
+<br><TT>
+FT   TRANSIT       1     42       CHLOROPLAST.<br>
+FT   TRANSIT       1     25       MITOCHONDRION.<br>
+FT   TRANSIT       1     23       MICROBODY (POTENTIAL).<br>
+</TT><br>
+<br>
+<B>PROPEP - Extent of a propeptide.<br></B>
+<br>
+Examples of PROPEP key feature lines:<br>
+<br><TT>
+FT   PROPEP       27     28       ACTIVATION PEPTIDE.<br>
+FT   PROPEP      550    574       REMOVED IN MATURE FORM.<br>
+</TT><br>
+<br>
+<B>CHAIN - Extent of a polypeptide chain in the mature protein.<br></B>
+<br>
+Examples of CHAIN key feature lines:<br>
+<br><TT>
+FT   CHAIN        21    119       BETA-2 MICROGLOBULIN.<br>
+FT   CHAIN        37    >42       FACTOR XIIIA.<br>
+</TT><br>
+<br>
+<B>PEPTIDE - Extent of a released active peptide.<br></B>
+<br>
+Examples of PEPTIDE key feature lines:<br>
+<br><TT>
+FT   PEPTIDE      13    107       NEUROPHYSIN 2.<br>
+FT   PEPTIDE     235    239       MET-ENKEPHALIN.<br>
+</TT><br>
+<br>
+<B>DOMAIN - Extent of a domain of interest on the sequence.<br></B>
+<br>
+The nature  of that  domain is given in the description field. Examples<br>
+of DOMAIN key feature lines:<br>
+<br><TT>
+FT   DOMAIN       22    788       EXTRACELLULAR (POTENTIAL).<br>
+FT   DOMAIN      140    152       ANCESTRAL CALCIUM SITE.<br>
+</TT><br>
+<B>CA_BIND - Extent of a calcium-binding region.<br>
+<br>
+DNA_BIND - Extent of a DNA-binding region.<br>
+<br>
+NP_BIND - Extent of a nucleotide phosphate binding region.<br>
+</B><br>
+The nature  of the nucleotide phosphate is indicated in the description<br>
+field. Examples of NP_BIND key feature lines:<br>
+<br><TT>
+FT   NP_BIND      13     25       ATP.<br>
+FT   NP_BIND      45     49       GTP (POTENTIAL).<br>
+FT   NP_BIND       8     34       FAD (ADP PART).<br>
+</TT><br>
+<B>TRANSMEM - Extent of a transmembrane region.<br></B>
+<br>
+<B>ZN_FING - Extent of a zinc finger region.<br></B>
+<br>
+Examples of ZN_FING key feature lines:<br>
+<br><TT>
+FT   ZN_FING     110    134       GATA-TYPE.<br>
+FT   ZN_FING     559    579       C4-TYPE.<br>
+</TT><br>
+<br>
+<B>SIMILAR - Extent of a similarity with another protein sequence.<br></B>
+<br>
+Precise  information,  relative  to  that  sequence  is  given  in  the<br>
+description field. Examples of SIMILAR key feature lines:<br>
+<br>
+<TT>
+FT   SIMILAR     351    456       STRONG, WITH KAPPA CHAIN V REGIONS.<br>
+FT   SIMILAR     580   1182       HIGH, WITH ERBB TRANSFORMING PROTEIN.<br>
+</TT><br>
+<br>
+<B>REPEAT - Extent of an internal sequence repetition.<br></B>
+<br>
+Examples of REPEATS key feature lines:<br>
+<br>
+<TT>
+FT   REPEAT       75    300       APPROXIMATE.<br>
+FT   REPEAT      390    600       APPROXIMATE.<br>
+</TT>
+<br>
+<br>
+<H3>A.4 Secondary structure<br></H3>
+<br>
+The feature  table of  sequence  entries  of  proteins  whose  tertiary<br>
+structure is  known experimentally  contains  the  secondary  structure<br>
+information corresponding  to that  protein.  The  secondary  structure<br>
+assignment is  made according  to  DSSP  (see  Kabsch  W.,  Sander  C.;<br>
+Biopolymers, 22:2577-2637(1983))  and the information is extracted from<br>
+the coordinate data sets of the Protein Data Bank (PDB).<br>
+<br>
+In the  feature table  only three  types  of  secondary  structure  are<br>
+specified :  helices (key  HELIX), beta-strand  (key STRAND)  and turns<br>
+(key TURN).  Residues not  specified in  one of  these classes are in a<br>
+`loop' or  `random-coil' structure).  Because the  DSSP assignment  has<br>
+more than  the  three  common  secondary  structure  classes,  we  have<br>
+converted the following DSSP assignments to HELIX, STRAND, and TURN:<br>
+<B>
+<br>
+<TABLE border compact> <TR>
+        <TH> DSSP code
+        <TH> DSSP definition
+        <TH> SWISS-PROT assignment <TR></B>
+        <TH>H
+        <TH>Alpha-helix                                               
+	<TH>HELIX<TR>
+	<TH>G      
+	<TH>3(10) helix                                               
+	<TH>HELIX<TR>
+	<TH>I      
+	<TH>Pi-helix                                                  
+	<TH>HELIX<tr>
+	<TH>E      
+	<TH>Hydrogen bonded beta-strand<BR> 
+	(extended strand)            
+	<TH>STRAND<tr>
+	<TH>B      
+	<TH>Residue in an isolated <br>
+	beta-bridge                       
+	<TH>STRAND<tr>
+	<TH>T      
+	<TH>H-bonded turn <br>
+	(3-turn, 4-turn or 5-turn)                   
+	<TH>TURN<tr>
+	<TH>S      
+	<TH>Bend (five-residue <br>
+	bend centered at residue i)    
+	<TH>Not specified<tr>
+
+</TABLE>
+<br>
+<br>
+<B>One should be aware of the following facts:<br></B>
+<br>
+<OL>
+<LI>  Segment Length.  For helices  (alpha and  3-10),  the  residue  just<br>
+   before and just after the helix as given by DSSP participates in the<br>
+   helical hydrogen  bonding pattern  with a  single H-bond.  For  some<br>
+   practical purposes,  one can therefore extend the HELIX range by one<br>
+   residue on each side. E.g. HELIX 25-35 instead of HELIX 26-34. Also,<br>
+   the ends  of secondary  structure segments are less well defined for<br>
+   lower resolution  structures. A  fluctuation of  +/- one  residue is<br>
+   common.<br>
+<br>
+<LI>Missing segments. In low resolution structures, badly formed helices<br>
+   or strands may be omitted in the DSSP definition.<br>
+<br>
+<LI>Special helices  and strands.  Helices  of  length  three  are  3-10<br>
+   helices, those of length four and longer are either alpha-helices or<br>
+   3-10 helices (pi helices are extremely rare). A strand of length one<br>
+   corresponds to  a residue  in an  isolated beta-bridge. Such bridges<br>
+   can be structurally important.<br>
+<br>
+<LI>Missing secondary  structure. No  secondary structure  is  currently<br>
+   given in the feature table in the following cases:<br>
+
+
+<br>
+<UL>
+<LI>   No sequence data in the PDB entry.<br>
+<LI>   Structure for which only C-alpha coordinates are in PDB.<br>
+<LI>   NMR structure with more than one coordinate data set.<br>
+<LI>   Model (i.e. theoretical) structure.<br>
+
+</UL></OL><br>
+<br>
+Examples:<br>
+<br><TT>
+
+FT   HELIX         3     14<br>
+FT   TURN         15     15<br>
+FT   TURN         20     21<br>
+FT   STRAND       23     23<br>
+FT   HELIX        25     35<br>
+</TT><br>
+<br>
+<H3>A.5 Others<br></H3>
+<br>
+<B>ACT_SITE - Amino acid(s) involved in the activity of an enzyme.<br></B>
+<br>
+Examples of ACT_SITE key feature lines:<br>
+<br><TT>
+FT   ACT_SITE    193    193       ACCEPTS A PROTON DURING CATALYSIS.<br>
+FT   ACT_SITE     99     99       CHARGE RELAY SYSTEM.<br>
+</TT><br>
+SITE - Any other interesting site on the sequence.<br>
+<br>
+Examples of SITE key feature lines:<br>
+<br><TT>
+FT   SITE        285    288       PREVENT SECRETION FROM ER.<br>
+FT   SITE        241    242       CLEAVAGE (BY ANIMAL COLLAGENASES).<br>
+</TT><br>
+<B>INIT_MET - The sequence is known to start with an initiator methionine.<br></B>
+<br>
+This feature  key is  mostly associated with a zero value in the `FROM'<br>
+and `TO' fields.<br>
+<br><TT>
+FT   INIT_MET      0      0<br>
+</TT><br>
+<B>NON_TER -  The residue  at an  extremity of  the sequence  is  not  the<br>
+terminal residue.<br>
+</B><br>
+If applied to position 1, this signifies that the first position is not<br>
+the N-terminus  of the  complete  molecule.  If  applied  to  the  last<br>
+position, it signifies  that this position is not the C-terminus of the<br>
+complete molecule. There is no description field for this key. Examples<br>
+of NON_TER key feature lines:<br>
+<br><TT>
+FT   NON_TER       1      1<br>
+FT   NON_TER     150    150<br>
+</TT><br>
+<B>NON_CONS - Non consecutive residues.<br></B>
+<br>
+Indicates that  two residues in a sequence are not consecutive and that<br>
+there are  a number  of unsequenced  residues between them. Examples of<br>
+NON_CONS key feature lines:<br>
+<br><TT>
+FT   NON_CONS   1036   1037<br>
+FT   NON_CONS     33     34       N-TERMINAL / C-TERMINAL.<br>
+</TT><br>
+<B>UNSURE - Uncertainties in the sequence<br></B>
+<br>
+Used to  describe region(s)  of a  sequence for  which the  authors are<br>
+unsure about the sequence assignment.<br>
+</body>
+</html>

@@ -1,0 +1,329 @@
+# CREATED: 2004/11/18 td23
+# MODIFIED: 2009/03/19 td23
+
+This file explains the structures and processes of Roundup.
+There is no guarantee that this file is up-to-date and complete!
+But read it anyway.
+
+##################
+# WHAT IS ROUNDUP?
+##################
+
+Roundup is a database of orthologous sequences/genes between many genomes.
+Roundup uses the Reciprocal Shortest Distance (RSD) algorithm to compute orthologs between a pair of genomes.
+Roundup is a website that queries a database loaded with orthologous genes to return phylogenetic profiles and other multi-genome perspectives on the database.
+Roundup contains code for downloading and updating genomes from the internet.
+Roundup contains code for computing results/orthologs for udpated genomes and loading those genomes into mysql for the web queries.
+
+#############################
+# Where is the code and data?
+#############################
+
+There are (at least) two kinds of roundup code and data, dev and prod, i.e. development and production.
+Dev code is code deployed to /groups/rodeo/dev.roundup/python
+Prod code is code deployed to /groups/rodeo/roundup/python
+Dev code by default uses the dev roundup dataset.
+Prod code by default uses the prod roundup dataset.
+Dev code can be made to use the prod roundup dataset by setting various environment variables.  See examples in this file.
+Prod code could run on dev data, but why would you do that?
+The prod dataset is located at: /groups/rodeo/roundup/results, /groups/rodeo/roundup/genomes, and mysql.cl.med.harvard.edu in the roundup schema.
+The dev dataset is located at: /groups/rodeo/dev.results/roundup, /groups/rodeo/dev.roundup/genomes, and dev.mysql.cl.med.harvard.edu in the devroundup schema.
+Computations live under /groups/rodeo/roundup/compute or /groups/rodeo/dev.roundup/compute
+
+
+###########################################
+# What are some of the concepts in roundup?
+###########################################
+
+A genome/database/dbPath is a directory containing a fasta file and formatted blast indices and some metadata files.
+A genome has a unique id, like Homo_sapiens.aa, and a config in an xml file used to download and format that genome for use in computation.
+
+A results file is the result of computing the orthologs for a specific pair of genomes (aka the query database and subject database, aka qdb and sdb), a divergence(div) and evalue.
+Roundup results are computed for each pair of genomes and for 3 divergences (0.2, 0.5, 0.8) and 4 evalues (1e-20, 1e-15, 1e-10, 1e-5).  Therefore for every pair of genomes there will be 12 results files.
+
+A roundup dataset contains a set of current genomes, a set of updated genomes and a set of old genomes.
+A roundup dataset contains a set of current results files and a set of old results files.
+
+A set of current genomes is a set of genomes that has had results files computed for every combination of the current genomes and parameter values (div and evalue).  This is the set of current results files.
+These current results have been loaded into a mysql database which the web queries.
+The results in the current roundup dataset are always computed using the same version of each genome.  This is a subtle point of data consistency that has not always been true.
+
+A set of updated genomes is a set of genomes that have been downloaded and found to be newer than the same genomes in the set of current genomes.  
+These updated genomes are either waiting to be computed or are being computed (if a computation is running.)
+Once results have been computed for an updated genome, the updated genome is moved to the current genomes, the results are moved to the current results, and those results are loaded into the mysql database.
+
+A computation takes a set of updated genomes and computes new results files for them.  (This language is colloquial, not precise.)
+When the new results have all been computed, the updated genomes are moved to the set of current genomes, the new results are moved to the current results files, and the new results files are added to mysql, replacing any existing results for those combinations of qdb, sdb, div, and evalue.
+When the new results have all been computed, a computation removes from the set of updated genomes any updated genomes that match the updated genomes used in the computation.
+
+########################################
+# WHAT ARE SOME OF THE FILES IN ROUNDUP?
+########################################
+
+config.py contains a lot of configuration that is specific to the dev or prod environments.
+
+roundup_common.py contains code shared in common across other files and for abstracting some of the concepts in roundup.
+
+roundup_compute.py contains code for computing new results and managing computations
+
+roundup_download.py contains code for downloading genomes based on configurations, checking if the downloaded genomes are new and moving the new ones to the set of updated genomes.
+
+roundup_db.py contains code to manage results in the mysql database.  (Almost) everything having to do with SQL or mysql is in here.
+
+roundup_util.py contains some code used by the web and other code.
+
+www/ contains code implementing the website.  
+
+orthology_query.py and clustering.py are used by the web to generate phylogenetic profiles and other results of web queries.
+
+RoundUp.py and blast_results_db.py are used to generate orthology results via the RSD algorithm.
+
+
+#######################
+# EXAMPLE COMMAND LINES
+#######################
+
+#
+# DEPLOYMENT COMMANDS
+# 
+
+# How to deploy roundup code.  By default, code is deployed to dev.  go to your roundup directory, run ant.  leave your roundup dir.
+# why leave your roundup dir?  You do not have to, but if you run a command below from your roundup directory, you will end up running
+# the roundup code in your roundup dir instead of the prod or dev deployed code that you meant to use.
+# why?  because '.' is in the sys.path before the dir you appended to sys.path, like /groups/rodeo/roundup/python.
+cd ~/dev/trunk/roundup && JAVA_HOME=/usr/lib/jvm/java-1.5.0-sun bsub -q cbi_15m ant && cd - 
+# How to deploy to prod: set -Ddeploy.env=prod when running ant.
+cd ~/dev/trunk/roundup && JAVA_HOME=/usr/lib/jvm/java-1.5.0-sun bsub -q cbi_15m ant -Ddeploy.env=prod  && cd -
+
+
+#
+# DATASET CREATION COMMANDS
+# 
+
+# create a dev roundup dataset for testing roundup_compute code or anything else for that matter.
+# delete the existing dataset from the filesys and mysql db
+rm -rf /groups/rodeo/dev.roundup/genomes/current/*
+rm -rf /groups/rodeo/dev.roundup/genomes/updated/*
+rm -rf /groups/rodeo/dev.roundup/genomes/old/*
+rm -rf /groups/rodeo/dev.roundup/results/current/*
+rm -rf /groups/rodeo/dev.roundup/results/old/*
+rm -rf /groups/rodeo/dev.roundup/results/history.txt
+python -c 'import sys; sys.path.append("/groups/rodeo/dev.roundup/python"); import roundup_db; roundup_db.dropRoundupDb();'
+# move genomes from prod to dev current
+cp -pr /groups/rodeo/roundup/genomes/current/Mycoplasma_genitalium.aa /groups/rodeo/dev.roundup/genomes/current/.
+cp -pr /groups/rodeo/roundup/genomes/current/Ureaplasma_urealyticum.aa /groups/rodeo/dev.roundup/genomes/current/.
+cp -pr /groups/rodeo/roundup/genomes/current/Chlamydia_trachomatis.aa /groups/rodeo/dev.roundup/genomes/current/.
+# move genomes from prod to dev updated (for running a computation)
+cp -pr /groups/rodeo/roundup/genomes/current/Mycoplasma_pneumoniae.aa /groups/rodeo/dev.roundup/genomes/updated/.
+# create the mysql db
+python -c 'import sys; sys.path.append("/groups/rodeo/dev.roundup/python"); import roundup_db; roundup_db.createRoundupDb();'
+# move results from prod to dev
+python -c 'import sys; sys.path.append("/groups/rodeo/dev.roundup/python"); import roundup_db; import roundup_common; import execute;
+pairs = roundup_common.getPairs(roundup_common.getGenomes());
+dir="/groups/rodeo/roundup/results/current"
+print [execute.run("cp -f %s %s"%(roundup_common.makeRoundupResultsCachePath(qdb, sdb, div, evalue, dir=dir),
+roundup_common.makeRoundupResultsCachePath(qdb, sdb, div, evalue))) for qdb, sdb in pairs for div, evalue in roundup_common.genDivEvalueParams()]'
+# load results into mysql and udpate some tables in mysql.
+find /groups/rodeo/dev.roundup/results/current -type f | \
+time python -c 'import sys; sys.path.append("/groups/rodeo/dev.roundup/python"); import roundup_db; seqIdMap = {};
+files = [line.strip() for line in sys.stdin.readlines()]; print [roundup_db.loadResultsFile(file, seqIdMap=seqIdMap) for file in files]; '
+time python -c 'import sys; sys.path.append("/groups/rodeo/dev.roundup/python"); import roundup_db; roundup_db.updateRoundupDb();'
+
+
+#
+# COMPUTATION COMMANDS
+# 
+
+# make computation dir for 150 updated databases.  To compute ALL updated databases, omit numGenomes.
+# WARNING: only make a computation dir after all other computations have finished.  Exception: advanced users can use depends argument.
+cd && python -c 'import sys; sys.path.append("/groups/rodeo/roundup/python"); import roundup_compute;
+print roundup_compute.makeUpdatedComputation(numGenomes=150)'
+# save the computeDir printed out by makeUpdatedComputation() for use in other commmands.
+
+# run or resume computation.  Can be called while pair jobs are still running.  Will only submit non running pairs.
+cd && python -c 'import sys; sys.path.append("/groups/rodeo/roundup/python"); import roundup_compute;
+roundup_compute.computePairs("/groups/rodeo/compute/roundup/compute/20090417_114403_ee48eef4896349ba86c0b072f180a4dc")'
+
+# complete a computation, once all pairs have been computed.
+# If called while pairs are still running or not all pairs have completed, will exit safely.
+cd && python -c 'import sys; sys.path.append("/groups/rodeo/roundup/python"); import roundup_compute;
+roundup_compute.completeComputation("/groups/rodeo/compute/roundup/compute/20090416_180202_fb5a4842f5254294bdf5318b5bdf59d0")'
+
+# ADVANCED USERS: build a compute dir that depends on another (possibly unfinished computation).
+# use this when one computation has not finished but you want to start another to keep the cluster full of roundup jobs.
+cd && python -c 'import sys; sys.path.append("/groups/rodeo/roundup/python"); import roundup_compute;
+depends = "/groups/rodeo/compute/roundup/compute/20090417_114403_ee48eef4896349ba86c0b072f180a4dc";
+print roundup_compute.makeUpdatedComputation(numGenomes=30, depends=depends);'
+
+# examine a running computation.  if all pairs are done runing, you can complete the computation.
+# count the number of pair jobs on LSF for a computation.  list all jobs and grep for the computation id (or a unique substring of the computation id)
+bjobs -w -u all | grep '20090417_114403_ee48eef4896349ba86c0b072f180a4dc'
+# or
+bjobs -w | grep 'roundup'
+# or
+bjobs -q all_unlimited
+# YMMV
+
+# kill all pair jobs on LSF for a computation.  You probably will rarely have reason to do this.  But just in case...
+# select all pair jobs for the computation, grab the job ids, and send the job ids to bkill.
+# technically this command will not work perfectly if the LSF job ids are not 5 or 6 digit numbers, so you might need to tweak the regex.
+bjobs -w | grep '20090418_120200' | python -c 'import sys, re, subprocess;
+jobs = [j for j in sys.stdin.read().split() if re.search("^[0-9]{5,6}$", j)];
+cmds = ["bkill "+j for j in jobs]; [(sys.stdout.write(cmd+"\n"), subprocess.call(cmd, shell=True)) for cmd in cmds];'
+
+
+# sometimes you make changes to computation or something else and you are not ready to deploy the changes to prod
+# but you want to run a computation from/to prod data.  You can!
+# set these environment variables to prod locations
+# append to sys.path.append your deployed dev code.
+# use environment variables to run dev code on prod data.
+# example of making a computation dir for 30 updated databases, using prod data and dev code.
+cd && \
+ROUNDUP_RESULTS_DIR=/groups/rodeo/roundup/results \
+ROUNDUP_GENOMES_DIR=/groups/rodeo/roundup/genomes \
+ROUNDUP_MYSQL_SERVER=mysql.cl.med.harvard.edu \
+ROUNDUP_MYSQL_DB=roundup \
+python -c 'import sys; sys.path.append("/groups/rodeo/dev.roundup/python"); import roundup_compute;
+print roundup_compute.makeUpdatedComputation(numGenomes=30)'
+
+
+# how to test the performance of the filesystem, the Isilon NAS.
+The env var way: run roundup_compute.computePairs() with ROUNDUP_LOCAL=false in the env.  I.e. ROUNDUP_LOCAL=false python -c '...computePairs(...)'
+This will submit non-running, non-completed pairs to LSF with the env var set to use NAS disk.
+The change the code way: in roundup_common.py, hardcode ROUNDUP_LOCAL=False, and redeploy the code.  Any currently pending LSF jobs (using the code
+in the area you deployed to) will, when they start and import roundup_common, use non-local disk.
+# Notice that either way, jobs currently running on LSF are not affected.  The way to affect those jobs is to kill them and resubmit to LSF using computePairs.
+# example of running from non-local disk by killing jobs and resubmitting them using env var.
+# kill jobs for /groups/rodeo/compute/roundup/compute/20090418_120200_71ca764253f64da7be9719d029d12e71
+bjobs -w | grep '20090418_120200' | python -c 'import sys, re, subprocess;
+jobs = [j for j in sys.stdin.read().split() if re.search("^[0-9]{6}$", j)];
+cmds = ["bkill "+j for j in jobs]; [(sys.stdout.write(cmd+"\n"), subprocess.call(cmd, shell=True)) for cmd in cmds];'
+# rerun computation using non-local disk.  see the ROUNDUP_LOCAL env var.
+ROUNDUP_RESULTS_DIR=/groups/rodeo/roundup/results ROUNDUP_GENOMES_DIR=/groups/rodeo/roundup/genomes \
+ROUNDUP_MYSQL_SERVER=mysql.cl.med.harvard.edu ROUNDUP_MYSQL_DB=roundup \
+ROUNDUP_LOCAL=false \
+python -c 'import sys; sys.path.append("/groups/rodeo/dev.roundup/python"); import roundup_compute;
+roundup_compute.computePairs("/groups/rodeo/compute/roundup/compute/20090418_120200_71ca764253f64da7be9719d029d12e71")'
+
+
+# 
+# ROUNDUP_DB DATABASE COMMANDS
+#
+
+# How to import all roundup results into mysql from scratch.  This removes everything in mysql and takes hours/days.
+# Note: these commands use dev code and prod data, via the env vars specified in the commands.
+# drop and create the mysql db
+ROUNDUP_RESULTS_DIR=/groups/rodeo/roundup/results ROUNDUP_GENOMES_DIR=/groups/rodeo/roundup/genomes \
+ROUNDUP_MYSQL_SERVER=mysql.cl.med.harvard.edu ROUNDUP_MYSQL_DB=roundup \
+time python -c 'import sys; sys.path.append("/groups/rodeo/dev.roundup/python"); import roundup_db;
+roundup_db.dropRoundupDb(); roundup_db.createRoundupDb();'
+
+# load all results into mysql db (speedup by memoizing with seqIdMap)
+find /groups/rodeo/roundup/results/current -type f > /home/dev/foo.files
+bsub -q cbi_7d -o %J.out \
+ROUNDUP_RESULTS_DIR=/groups/rodeo/roundup/results ROUNDUP_GENOMES_DIR=/groups/rodeo/roundup/genomes \
+ROUNDUP_MYSQL_SERVER=mysql.cl.med.harvard.edu ROUNDUP_MYSQL_DB=roundup \
+time python -c 'import sys; sys.path.append("/groups/rodeo/dev.roundup/python"); import roundup_db;
+files = [line.strip() for line in open("/home/dev/foo.files")];  seqIdMap = {};
+[sys.stdout.write(str(i)+" "+files[i]+" "+str(roundup_db.loadResultsFile(files[i], seqIdMap=seqIdMap))+"\n") for i in range(len(files))]; '
+
+# update tables that map orthologs to gene names and go terms.
+bsub -q cbi_1d \
+ROUNDUP_RESULTS_DIR=/groups/rodeo/roundup/results ROUNDUP_GENOMES_DIR=/groups/rodeo/roundup/genomes \
+ROUNDUP_MYSQL_SERVER=mysql.cl.med.harvard.edu ROUNDUP_MYSQL_DB=roundup \
+time python -c 'import sys; sys.path.append("/groups/rodeo/dev.roundup/python"); import roundup_db; roundup_db.updateRoundupDb();'
+
+
+#
+# DOWNLOADING GENOMES COMMANDS
+#
+
+# Download/update all genomes.  This downloads the genomes and if they are newer than what we have moves them to the updated genomes dir.
+bsub -q cbi_7d time python -c 'import sys; sys.path.append("/groups/rodeo/roundup/python"); import roundup_download;
+roundup_download.updateFromConfigs(["/groups/rodeo/roundup/python/roundup_genomes.xml"]);'
+
+# List all the genomes and their indexes in the roundup_genomes.xml file.
+# If a download fails, this can be used to pickup where downloading left off.
+python -c 'import sys; sys.path.append("/groups/rodeo/roundup/python"); import roundup_download;
+roundup_download.printCount(["/groups/rodeo/roundup/python/roundup_genomes.xml"]);'
+
+# Download specific genomes, using dev code and prod data.
+ROUNDUP_RESULTS_DIR=/groups/rodeo/roundup/results ROUNDUP_GENOMES_DIR=/groups/rodeo/roundup/genomes \
+bsub -q cbi_1d time python -c 'import sys; sys.path.append("/groups/rodeo/dev.roundup/python"); import roundup_download;
+genomeIds = ["Monosiga_brevicollis.aa", "Trichoplax_adhaerens_Grell-BS-1999.aa", "Chlamydomonas_reinhardtii.aa"];
+roundup_download.updateFromConfigs(["/groups/rodeo/roundup/python/roundup_genomes.xml"], genomeIds=genomeIds);'
+
+# Resume downloading from genome #69
+bsub -q cbi_7d time python -c 'import sys; sys.path.append("/groups/rodeo/roundup/python"); import roundup_download;
+roundup_download.updateFromConfigs(["/groups/rodeo/roundup/python/roundup_genomes.xml"], startIndex=69);'
+
+# Made some changes you want to test?  Only download one genome
+python -c 'import sys; sys.path.append("/groups/rodeo/dev.roundup/python"); import roundup_download;
+roundup_download.updateFromConfigs(["/groups/rodeo/dev.roundup/python/roundup_genomes.xml"], endIndex=1);'
+
+# Download only new genomes, ones which we do not have already.
+cd ~/dev/trunk/roundup && ant deploy && ROUNDUP_GENOMES_DIR=/groups/rodeo/roundup/genomes \
+bsub -q cbi_1d time python -c 'import sys; sys.path.append("/groups/rodeo/dev.roundup/python"); import roundup_download;
+roundup_download.updateFromConfigs(["/groups/rodeo/dev.roundup/python/roundup_genomes.xml"], newOnly=True);'
+
+# We do not want genome X anymore.  How can we delete it?
+# first, remove it from roundup_genomes.xml
+# second, delete the genome from updated and current and delete the results files and delete it from mysql.
+python -c 'import sys; sys.path.append("/groups/rodeo/roundup/python"); import roundup_util;
+roundup_util.deleteGenomeById("Corynebacterium_glutamicum.aa");'
+
+
+# what genomes come from sources other than ensembl, ncbi, and bio-mirror?
+cd ~/dev/trunk/roundup && ant deploy && time python -c 'import sys; sys.path.append("/groups/rodeo/dev.roundup/python"); import roundup_download;
+print roundup_download.processConfigs(["/groups/rodeo/dev.roundup/python/roundup_genomes.xml"], func=roundup_download.oneOffGetConfigHosts);'
+
+# Rarely used.
+# Check if configurations still look good based on the files we detect on the source ftp site.
+# This is a weak test and is time consuming and error prone, so the configs are checked 10 at a time and the results are stored in your home dir.
+cd ~/dev/trunk/roundup && ant deploy && time python -c 'import sys; sys.path.append("/groups/rodeo/dev.roundup/python"); import util; import roundup_download;
+g = "~/dev/trunk/roundup/roundup_genomes.xml";
+o = "~/checkConfigs.txt.";
+[util.writeToFile(roundup_download.checkConfigs([g], startIndex=i, endIndex=i+10), o+str(i)) for i in range(0, 928, 10)];'
+# now check the files for errors:
+grep 'warning' ~/checkConfigs.txt.*
+
+# detect genomes on ftp sites that we are missing genomes and make configs for them.  add them to roundup_genomes.xml.
+# NOTE: sub() function call must be uncommented in oneOffMakeConfigsForMissingGenomes() to actually make new configs.
+# look for possible genomes at ncbi and ensembl:
+# ensembl is now at biomirror:
+ftp://bio-mirror.net/biomirror/ensembl/current_fasta/ # the first letter of each subdir needs to be capitalized.
+# every dir under these directories is a genome dir
+ftp://bio-mirror.net/biomirror/ncbigenomes/Fungi/
+ftp://bio-mirror.net/biomirror/ncbigenomes/Protozoa/
+# looks like dirs under here that are first-cap but not all cap are genomes
+ftp://bio-mirror.net/biomirror/ncbigenomes/Bacteria/
+# many genome dirs in here, interspersed with categories like Fungi, etc.  Names are nonstandard, like D_rerio.
+ftp://bio-mirror.net/biomirror/ncbigenomes/
+# looked at ncbi genbank genomes, but does not look like much good data is there.  not sure what its purpose is and it is being reorganized.
+# based on the README in the ncbigenomes area, it looks like ncbigenomes is the place to go, not genbank/genomes.
+# start by finding and adding genomes from ftp://bio-mirror.net/biomirror/ncbigenomes b/c they have poorly named genome dirs and so
+# can not be "autodetected"
+cd ~/dev/trunk/roundup && ant deploy && time python -c 'import sys; sys.path.append("/groups/rodeo/dev.roundup/python"); import util; import roundup_download;
+roundup_download.processConfigs(["/groups/rodeo/dev.roundup/python/roundup_genomes.xml"], roundup_download.oneOffMakeConfigsForMissingGenomes);'
+# added to roundup_genomes.xml
+# now add fungi and protozoa.
+# now add ensembl genomes
+# now add new bacterial genomes to their own file, roundup_genomes_bacteria.xml
+
+
+# in the dawn of time, some genome ids were simplifications of the underlying genome files
+# detect and fix these oversimplifications
+# example of simplified: like Genus_species.aa, ftp://foo.com/Genus_species_subspecies
+# print out every genome and baseurl.
+cd ~/dev/trunk/roundup && ant deploy && time python -c 'import sys; sys.path.append("/groups/rodeo/dev.roundup/python"); import util; import roundup_download;
+roundup_download.processConfigs(["/groups/rodeo/dev.roundup/python/roundup_genomes.xml"], roundup_download.oneOffGetConfigUrl);'
+# eyeball to find differences, and search for '-' to check for dashes that have been (wrongly) transformed to underscores.
+Corynebacterium_glutamicum.aa    Corynebacterium_glutamicum_ATCC_13032_Kitasato/NC_003450.faa.gz
+Pseudomonas_syringae.aa    Pseudomonas_syringae_tomato_DC3000
+Pseudomonas_aeruginosa_UCBPP_PA14.aa    Pseudomonas_aeruginosa_UCBPP-PA14/NC_008463.faa.gz
+# rename these in the roundup_genomes.xml config file and delete the old ones from roundup.
+cd /home/td23 && time python -c 'import sys; sys.path.append("/groups/rodeo/roundup/python"); import roundup_util;
+roundup_util.deleteGenomeById("Corynebacterium_glutamicum.aa");
+roundup_util.deleteGenomeById("Pseudomonas_syringae.aa");
+roundup_util.deleteGenomeById("Pseudomonas_aeruginosa_UCBPP_PA14.aa");'
+

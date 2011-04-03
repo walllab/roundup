@@ -1,0 +1,132 @@
+<!--accordian scripts begin here -->
+<script type="text/javascript" src="/roundup/js/prototype.js"></script>
+<script type="text/javascript" src="/roundup/js/effects.js"></script>
+<script type="text/javascript" src="/roundup/js/accordion.js"></script>
+<!--accordion scripts end here -->
+<!--accordion customization setup stuff-->
+	<script type="text/javascript">
+	
+		//  I want to load them onload, this is how you do it!
+		// 
+		Event.observe(window, 'load', loadAccordions, false);
+	
+		//
+		//	Set up all accordions
+		//
+		function loadAccordions() {
+			var topAccordion = new accordion('vertical_container', {
+				classNames : {
+					toggle : 'vertical_accordion_toggle',
+					toggleActive : 'vertical_accordion_toggle_active',
+					content : 'vertical_accordion_content'
+				},
+				defaultSize : {
+					width : 525
+				},
+				direction : 'vertical'
+			});
+			
+			var bottomAccordion = new accordion('vertical_container');
+			
+			var nestedVerticalAccordion = new accordion('vertical_container', {
+			  classNames : {
+					toggle : 'vertical_accordion_toggle',
+					toggleActive : 'vertical_accordion_toggle_active',
+					content : 'vertical_accordion_content'
+				}
+			});
+			
+			// Open first one
+			bottomAccordion.activate($$('#vertical_container .accordion_toggle')[0]);
+			
+
+
+		}
+		
+	</script>
+<!--end accordion customization-->
+
+<h2>Roundup News</h2>
+
+
+
+<div id="vertical_container">
+<h1><span>If you use Roundup, we strongly recommend you keep an eye on this page. Here you can find the latest info about site updates and improvements. </span> </h1>
+
+    
+<!--    <p class="description" >Here you can find the latest updates</p>-->
+        
+		<div id="vertical_container" >
+
+        <h1 class="accordion_toggle">A new site tour - April 29, 2008</h1>
+                <div class="accordion_content">
+      
+      <p>While working on improving Roundup's performance and the new improved results page, we thought we should add some extra usability features to Roundup. Improving Roundup's usability to researchers is our primary goal.</p>. 
+
+<p>We'd like to take a moment to thank many of you who have gotten in touch with positive feedback and suggestions on improving usability. As you can see, we are listening. Thanks again!</p>
+     
+
+    </div>
+
+
+   	<h1 class="accordion_toggle">A new developers log - April 15, 2008</h1>
+		<div class="accordion_content">   
+      <h2>Welcome to the new improved Roundup development log.</h2>
+      <p>Things were getting crowded in here so we took a quick break from coding to craft an easier-to-navigate news page.</p>
+      <p>Roundup is being extensively improved at the moment behind the scenes. Due to the fact that our list of genomes has grown so large, we've had to rethink the way that Roundup stores its results. The solution has some rich advantages; not simply to site performance, but to greatly increase the number of genomes that Roundup could practically work with. We are still testing the code to ensure everything behaves nicely and will update this page once done.</p>
+      <p>This particular task is essential if only so we don't have to turn down requests for the addition of genomes. In the second half of this month we will be working round-the-clock to finish the implementation of an additional alternative results page that should hopefully prove very useful to researchers. More on that to come.</p>
+
+    </div>
+    
+		<h1 class="accordion_toggle">The great computation pause - April 6, 2008</h1>
+		<div class="accordion_content">
+			              
+            <h2>Roundup goes large</h2>
+            <p>The vast cluster computing environment in which Roundup computation takes place became erratic over the weekend. While computation of the new genomes can continue at a slower pace, using less resources, we've paused the jobs in order to devoting our time to restructuring the storage of the Roundup results data, which has grown to approximately 302,000 files. This provides us with the long-awaited opportunity to rearrange the datas structure, allowing us to remove the one remaining obstacle to growth in terms of the amount of genomes Roundup might effectively work with. Felicitiously, doing this work now prevents us from ever having to temporarily decline a researcher's request to add a new genome. So it's a good thing to get done now.</p>
+      
+            
+		</div>
+		
+		<h1 class="accordion_toggle">Adding some genomes - March 13, 2008</h1>
+		<div class="accordion_content">
+        	<h2>Adding genomes ...</h2>
+
+            <p>A few days ago we added ten new requested genomes to the database. Computation has already begun, but it will take months for computation to finish and for the results to be available in the Roundup database. In addition, we are also computing a few hundred of our genomes that have been updated in the past twelve months, so things will take a bit longer than usual. The newly added genomes include the African elephant, lesser hedgehog, common shrew, yellow fever mosquito, bush baby, rabbit, pika, guinea pig and the Japanese killifish.  We also added one of the most compellingly unique organisms on earth: the Australian platypus. We're expecting the computation for these genomes will be finished and available in the Roundup database in the months to come. In the meantime a great deal of work is being done to improve Roundup's functionality.</p>
+		</div>
+            
+	
+		<h1 class="accordion_toggle">Roundup is moved to its own domain: roundup.hms.harvard.edu - Februrary 26, 2008</h1>
+		<div class="accordion_content">
+			              
+<p>There have been extensive changes to Roundup these past few months. The most obvious improvement is the site's look-and-feel, which was designed and implemented over Christmas 2007. The next step has been to move the Roundup code to its own domain - http://roundup.hms.harvard.edu. Roundup's new home makes it easier to deploy various improvements and upgrades.</p>
+<p>Aside from these improvements, in the months ahead we will be adding many more genomes to the database. Remember, if we're missing one you need, <a href="index.php?action=input_add_genome">feel free to request it!</a></p>
+<p>Computing new genomes against our existing (very large) database can take weeks or months, even on Harvard Medical School's high-performance linux cluster. Once again, we'd like to thank our friends in <a href="http://ritg.med.harvard.edu">RITG</a> for their tireless efforts in maintaining the hosting and computational enviroment in which Roundup operates.</p>             
+		</div>
+		
+		<h1 class="accordion_toggle">New management - February 16, 2008</h1>
+		<div class="accordion_content">
+        	<h2>Things to do, things to do ...</h2>
+            <p>As I take over development of Roundup, I'm impatient to improve certain functions that may increase the sites's utility and usefulness to researchers. There are a few necessary back-end improvements that are begging my attention in the meantime that aren't that interesting to describe: performance related improvements and, improving the site's ease of development, as well as the ironing out the inevitable growing pains that come from Roundup's rapid growth. These tasks are interesting and lead to exciting possibilities once done, so expect updates on that front over the next few months. Good things for Roundup lay ahead!</p>
+            	</div>			
+	
+
+	
+
+	
+</div>
+
+<script type="text/javascript" >
+  
+	//
+	// You can hide the accordions on page load like this, it maintains accessibility
+	//
+	//
+	var verticalAccordions = $$('.accordion_toggle');
+	verticalAccordions.each(function(accordion) {
+		$(accordion.next(0)).setStyle({
+		  height: '0px'
+		});
+	});
+
+	
+</script>

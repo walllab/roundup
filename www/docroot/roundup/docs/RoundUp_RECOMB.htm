@@ -1,0 +1,1626 @@
+<html xmlns:v="urn:schemas-microsoft-com:vml"
+xmlns:o="urn:schemas-microsoft-com:office:office"
+xmlns:w="urn:schemas-microsoft-com:office:word"
+xmlns:st1="urn:schemas-microsoft-com:office:smarttags"
+xmlns="http://www.w3.org/TR/REC-html40">
+
+<head>
+<meta http-equiv=Content-Type content="text/html; charset=us-ascii">
+<meta name=ProgId content=Word.Document>
+<meta name=Generator content="Microsoft Word 11">
+<meta name=Originator content="Microsoft Word 11">
+<link rel=File-List href="RoundUp_RECOMB_files/filelist.xml">
+<link rel=Edit-Time-Data href="RoundUp_RECOMB_files/editdata.mso">
+<link rel=OLE-Object-Data href="RoundUp_RECOMB_files/oledata.mso">
+<!--[if !mso]>
+<style>
+v\:* {behavior:url(#default#VML);}
+o\:* {behavior:url(#default#VML);}
+w\:* {behavior:url(#default#VML);}
+.shape {behavior:url(#default#VML);}
+</style>
+<![endif]-->
+<title>RoundUp: a large collection of orthologs and associated evolutionary
+distances</title>
+<o:SmartTagType namespaceuri="urn:schemas-microsoft-com:office:smarttags"
+ name="PersonName"/>
+<!--[if gte mso 9]><xml>
+ <o:DocumentProperties>
+  <o:Author>Dennis P. Wall</o:Author>
+  <o:Template>Normal</o:Template>
+  <o:LastAuthor>Dennis P. Wall</o:LastAuthor>
+  <o:Revision>2</o:Revision>
+  <o:TotalTime>28</o:TotalTime>
+  <o:LastPrinted>2005-03-11T19:29:00Z</o:LastPrinted>
+  <o:Created>2005-09-12T15:11:00Z</o:Created>
+  <o:LastSaved>2005-09-12T15:11:00Z</o:LastSaved>
+  <o:Pages>1</o:Pages>
+  <o:Words>8922</o:Words>
+  <o:Characters>50858</o:Characters>
+  <o:Company>Harvard Medical School</o:Company>
+  <o:Lines>423</o:Lines>
+  <o:Paragraphs>119</o:Paragraphs>
+  <o:CharactersWithSpaces>59661</o:CharactersWithSpaces>
+  <o:Version>11.6408</o:Version>
+ </o:DocumentProperties>
+</xml><![endif]--><!--[if gte mso 9]><xml>
+ <w:WordDocument>
+  <w:ValidateAgainstSchemas/>
+  <w:SaveIfXMLInvalid>false</w:SaveIfXMLInvalid>
+  <w:IgnoreMixedContent>false</w:IgnoreMixedContent>
+  <w:AlwaysShowPlaceholderText>false</w:AlwaysShowPlaceholderText>
+  <w:Compatibility>
+   <w:BreakWrappedTables/>
+   <w:SnapToGridInCell/>
+   <w:ApplyBreakingRules/>
+   <w:WrapTextWithPunct/>
+   <w:UseAsianBreakRules/>
+   <w:UseWord2002TableStyleRules/>
+  </w:Compatibility>
+  <w:DocumentVariables>
+   <w:EN.InstantFormat>&lt;ENInstantFormat&gt;&lt;Enabled&gt;0&lt;/Enabled&gt;&lt;ScanUnformatted&gt;1&lt;/ScanUnformatted&gt;&lt;ScanChanges&gt;1&lt;/ScanChanges&gt;&lt;/ENInstantFormat&gt;</w:EN.InstantFormat>
+   <w:EN.Layout>&lt;ENLayout&gt;&lt;Style&gt;Numbered&lt;/Style&gt;&lt;LeftDelim&gt;{&lt;/LeftDelim&gt;&lt;RightDelim&gt;}&lt;/RightDelim&gt;&lt;FontName&gt;Times<span
+    style='mso-spacerun:yes'>&nbsp;&nbsp;&nbsp;&nbsp; </span>New<span
+    style='mso-spacerun:yes'>&nbsp;&nbsp;&nbsp;&nbsp;
+    </span>Roman&lt;/FontName&gt;&lt;FontSize&gt;12&lt;/FontSize&gt;&lt;ReflistTitle&gt;&lt;/ReflistTitle&gt;&lt;StartingRefnum&gt;1&lt;/StartingRefnum&gt;&lt;FirstLineIndent&gt;0&lt;/FirstLineIndent&gt;&lt;HangingIndent&gt;720&lt;/HangingIndent&gt;&lt;LineSpacing&gt;0&lt;/LineSpacing&gt;&lt;SpaceAfter&gt;0&lt;/SpaceAfter&gt;&lt;/ENLayout&gt;</w:EN.Layout>
+   <w:EN.Libraries>&lt;ENLibraries&gt;&lt;Libraries&gt;&lt;item&gt;Orthologs.enl&lt;/item&gt;&lt;item&gt;Interactome.enl&lt;/item&gt;&lt;/Libraries&gt;&lt;/ENLibraries&gt;</w:EN.Libraries>
+  </w:DocumentVariables>
+  <w:BrowserLevel>MicrosoftInternetExplorer4</w:BrowserLevel>
+ </w:WordDocument>
+</xml><![endif]--><!--[if gte mso 9]><xml>
+ <w:LatentStyles DefLockedState="false" LatentStyleCount="156">
+ </w:LatentStyles>
+</xml><![endif]--><!--[if !mso]><object
+ classid="clsid:38481807-CA0E-42D2-BF39-B33AF135CC4D" id=ieooui></object>
+<style>
+st1\:*{behavior:url(#ieooui) }
+</style>
+<![endif]-->
+<style>
+<!--
+ /* Style Definitions */
+ p.MsoNormal, li.MsoNormal, div.MsoNormal
+	{mso-style-parent:"";
+	margin:0in;
+	margin-bottom:.0001pt;
+	mso-pagination:widow-orphan;
+	font-size:12.0pt;
+	font-family:"Times New Roman";
+	mso-fareast-font-family:"Times New Roman";}
+p.MsoHeader, li.MsoHeader, div.MsoHeader
+	{margin:0in;
+	margin-bottom:.0001pt;
+	mso-pagination:widow-orphan;
+	tab-stops:center 3.0in right 6.0in;
+	font-size:12.0pt;
+	font-family:"Times New Roman";
+	mso-fareast-font-family:"Times New Roman";}
+p.MsoFooter, li.MsoFooter, div.MsoFooter
+	{margin:0in;
+	margin-bottom:.0001pt;
+	mso-pagination:widow-orphan;
+	tab-stops:center 3.0in right 6.0in;
+	font-size:12.0pt;
+	font-family:"Times New Roman";
+	mso-fareast-font-family:"Times New Roman";}
+a:link, span.MsoHyperlink
+	{color:blue;
+	text-decoration:underline;
+	text-underline:single;}
+a:visited, span.MsoHyperlinkFollowed
+	{color:purple;
+	text-decoration:underline;
+	text-underline:single;}
+ /* Page Definitions */
+ @page
+	{mso-footnote-separator:url("RoundUp_RECOMB_files/header.htm") fs;
+	mso-footnote-continuation-separator:url("RoundUp_RECOMB_files/header.htm") fcs;
+	mso-endnote-separator:url("RoundUp_RECOMB_files/header.htm") es;
+	mso-endnote-continuation-separator:url("RoundUp_RECOMB_files/header.htm") ecs;}
+@page Section1
+	{size:8.5in 11.0in;
+	margin:.5in 1.0in .5in 1.0in;
+	mso-header-margin:.5in;
+	mso-footer-margin:.5in;
+	mso-footer:url("RoundUp_RECOMB_files/header.htm") f1;
+	mso-paper-source:0;}
+div.Section1
+	{page:Section1;}
+-->
+</style>
+<!--[if gte mso 10]>
+<style>
+ /* Style Definitions */
+ table.MsoNormalTable
+	{mso-style-name:"Table Normal";
+	mso-tstyle-rowband-size:0;
+	mso-tstyle-colband-size:0;
+	mso-style-noshow:yes;
+	mso-style-parent:"";
+	mso-padding-alt:0in 5.4pt 0in 5.4pt;
+	mso-para-margin:0in;
+	mso-para-margin-bottom:.0001pt;
+	mso-pagination:widow-orphan;
+	font-size:10.0pt;
+	font-family:"Times New Roman";
+	mso-ansi-language:#0400;
+	mso-fareast-language:#0400;
+	mso-bidi-language:#0400;}
+</style>
+<![endif]--><!--[if gte mso 9]><xml>
+ <o:shapedefaults v:ext="edit" spidmax="2050"/>
+</xml><![endif]--><!--[if gte mso 9]><xml>
+ <o:shapelayout v:ext="edit">
+  <o:idmap v:ext="edit" data="1"/>
+ </o:shapelayout></xml><![endif]-->
+</head>
+
+<body lang=EN-US link=blue vlink=purple style='tab-interval:.5in'>
+
+<div class=Section1>
+
+<p class=MsoNormal align=center style='text-align:center'><span
+style='font-size:16.0pt'>RoundUp: a repository of orthologs and corresponding
+evolutionary distances.<o:p></o:p></span></p>
+
+<p class=MsoNormal align=center style='text-align:center'><span
+style='font-size:11.0pt'><o:p>&nbsp;</o:p></span></p>
+
+<p class=MsoNormal align=center style='text-align:center'><span
+style='font-size:11.0pt'>Dennis P. Wall, Todd Deluca, <st1:PersonName w:st="on">Jian
+ Pu</st1:PersonName>, <st1:PersonName w:st="on">Tom Monaghan</st1:PersonName>, <st1:PersonName
+w:st="on">I-Hsien Wu</st1:PersonName><o:p></o:p></span></p>
+
+<p class=MsoNormal><b><span style='font-size:11.0pt'><o:p>&nbsp;</o:p></span></b></p>
+
+<p class=MsoNormal><b><span style='font-size:11.0pt'>Keywords: </span></b><span
+style='font-size:11.0pt'>ortholog detection, orthology database, evolutionary
+divergence, protein evolution, reciprocal blast.<o:p></o:p></span></p>
+
+<p class=MsoNormal><span style='font-size:11.0pt'><o:p>&nbsp;</o:p></span></p>
+
+<p class=MsoNormal><b><span style='font-size:11.0pt'>1 </span></b><b><span
+style='font-size:14.0pt'>Introduction</span></b><b><span style='font-size:11.0pt'><o:p></o:p></span></b></p>
+
+<p class=MsoNormal><b><span style='font-size:11.0pt'><o:p>&nbsp;</o:p></span></b></p>
+
+<p class=MsoNormal><span style='font-size:11.0pt'>The ability to accurately detect
+orthologous or functionally equivalent proteins in different organisms is
+important to numerous biological research questions, including studies of
+variables influencing rate protein evolution </span><!--[if supportFields]><span
+style='font-size:11.0pt'><span style='mso-element:field-begin'></span><span
+style='mso-spacerun:yes'>&nbsp;</span>ADDIN EN.CITE
+&lt;EndNote&gt;&lt;Cite&gt;&lt;Author&gt;Fraser&lt;/Author&gt;&lt;Year&gt;2002&lt;/Year&gt;&lt;RecNum&gt;13&lt;/RecNum&gt;&lt;record&gt;&lt;database
+name=&quot;Orthologs.enl&quot; path=&quot;C:\Documents and Settings\Dennis\My
+Documents\Projects_Papers\RoundUp_note\Orthologs.enl&quot;&gt;Orthologs.enl&lt;/database&gt;&lt;source-app
+name=&quot;EndNote&quot;
+version=&quot;8.0&quot;&gt;EndNote&lt;/source-app&gt;&lt;rec-number&gt;13&lt;/rec-number&gt;&lt;ref-type
+name=&quot;Journal
+Article&quot;&gt;17&lt;/ref-type&gt;&lt;contributors&gt;&lt;authors&gt;&lt;author&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Fraser, H. B.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Hirsh, A. E.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Steinmetz, L.
+M.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Scharfe,
+C.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Feldman, M. W.&lt;/style&gt;&lt;/author&gt;&lt;/authors&gt;&lt;/contributors&gt;&lt;auth-address&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Department of Molecular and Cell Biology, University
+of California, Berkeley, CA 94720, USA.
+hunter@ocf.berkeley.edu&lt;/style&gt;&lt;/auth-address&gt;&lt;titles&gt;&lt;title&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Evolutionary rate in the protein interaction
+network&lt;/style&gt;&lt;/title&gt;&lt;secondary-title&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot; size=&quot;100%&quot;&gt;Science&lt;/style&gt;&lt;/secondary-title&gt;&lt;/titles&gt;&lt;periodical&gt;&lt;full-title&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Science&lt;/style&gt;&lt;/full-title&gt;&lt;/periodical&gt;&lt;pages&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;750-2&lt;/style&gt;&lt;/pages&gt;&lt;volume&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;296&lt;/style&gt;&lt;/volume&gt;&lt;number&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;5568&lt;/style&gt;&lt;/number&gt;&lt;keywords&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot; size=&quot;100%&quot;&gt;Amino
+Acid Substitution&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Caenorhabditis elegans Proteins/chemistry/metabolism&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Computational
+Biology&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Conserved
+Sequence&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;*Evolution,
+Molecular&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Genes,
+Fungal&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Protein
+Conformation&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Protein
+Footprinting&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Saccharomyces cerevisiae/genetics/*physiology&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot; size=&quot;100%&quot;&gt;Saccharomyces
+cerevisiae
+Proteins/*chemistry/genetics/*metabolism&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Sequence Alignment&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Sequence Homology, Amino
+Acid&lt;/style&gt;&lt;/keyword&gt;&lt;/keywords&gt;&lt;dates&gt;&lt;year&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;2002&lt;/style&gt;&lt;/year&gt;&lt;pub-dates&gt;&lt;date&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot; size=&quot;100%&quot;&gt;Apr
+26&lt;/style&gt;&lt;/date&gt;&lt;/pub-dates&gt;&lt;/dates&gt;&lt;accession-num&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;11976460&lt;/style&gt;&lt;/accession-num&gt;&lt;urls&gt;&lt;related-urls&gt;&lt;url&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;http://www.ncbi.nlm.nih.gov/entrez/query.fcgi?cmd=Retrieve&amp;amp;db=PubMed&amp;amp;dopt=Citation&amp;amp;list_uids=11976460<span
+style='mso-spacerun:yes'>&nbsp; </span>&lt;/style&gt;&lt;/url&gt;&lt;/related-urls&gt;&lt;/urls&gt;&lt;/record&gt;&lt;/Cite&gt;&lt;Cite&gt;&lt;Author&gt;Fraser&lt;/Author&gt;&lt;Year&gt;2003&lt;/Year&gt;&lt;RecNum&gt;12&lt;/RecNum&gt;&lt;record&gt;&lt;database
+name=&quot;Orthologs.enl&quot; path=&quot;C:\Documents and Settings\Dennis\My
+Documents\Projects_Papers\RoundUp_note\Orthologs.enl&quot;&gt;Orthologs.enl&lt;/database&gt;&lt;source-app
+name=&quot;EndNote&quot;
+version=&quot;8.0&quot;&gt;EndNote&lt;/source-app&gt;&lt;rec-number&gt;12&lt;/rec-number&gt;&lt;ref-type
+name=&quot;Journal
+Article&quot;&gt;17&lt;/ref-type&gt;&lt;contributors&gt;&lt;authors&gt;&lt;author&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Fraser, H. B.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot; size=&quot;100%&quot;&gt;Wall,
+D. P.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Hirsh, A. E.&lt;/style&gt;&lt;/author&gt;&lt;/authors&gt;&lt;/contributors&gt;&lt;auth-address&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot; size=&quot;100%&quot;&gt;Department
+of Molecular and Cell Biology, University of California, Berkeley, CA 94720,
+USA.
+hunter@ocf.berkeley.edu&lt;/style&gt;&lt;/auth-address&gt;&lt;titles&gt;&lt;title&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot; size=&quot;100%&quot;&gt;A
+simple dependence between protein evolution rate and the number of
+protein-protein
+interactions&lt;/style&gt;&lt;/title&gt;&lt;secondary-title&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot; size=&quot;100%&quot;&gt;BMC
+Evol Biol&lt;/style&gt;&lt;/secondary-title&gt;&lt;/titles&gt;&lt;periodical&gt;&lt;full-title&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot; size=&quot;100%&quot;&gt;BMC
+Evol Biol&lt;/style&gt;&lt;/full-title&gt;&lt;/periodical&gt;&lt;pages&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;11&lt;/style&gt;&lt;/pages&gt;&lt;volume&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;3&lt;/style&gt;&lt;/volume&gt;&lt;number&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;1&lt;/style&gt;&lt;/number&gt;&lt;keywords&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Candida
+albicans/genetics&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot; size=&quot;100%&quot;&gt;Comparative
+Study&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot; size=&quot;100%&quot;&gt;*Evolution,
+Molecular&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Fungal
+Proteins/*genetics/metabolism&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Genome,
+Fungal&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Protein
+Binding/genetics&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Research Support, U.S. Gov&amp;apos;t,
+Non-P.H.S.&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot; size=&quot;100%&quot;&gt;Research
+Support, U.S. Gov&amp;apos;t,
+P.H.S.&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Saccharomyces
+cerevisiae/genetics&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Schizosaccharomyces/genetics&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Yeasts/*genetics&lt;/style&gt;&lt;/keyword&gt;&lt;/keywords&gt;&lt;dates&gt;&lt;year&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;2003&lt;/style&gt;&lt;/year&gt;&lt;pub-dates&gt;&lt;date&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot; size=&quot;100%&quot;&gt;May
+23&lt;/style&gt;&lt;/date&gt;&lt;/pub-dates&gt;&lt;/dates&gt;&lt;accession-num&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;12769820&lt;/style&gt;&lt;/accession-num&gt;&lt;urls&gt;&lt;related-urls&gt;&lt;url&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;http://www.ncbi.nlm.nih.gov/entrez/query.fcgi?cmd=Retrieve&amp;amp;db=PubMed&amp;amp;dopt=Citation&amp;amp;list_uids=12769820<span
+style='mso-spacerun:yes'>&nbsp;
+</span>&lt;/style&gt;&lt;/url&gt;&lt;/related-urls&gt;&lt;/urls&gt;&lt;/record&gt;&lt;/Cite&gt;&lt;Cite&gt;&lt;Author&gt;Hirsh&lt;/Author&gt;&lt;Year&gt;2001&lt;/Year&gt;&lt;RecNum&gt;14&lt;/RecNum&gt;&lt;record&gt;&lt;database
+name=&quot;Orthologs.enl&quot; path=&quot;C:\Documents and Settings\Dennis\My
+Documents\Projects_Papers\RoundUp_note\Orthologs.enl&quot;&gt;Orthologs.enl&lt;/database&gt;&lt;source-app
+name=&quot;EndNote&quot;
+version=&quot;8.0&quot;&gt;EndNote&lt;/source-app&gt;&lt;rec-number&gt;14&lt;/rec-number&gt;&lt;ref-type
+name=&quot;Journal
+Article&quot;&gt;17&lt;/ref-type&gt;&lt;contributors&gt;&lt;authors&gt;&lt;author&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Hirsh, A.
+E.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Fraser, H. B.&lt;/style&gt;&lt;/author&gt;&lt;/authors&gt;&lt;/contributors&gt;&lt;auth-address&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot; size=&quot;100%&quot;&gt;enter
+for Computational Genetics and Biological Modeling, Department of Biological
+Sciences, Stanford University, California, USA.
+aehirsch@stanford.edu&lt;/style&gt;&lt;/auth-address&gt;&lt;titles&gt;&lt;title&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Protein dispensability and rate of
+evolution&lt;/style&gt;&lt;/title&gt;&lt;secondary-title&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Nature&lt;/style&gt;&lt;/secondary-title&gt;&lt;/titles&gt;&lt;periodical&gt;&lt;full-title&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Nature&lt;/style&gt;&lt;/full-title&gt;&lt;/periodical&gt;&lt;pages&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;1046-9&lt;/style&gt;&lt;/pages&gt;&lt;volume&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;411&lt;/style&gt;&lt;/volume&gt;&lt;number&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;6841&lt;/style&gt;&lt;/number&gt;&lt;keywords&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot; size=&quot;100%&quot;&gt;Amino
+Acid Substitution&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Animals&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Caenorhabditis elegans&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;*Evolution,
+Molecular&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot; size=&quot;100%&quot;&gt;Fungal
+Proteins/genetics/physiology&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot; size=&quot;100%&quot;&gt;Gene
+Deletion&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Genes,
+Fungal&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Genes,
+Helminth&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Helminth
+Proteins/genetics/physiology&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Proteins/*genetics/physiology&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Saccharomyces
+cerevisiae&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Time&lt;/style&gt;&lt;/keyword&gt;&lt;/keywords&gt;&lt;dates&gt;&lt;year&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;2001&lt;/style&gt;&lt;/year&gt;&lt;pub-dates&gt;&lt;date&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot; size=&quot;100%&quot;&gt;Jun
+28&lt;/style&gt;&lt;/date&gt;&lt;/pub-dates&gt;&lt;/dates&gt;&lt;accession-num&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;11429604&lt;/style&gt;&lt;/accession-num&gt;&lt;urls&gt;&lt;related-urls&gt;&lt;url&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;http://www.ncbi.nlm.nih.gov/entrez/query.fcgi?cmd=Retrieve&amp;amp;db=PubMed&amp;amp;dopt=Citation&amp;amp;list_uids=11429604<span
+style='mso-spacerun:yes'>&nbsp;
+</span>&lt;/style&gt;&lt;/url&gt;&lt;/related-urls&gt;&lt;/urls&gt;&lt;/record&gt;&lt;/Cite&gt;&lt;/EndNote&gt;<span
+style='mso-element:field-separator'></span></span><![endif]--><span
+style='font-size:11.0pt'>[1-3]</span><!--[if supportFields]><span
+style='font-size:11.0pt'><span style='mso-element:field-end'></span></span><![endif]--><span
+style='font-size:11.0pt'>,<span style='mso-spacerun:yes'>&nbsp; </span>accurate
+genome annotation </span><!--[if supportFields]><span style='font-size:11.0pt'><span
+style='mso-element:field-begin'></span><span
+style='mso-spacerun:yes'>&nbsp;</span>ADDIN EN.CITE
+&lt;EndNote&gt;&lt;Cite&gt;&lt;Author&gt;Waterston&lt;/Author&gt;&lt;Year&gt;2002&lt;/Year&gt;&lt;RecNum&gt;15&lt;/RecNum&gt;&lt;record&gt;&lt;database
+name=&quot;Orthologs.enl&quot; path=&quot;C:\Documents and Settings\Dennis\My
+Documents\Projects_Papers\RoundUp_note\Orthologs.enl&quot;&gt;Orthologs.enl&lt;/database&gt;&lt;source-app
+name=&quot;EndNote&quot;
+version=&quot;8.0&quot;&gt;EndNote&lt;/source-app&gt;&lt;rec-number&gt;15&lt;/rec-number&gt;&lt;ref-type
+name=&quot;Journal
+Article&quot;&gt;17&lt;/ref-type&gt;&lt;contributors&gt;&lt;authors&gt;&lt;author&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Waterston, R. H.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Lindblad-Toh, K.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Birney,
+E.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Rogers, J.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Abril, J.
+F.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Agarwal,
+P.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Agarwala,
+R.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Ainscough,
+R.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Alexandersson,
+M.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;An,
+P.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Antonarakis, S.
+E.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Attwood,
+J.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Baertsch, R.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Bailey,
+J.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Barlow,
+K.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Beck,
+S.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Berry,
+E.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Birren,
+B.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Bloom,
+T.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Bork,
+P.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Botcherby,
+M.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Bray,
+N.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Brent, M.
+R.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Brown, D.
+G.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Brown, S.
+D.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Bult,
+C.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Burton,
+J.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Butler,
+J.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Campbell, R.
+D.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Carninci,
+P.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Cawley,
+S.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Chiaromonte,
+F.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Chinwalla, A.
+T.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Church, D.
+M.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Clamp,
+M.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Clee,
+C.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Collins, F.
+S.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Cook, L.
+L.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Copley, R.
+R.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Coulson,
+A.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Couronne,
+O.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Cuff,
+J.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Curwen,
+V.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Cutts,
+T.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Daly,
+M.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;David,
+R.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Davies,
+J.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Delehaunty, K.
+D.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Deri,
+J.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Dermitzakis, E.
+T.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Dewey,
+C.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Dickens, N.
+J.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Diekhans,
+M.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Dodge,
+S.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Dubchak,
+I.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Dunn, D.
+M.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Eddy, S. R.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Elnitski,
+L.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Emes, R.
+D.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Eswara, P.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Eyras,
+E.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Felsenfeld,
+A.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Fewell, G. A.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Flicek,
+P.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Foley,
+K.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Frankel, W.
+N.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Fulton, L.
+A.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Fulton, R.
+S.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Furey, T. S.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot; size=&quot;100%&quot;&gt;Gage,
+D.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Gibbs, R.
+A.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Glusman,
+G.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Gnerre,
+S.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Goldman, N.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Goodstadt, L.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Grafham,
+D.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Graves, T. A.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Green, E. D.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Gregory,
+S.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Guigo, R.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Guyer,
+M.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Hardison, R.
+C.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Haussler,
+D.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Hayashizaki,
+Y.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Hillier, L.
+W.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Hinrichs, A.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Hlavina, W.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Holzer,
+T.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Hsu, F.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot; size=&quot;100%&quot;&gt;Hua,
+A.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Hubbard,
+T.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Hunt,
+A.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Jackson,
+I.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Jaffe, D.
+B.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Johnson, L.
+S.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Jones,
+M.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Jones, T.
+A.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Joy,
+A.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Kamal,
+M.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Karlsson, E.
+K.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Karolchik,
+D.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Kasprzyk,
+A.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Kawai,
+J.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Keibler,
+E.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Kells,
+C.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Kent, W.
+J.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Kirby,
+A.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Kolbe, D.
+L.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Korf,
+I.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Kucherlapati, R.
+S.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Kulbokas, E.
+J.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Kulp,
+D.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Landers,
+T.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Leger, J.
+P.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Leonard,
+S.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Letunic,
+I.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Levine,
+R.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Li,
+J.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Li,
+M.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Lloyd,
+C.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Lucas, S.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot; size=&quot;100%&quot;&gt;Ma,
+B.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Maglott, D.
+R.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Mardis, E. R.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Matthews,
+L.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Mauceli,
+E.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Mayer, J. H.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;McCarthy,
+M.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;McCombie, W.
+R.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;McLaren, S.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;McLay,
+K.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;McPherson, J.
+D.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Meldrim, J.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Meredith,
+B.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Mesirov, J.
+P.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Miller, W.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Miner, T.
+L.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Mongin,
+E.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Montgomery, K. T.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Morgan,
+M.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Mott,
+R.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Mullikin, J.
+C.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Muzny, D.
+M.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Nash, W.
+E.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Nelson, J.
+O.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Nhan, M.
+N.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Nicol, R.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot; size=&quot;100%&quot;&gt;Ning,
+Z.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Nusbaum,
+C.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;O&amp;apos;Connor, M. J.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Okazaki, Y.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Oliver,
+K.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Overton-Larty, E.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Pachter, L.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Parra,
+G.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Pepin, K. H.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Peterson, J.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Pevzner,
+P.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Plumb, R.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot; size=&quot;100%&quot;&gt;Pohl,
+C. S.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Poliakov,
+A.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Ponce, T.
+C.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Ponting, C.
+P.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Potter,
+S.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Quail, M.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Reymond,
+A.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Roe, B.
+A.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Roskin, K.
+M.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Rubin, E.
+M.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Rust, A.
+G.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Santos,
+R.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Sapojnikov,
+V.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Schultz,
+B.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Schultz,
+J.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Schwartz, M.
+S.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Schwartz,
+S.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Scott,
+C.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Seaman,
+S.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Searle,
+S.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Sharpe,
+T.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Sheridan,
+A.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Shownkeen,
+R.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Sims,
+S.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Singer, J.
+B.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Slater,
+G.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Smit,
+A.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Smith, D.
+R.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Spencer,
+B.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Stabenau,
+A.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Stange-Thomann,
+N.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Sugnet,
+C.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Suyama,
+M.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Tesler,
+G.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Thompson,
+J.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Torrents,
+D.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Trevaskis,
+E.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Tromp,
+J.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Ucla,
+C.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Ureta-Vidal,
+A.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Vinson, J.
+P.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Von Niederhausern, A.
+C.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Wade, C.
+M.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Wall,
+M.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Weber, R.
+J.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Weiss, R.
+B.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Wendl, M.
+C.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;West, A.
+P.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Wetterstrand,
+K.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Wheeler,
+R.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Whelan,
+S.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Wierzbowski,
+J.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Willey,
+D.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Williams,
+S.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Wilson, R.
+K.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Winter,
+E.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Worley, K.
+C.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Wyman,
+D.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Yang,
+S.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Yang, S.
+P.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Zdobnov, E.
+M.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Zody, M.
+C.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Lander, E.
+S.&lt;/style&gt;&lt;/author&gt;&lt;/authors&gt;&lt;/contributors&gt;&lt;auth-address&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Genome Sequencing Center, Washington University School
+of Medicine, Campus Box 8501, 4444 Forest Park Avenue, St Louis, Missouri
+63108, USA.
+waterston@gs.washington.edu&lt;/style&gt;&lt;/auth-address&gt;&lt;titles&gt;&lt;title&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot; size=&quot;100%&quot;&gt;Initial
+sequencing and comparative analysis of the mouse
+genome&lt;/style&gt;&lt;/title&gt;&lt;secondary-title&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Nature&lt;/style&gt;&lt;/secondary-title&gt;&lt;/titles&gt;&lt;periodical&gt;&lt;full-title&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Nature&lt;/style&gt;&lt;/full-title&gt;&lt;/periodical&gt;&lt;pages&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;520-62&lt;/style&gt;&lt;/pages&gt;&lt;volume&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;420&lt;/style&gt;&lt;/volume&gt;&lt;number&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;6915&lt;/style&gt;&lt;/number&gt;&lt;keywords&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Animals&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot; size=&quot;100%&quot;&gt;Base
+Composition&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Chromosomes,
+Mammalian/*genetics&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Comparative
+Study&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Conserved Sequence/genetics&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot; size=&quot;100%&quot;&gt;CpG
+Islands/genetics&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;*Evolution,
+Molecular&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot; size=&quot;100%&quot;&gt;Gene
+Expression Regulation&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Genes/genetics&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;*Genome&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Genome,
+Human&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Genomics&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Humans&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Mice/classification/*genetics&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot; size=&quot;100%&quot;&gt;Mice,
+Knockout&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot; size=&quot;100%&quot;&gt;Mice,
+Transgenic&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Models, Animal&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Multigene
+Family/genetics&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot; size=&quot;100%&quot;&gt;Mutagenesis&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Neoplasms/genetics&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;*Physical Chromosome
+Mapping&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Proteome/genetics&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Pseudogenes/genetics&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Quantitative Trait
+Loci/genetics&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot; size=&quot;100%&quot;&gt;RNA,
+Untranslated/genetics&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Repetitive Sequences, Nucleic
+Acid/genetics&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Research Support, Non-U.S.
+Gov&amp;apos;t&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Research Support, U.S.
+Gov&amp;apos;t,
+Non-P.H.S.&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot; size=&quot;100%&quot;&gt;Research
+Support, U.S. Gov&amp;apos;t,
+P.H.S.&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Selection
+(Genetics)&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Sequence Analysis,
+DNA&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot; size=&quot;100%&quot;&gt;Sex
+Chromosomes/genetics&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Species
+Specificity&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Synteny&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Variation (Genetics)/genetics&lt;/style&gt;&lt;/keyword&gt;&lt;/keywords&gt;&lt;dates&gt;&lt;year&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;2002&lt;/style&gt;&lt;/year&gt;&lt;pub-dates&gt;&lt;date&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot; size=&quot;100%&quot;&gt;Dec
+5&lt;/style&gt;&lt;/date&gt;&lt;/pub-dates&gt;&lt;/dates&gt;&lt;accession-num&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;12466850&lt;/style&gt;&lt;/accession-num&gt;&lt;urls&gt;&lt;related-urls&gt;&lt;url&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;http://www.ncbi.nlm.nih.gov/entrez/query.fcgi?cmd=Retrieve&amp;amp;db=PubMed&amp;amp;dopt=Citation&amp;amp;list_uids=12466850<span
+style='mso-spacerun:yes'>&nbsp; </span>&lt;/style&gt;&lt;/url&gt;&lt;/related-urls&gt;&lt;/urls&gt;&lt;/record&gt;&lt;/Cite&gt;&lt;/EndNote&gt;<span
+style='mso-element:field-separator'></span></span><![endif]--><span
+style='font-size:11.0pt'>[4]</span><!--[if supportFields]><span
+style='font-size:11.0pt'><span style='mso-element:field-end'></span></span><![endif]--><span
+style='font-size:11.0pt'>, and studies of proteins implicated in cancer </span><!--[if supportFields]><span
+style='font-size:11.0pt'><span style='mso-element:field-begin'></span><span
+style='mso-spacerun:yes'>&nbsp;</span>ADDIN EN.CITE
+&lt;EndNote&gt;&lt;Cite&gt;&lt;Author&gt;Brown&lt;/Author&gt;&lt;Year&gt;2004&lt;/Year&gt;&lt;RecNum&gt;16&lt;/RecNum&gt;&lt;record&gt;&lt;database
+name=&quot;Orthologs.enl&quot; path=&quot;C:\Documents and Settings\Dennis\My
+Documents\Projects_Papers\RoundUp_note\Orthologs.enl&quot;&gt;Orthologs.enl&lt;/database&gt;&lt;source-app
+name=&quot;EndNote&quot;
+version=&quot;8.0&quot;&gt;EndNote&lt;/source-app&gt;&lt;rec-number&gt;16&lt;/rec-number&gt;&lt;ref-type
+name=&quot;Journal
+Article&quot;&gt;17&lt;/ref-type&gt;&lt;contributors&gt;&lt;authors&gt;&lt;author&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Brown, J.
+R.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Koretke, K. K.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Birkeland, M. L.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Sanseau,
+P.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Patrick, D. R.&lt;/style&gt;&lt;/author&gt;&lt;/authors&gt;&lt;/contributors&gt;&lt;auth-address&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot; size=&quot;100%&quot;&gt;Bioinformatics
+Division, Genetics Research, GlaxoSmithKline, 1250 South Collegeville Road,
+UP1345, P,O, Box 5089, Collegeville, Pennsylvania 19426-0989, USA.
+James.R.Brown@gsk.com&lt;/style&gt;&lt;/auth-address&gt;&lt;titles&gt;&lt;title&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot; size=&quot;100%&quot;&gt;Evolutionary
+relationships of Aurora kinases: implications for model organism studies and
+the development of anti-cancer
+drugs&lt;/style&gt;&lt;/title&gt;&lt;secondary-title&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot; size=&quot;100%&quot;&gt;BMC
+Evol Biol&lt;/style&gt;&lt;/secondary-title&gt;&lt;/titles&gt;&lt;periodical&gt;&lt;full-title&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot; size=&quot;100%&quot;&gt;BMC
+Evol
+Biol&lt;/style&gt;&lt;/full-title&gt;&lt;/periodical&gt;&lt;pages&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;39&lt;/style&gt;&lt;/pages&gt;&lt;volume&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot; size=&quot;100%&quot;&gt;4&lt;/style&gt;&lt;/volume&gt;&lt;number&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;1&lt;/style&gt;&lt;/number&gt;&lt;dates&gt;&lt;year&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot; size=&quot;100%&quot;&gt;2004&lt;/style&gt;&lt;/year&gt;&lt;pub-dates&gt;&lt;date&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot; size=&quot;100%&quot;&gt;Oct
+12&lt;/style&gt;&lt;/date&gt;&lt;/pub-dates&gt;&lt;/dates&gt;&lt;accession-num&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;15476560&lt;/style&gt;&lt;/accession-num&gt;&lt;urls&gt;&lt;related-urls&gt;&lt;url&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;http://www.ncbi.nlm.nih.gov/entrez/query.fcgi?cmd=Retrieve&amp;amp;db=PubMed&amp;amp;dopt=Citation&amp;amp;list_uids=15476560<span
+style='mso-spacerun:yes'>&nbsp;
+</span>&lt;/style&gt;&lt;/url&gt;&lt;/related-urls&gt;&lt;/urls&gt;&lt;/record&gt;&lt;/Cite&gt;&lt;/EndNote&gt;<span
+style='mso-element:field-separator'></span></span><![endif]--><span
+style='font-size:11.0pt'>[5]</span><!--[if supportFields]><span
+style='font-size:11.0pt'><span style='mso-element:field-end'></span></span><![endif]--><span
+style='font-size:11.0pt'>. The ability to retrieve orthologs from many genomes
+at the click of a button would help speed such research projects along
+tremendously.<o:p></o:p></span></p>
+
+<p class=MsoNormal style='text-indent:.5in'><span style='font-size:11.0pt'>To
+meet this challenge, we have pre-computed orthologs for 213 genomes using the
+reciprocal smallest distance algorithm </span><!--[if supportFields]><span
+style='font-size:11.0pt'><span style='mso-element:field-begin'></span><span
+style='mso-spacerun:yes'>&nbsp;</span>ADDIN EN.CITE
+&lt;EndNote&gt;&lt;Cite&gt;&lt;Author&gt;Wall&lt;/Author&gt;&lt;Year&gt;2003&lt;/Year&gt;&lt;RecNum&gt;3&lt;/RecNum&gt;&lt;record&gt;&lt;database
+name=&quot;Orthologs.enl&quot; path=&quot;C:\Documents and Settings\Dennis\My
+Documents\Projects_Papers\RoundUp_note\Orthologs.enl&quot;&gt;Orthologs.enl&lt;/database&gt;&lt;source-app
+name=&quot;EndNote&quot;
+version=&quot;8.0&quot;&gt;EndNote&lt;/source-app&gt;&lt;rec-number&gt;3&lt;/rec-number&gt;&lt;ref-type
+name=&quot;Journal Article&quot;&gt;17&lt;/ref-type&gt;&lt;contributors&gt;&lt;authors&gt;&lt;author&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot; size=&quot;100%&quot;&gt;Wall,
+D. P.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot; size=&quot;100%&quot;&gt;Fraser,
+H. B.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Hirsh, A. E.&lt;/style&gt;&lt;/author&gt;&lt;/authors&gt;&lt;/contributors&gt;&lt;auth-address&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Department of Biological Sciences, Stanford
+University, CA 94305, USA. dpwall@stanford.edu&lt;/style&gt;&lt;/auth-address&gt;&lt;titles&gt;&lt;title&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Detecting putative
+orthologs&lt;/style&gt;&lt;/title&gt;&lt;secondary-title&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Bioinformatics&lt;/style&gt;&lt;/secondary-title&gt;&lt;/titles&gt;&lt;periodical&gt;&lt;full-title&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Bioinformatics&lt;/style&gt;&lt;/full-title&gt;&lt;/periodical&gt;&lt;pages&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;1710-1&lt;/style&gt;&lt;/pages&gt;&lt;volume&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;19&lt;/style&gt;&lt;/volume&gt;&lt;number&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;13&lt;/style&gt;&lt;/number&gt;&lt;keywords&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;*Algorithms&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot; size=&quot;100%&quot;&gt;Candida
+albicans/genetics&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot; size=&quot;100%&quot;&gt;*Evolution,
+Molecular&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Likelihood
+Functions&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Research Support, U.S.
+Gov&amp;apos;t, Non-P.H.S.&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Research Support, U.S. Gov&amp;apos;t,
+P.H.S.&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Saccharomyces
+cerevisiae/genetics&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;*Sequence
+Alignment&lt;/style&gt;&lt;/keyword&gt;&lt;/keywords&gt;&lt;dates&gt;&lt;year&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;2003&lt;/style&gt;&lt;/year&gt;&lt;pub-dates&gt;&lt;date&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot; size=&quot;100%&quot;&gt;Sep
+1&lt;/style&gt;&lt;/date&gt;&lt;/pub-dates&gt;&lt;/dates&gt;&lt;accession-num&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;15593400&lt;/style&gt;&lt;/accession-num&gt;&lt;urls&gt;&lt;related-urls&gt;&lt;url&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;http://www.ncbi.nlm.nih.gov/entrez/query.fcgi?cmd=Retrieve&amp;amp;db=PubMed&amp;amp;dopt=Citation&amp;amp;list_uids=15593400<span
+style='mso-spacerun:yes'>&nbsp;
+</span>&lt;/style&gt;&lt;/url&gt;&lt;/related-urls&gt;&lt;/urls&gt;&lt;/record&gt;&lt;/Cite&gt;&lt;/EndNote&gt;<span
+style='mso-element:field-separator'></span></span><![endif]--><span
+style='font-size:11.0pt'>[6]</span><!--[if supportFields]><span
+style='font-size:11.0pt'><span style='mso-element:field-end'></span></span><![endif]--><span
+style='font-size:11.0pt'>.<span style='mso-spacerun:yes'>&nbsp; </span>This
+method represents an improvement over approaches that rely on blast hits alone,
+since it uses global rather than local sequence alignments and evolutionary
+estimates of distance between sequences rather than blast probability scores,
+an approach that can often be misleading when trying to determine functional
+equivalence </span><!--[if supportFields]><span style='font-size:11.0pt'><span
+style='mso-element:field-begin'></span><span
+style='mso-spacerun:yes'>&nbsp;</span>ADDIN EN.CITE
+&lt;EndNote&gt;&lt;Cite&gt;&lt;Author&gt;Koski&lt;/Author&gt;&lt;Year&gt;2001&lt;/Year&gt;&lt;RecNum&gt;17&lt;/RecNum&gt;&lt;record&gt;&lt;database
+name=&quot;Orthologs.enl&quot; path=&quot;C:\Documents and Settings\Dennis\My
+Documents\Projects_Papers\RoundUp_note\Orthologs.enl&quot;&gt;Orthologs.enl&lt;/database&gt;&lt;source-app
+name=&quot;EndNote&quot; version=&quot;8.0&quot;&gt;EndNote&lt;/source-app&gt;&lt;rec-number&gt;17&lt;/rec-number&gt;&lt;ref-type
+name=&quot;Journal
+Article&quot;&gt;17&lt;/ref-type&gt;&lt;contributors&gt;&lt;authors&gt;&lt;author&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Koski, L. B.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Golding, G.
+B.&lt;/style&gt;&lt;/author&gt;&lt;/authors&gt;&lt;/contributors&gt;&lt;titles&gt;&lt;title&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot; size=&quot;100%&quot;&gt;The
+closest BLAST hit is often not the nearest
+neighbor&lt;/style&gt;&lt;/title&gt;&lt;secondary-title&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot; size=&quot;100%&quot;&gt;J Mol
+Evol&lt;/style&gt;&lt;/secondary-title&gt;&lt;/titles&gt;&lt;periodical&gt;&lt;full-title&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot; size=&quot;100%&quot;&gt;J Mol
+Evol&lt;/style&gt;&lt;/full-title&gt;&lt;/periodical&gt;&lt;pages&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot; size=&quot;100%&quot;&gt;540-2&lt;/style&gt;&lt;/pages&gt;&lt;volume&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;52&lt;/style&gt;&lt;/volume&gt;&lt;number&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;6&lt;/style&gt;&lt;/number&gt;&lt;keywords&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot; size=&quot;100%&quot;&gt;*Algorithms&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Crenarchaeota/genetics&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;*Databases,
+Factual&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot; size=&quot;100%&quot;&gt;Escherichia
+coli/genetics&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot; size=&quot;100%&quot;&gt;Open
+Reading Frames&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Phylogeny&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Salmonella
+typhimurium/genetics&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Software&lt;/style&gt;&lt;/keyword&gt;&lt;/keywords&gt;&lt;dates&gt;&lt;year&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;2001&lt;/style&gt;&lt;/year&gt;&lt;pub-dates&gt;&lt;date&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Jun&lt;/style&gt;&lt;/date&gt;&lt;/pub-dates&gt;&lt;/dates&gt;&lt;accession-num&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;11443357&lt;/style&gt;&lt;/accession-num&gt;&lt;urls&gt;&lt;related-urls&gt;&lt;url&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;http://www.ncbi.nlm.nih.gov/entrez/query.fcgi?cmd=Retrieve&amp;amp;db=PubMed&amp;amp;dopt=Citation&amp;amp;list_uids=11443357<span
+style='mso-spacerun:yes'>&nbsp;
+</span>&lt;/style&gt;&lt;/url&gt;&lt;/related-urls&gt;&lt;/urls&gt;&lt;/record&gt;&lt;/Cite&gt;&lt;/EndNote&gt;<span
+style='mso-element:field-separator'></span></span><![endif]--><span
+style='font-size:11.0pt'>[7]</span><!--[if supportFields]><span
+style='font-size:11.0pt'><span style='mso-element:field-end'></span></span><![endif]--><span
+style='font-size:11.0pt'>.<span style='mso-spacerun:yes'>&nbsp; </span>These
+pre-computed sets of orthologs are stored in a publicly accessible database,
+RoundUp (Figure 1), the most comprehensive of its kind </span><!--[if supportFields]><span
+style='font-size:11.0pt'><span style='mso-element:field-begin'></span><span
+style='mso-spacerun:yes'>&nbsp;</span>ADDIN EN.CITE
+&lt;EndNote&gt;&lt;Cite&gt;&lt;Author&gt;Remm&lt;/Author&gt;&lt;Year&gt;2001&lt;/Year&gt;&lt;RecNum&gt;5&lt;/RecNum&gt;&lt;record&gt;&lt;database
+name=&quot;Orthologs.enl&quot; path=&quot;C:\Documents and Settings\Dennis\My
+Documents\Projects_Papers\RoundUp_note\Orthologs.enl&quot;&gt;Orthologs.enl&lt;/database&gt;&lt;source-app
+name=&quot;EndNote&quot;
+version=&quot;8.0&quot;&gt;EndNote&lt;/source-app&gt;&lt;rec-number&gt;5&lt;/rec-number&gt;&lt;ref-type
+name=&quot;Journal
+Article&quot;&gt;17&lt;/ref-type&gt;&lt;contributors&gt;&lt;authors&gt;&lt;author&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot; size=&quot;100%&quot;&gt;Remm,
+M.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Storm, C.
+E.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Sonnhammer, E.
+L.&lt;/style&gt;&lt;/author&gt;&lt;/authors&gt;&lt;/contributors&gt;&lt;auth-address&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Center for Genomics and Bioinformatics, Karolinska
+Institutet, S-17177 Stockholm,
+Sweden.&lt;/style&gt;&lt;/auth-address&gt;&lt;titles&gt;&lt;title&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Automatic clustering of orthologs and in-paralogs from
+pairwise species
+comparisons&lt;/style&gt;&lt;/title&gt;&lt;secondary-title&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot; size=&quot;100%&quot;&gt;J Mol
+Biol&lt;/style&gt;&lt;/secondary-title&gt;&lt;/titles&gt;&lt;periodical&gt;&lt;full-title&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot; size=&quot;100%&quot;&gt;J Mol
+Biol&lt;/style&gt;&lt;/full-title&gt;&lt;/periodical&gt;&lt;pages&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot; size=&quot;100%&quot;&gt;1041-52&lt;/style&gt;&lt;/pages&gt;&lt;volume&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;314&lt;/style&gt;&lt;/volume&gt;&lt;number&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot; size=&quot;100%&quot;&gt;5&lt;/style&gt;&lt;/number&gt;&lt;keywords&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Algorithms&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Animals&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot; size=&quot;100%&quot;&gt;Automation/methods&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Caenorhabditis
+elegans/*genetics&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Caenorhabditis elegans
+Proteins/genetics&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Cluster
+Analysis&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Comparative
+Study&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Computational Biology/*methods&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Databases,
+Genetic&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Drosophila
+Proteins/genetics&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Drosophila
+melanogaster/*genetics&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Eukaryotic
+Cells/metabolism&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;*Evolution, Molecular&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;*Genome&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Genomics/*methods&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot; size=&quot;100%&quot;&gt;Humans&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Phylogeny&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Research Support, Non-U.S.
+Gov&amp;apos;t&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;*Sequence
+Homology&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Software&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Species
+Specificity&lt;/style&gt;&lt;/keyword&gt;&lt;/keywords&gt;&lt;dates&gt;&lt;year&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;2001&lt;/style&gt;&lt;/year&gt;&lt;pub-dates&gt;&lt;date&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot; size=&quot;100%&quot;&gt;Dec
+14&lt;/style&gt;&lt;/date&gt;&lt;/pub-dates&gt;&lt;/dates&gt;&lt;accession-num&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;11743721&lt;/style&gt;&lt;/accession-num&gt;&lt;urls&gt;&lt;related-urls&gt;&lt;url&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;http://www.ncbi.nlm.nih.gov/entrez/query.fcgi?cmd=Retrieve&amp;amp;db=PubMed&amp;amp;dopt=Citation&amp;amp;list_uids=11743721<span
+style='mso-spacerun:yes'>&nbsp;
+</span>&lt;/style&gt;&lt;/url&gt;&lt;/related-urls&gt;&lt;/urls&gt;&lt;/record&gt;&lt;/Cite&gt;&lt;Cite&gt;&lt;Author&gt;Tatusov&lt;/Author&gt;&lt;Year&gt;2000&lt;/Year&gt;&lt;RecNum&gt;9&lt;/RecNum&gt;&lt;record&gt;&lt;database
+name=&quot;Orthologs.enl&quot; path=&quot;C:\Documents and Settings\Dennis\My
+Documents\Projects_Papers\RoundUp_note\Orthologs.enl&quot;&gt;Orthologs.enl&lt;/database&gt;&lt;source-app
+name=&quot;EndNote&quot;
+version=&quot;8.0&quot;&gt;EndNote&lt;/source-app&gt;&lt;rec-number&gt;9&lt;/rec-number&gt;&lt;ref-type
+name=&quot;Journal Article&quot;&gt;17&lt;/ref-type&gt;&lt;contributors&gt;&lt;authors&gt;&lt;author&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Tatusov, R.
+L.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Galperin, M.
+Y.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Natale, D.
+A.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Koonin, E.
+V.&lt;/style&gt;&lt;/author&gt;&lt;/authors&gt;&lt;/contributors&gt;&lt;auth-address&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;National Center for Biotechnology Information,
+National Library of Medicine, National Institutes of Health, Bethesda, MD
+20894,
+USA.&lt;/style&gt;&lt;/auth-address&gt;&lt;titles&gt;&lt;title&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot; size=&quot;100%&quot;&gt;The
+COG database: a tool for genome-scale analysis of protein functions and
+evolution&lt;/style&gt;&lt;/title&gt;&lt;secondary-title&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Nucleic Acids
+Res&lt;/style&gt;&lt;/secondary-title&gt;&lt;/titles&gt;&lt;periodical&gt;&lt;full-title&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Nucleic Acids
+Res&lt;/style&gt;&lt;/full-title&gt;&lt;/periodical&gt;&lt;pages&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;33-6&lt;/style&gt;&lt;/pages&gt;&lt;volume&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;28&lt;/style&gt;&lt;/volume&gt;&lt;number&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;1&lt;/style&gt;&lt;/number&gt;&lt;keywords&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Database Management
+Systems&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;*Databases, Factual&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;*Evolution, Molecular&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;*Genome,
+Archaeal&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot; size=&quot;100%&quot;&gt;*Genome,
+Fungal&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Internet&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Phylogeny&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot; size=&quot;100%&quot;&gt;Proteins/*genetics/physiology&lt;/style&gt;&lt;/keyword&gt;&lt;/keywords&gt;&lt;dates&gt;&lt;year&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;2000&lt;/style&gt;&lt;/year&gt;&lt;pub-dates&gt;&lt;date&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot; size=&quot;100%&quot;&gt;Jan
+1&lt;/style&gt;&lt;/date&gt;&lt;/pub-dates&gt;&lt;/dates&gt;&lt;accession-num&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;10592175&lt;/style&gt;&lt;/accession-num&gt;&lt;urls&gt;&lt;related-urls&gt;&lt;url&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;http://www.ncbi.nlm.nih.gov/entrez/query.fcgi?cmd=Retrieve&amp;amp;db=PubMed&amp;amp;dopt=Citation&amp;amp;list_uids=10592175<span
+style='mso-spacerun:yes'>&nbsp;
+</span>&lt;/style&gt;&lt;/url&gt;&lt;/related-urls&gt;&lt;/urls&gt;&lt;/record&gt;&lt;/Cite&gt;&lt;/EndNote&gt;<span
+style='mso-element:field-separator'></span></span><![endif]--><span
+style='font-size:11.0pt'>[8, 9]</span><!--[if supportFields]><span
+style='font-size:11.0pt'><span style='mso-element:field-end'></span></span><![endif]--><span
+style='font-size:11.0pt'>.<o:p></o:p></span></p>
+
+<p class=MsoNormal style='text-indent:.5in'><span style='font-size:11.0pt'><o:p>&nbsp;</o:p></span></p>
+
+<p class=MsoNormal><u><span style='font-size:10.0pt'>Figure 1</span></u><span
+style='font-size:10.0pt'>: Schematic of RoundUp Ortholog Database. From the
+website, a user may select two opposing genomes from a list of 213 and set
+BLAST Evalue, divergence, and distance thresholds as desired.<span
+style='mso-spacerun:yes'>&nbsp; </span>The results are returned in tab-delimited
+format</span><span style='font-size:11.0pt'>.<o:p></o:p></span></p>
+
+<p class=MsoNormal><span style='font-size:11.0pt'><o:p>&nbsp;</o:p></span></p>
+
+<p class=MsoNormal style='text-indent:.5in'><span style='font-size:11.0pt'><!--[if gte vml 1]><v:shapetype
+ id="_x0000_t75" coordsize="21600,21600" o:spt="75" o:preferrelative="t"
+ path="m@4@5l@4@11@9@11@9@5xe" filled="f" stroked="f">
+ <v:stroke joinstyle="miter"/>
+ <v:formulas>
+  <v:f eqn="if lineDrawn pixelLineWidth 0"/>
+  <v:f eqn="sum @0 1 0"/>
+  <v:f eqn="sum 0 0 @1"/>
+  <v:f eqn="prod @2 1 2"/>
+  <v:f eqn="prod @3 21600 pixelWidth"/>
+  <v:f eqn="prod @3 21600 pixelHeight"/>
+  <v:f eqn="sum @0 0 1"/>
+  <v:f eqn="prod @6 1 2"/>
+  <v:f eqn="prod @7 21600 pixelWidth"/>
+  <v:f eqn="sum @8 21600 0"/>
+  <v:f eqn="prod @7 21600 pixelHeight"/>
+  <v:f eqn="sum @10 21600 0"/>
+ </v:formulas>
+ <v:path o:extrusionok="f" gradientshapeok="t" o:connecttype="rect"/>
+ <o:lock v:ext="edit" aspectratio="t"/>
+</v:shapetype><v:shape id="_x0000_i1025" type="#_x0000_t75" style='width:234pt;
+ height:181.5pt' o:ole="">
+ <v:imagedata src="RoundUp_RECOMB_files/image001.emz" o:title=""/>
+</v:shape><![endif]--><![if !vml]><img width=312 height=242
+src="RoundUp_RECOMB_files/image002.gif" v:shapes="_x0000_i1025"><![endif]><!--[if gte mso 9]><xml>
+ <o:OLEObject Type="Embed" ProgID="Visio.Drawing.11" ShapeID="_x0000_i1025"
+  DrawAspect="Content" ObjectID="_1188028811">
+ </o:OLEObject>
+</xml><![endif]--><o:p></o:p></span></p>
+
+<p class=MsoNormal><span style='font-size:11.0pt'><o:p>&nbsp;</o:p></span></p>
+
+<p class=MsoNormal><b><span style='font-size:11.0pt'>2 </span></b><b><span
+style='font-size:14.0pt'>Software and Files</span></b><b><span
+style='font-size:11.0pt'><o:p></o:p></span></b></p>
+
+<p class=MsoNormal><span style='font-size:11.0pt'><o:p>&nbsp;</o:p></span></p>
+
+<p class=MsoNormal><span style='font-size:11.0pt'>The reciprocal smallest
+distance algorithm first uses BLAST </span><!--[if supportFields]><span
+style='font-size:11.0pt'><span style='mso-element:field-begin'></span><span
+style='mso-spacerun:yes'>&nbsp;</span>ADDIN EN.CITE
+&lt;EndNote&gt;&lt;Cite&gt;&lt;Author&gt;Altschul&lt;/Author&gt;&lt;Year&gt;1990&lt;/Year&gt;&lt;RecNum&gt;169&lt;/RecNum&gt;&lt;record&gt;&lt;database
+name=&quot;Interactome.enl&quot; path=&quot;C:\Documents and Settings\Dennis\My
+Documents\Grants\BD&amp;amp;I\Interactome.enl&quot;&gt;Interactome.enl&lt;/database&gt;&lt;source-app
+name=&quot;EndNote&quot;
+version=&quot;8.0&quot;&gt;EndNote&lt;/source-app&gt;&lt;rec-number&gt;169&lt;/rec-number&gt;&lt;ref-type
+name=&quot;Journal
+Article&quot;&gt;17&lt;/ref-type&gt;&lt;contributors&gt;&lt;authors&gt;&lt;author&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Altschul, S.
+F.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Gish,
+W.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Miller,
+W.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Myers, E.
+W.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Lipman, D.
+J.&lt;/style&gt;&lt;/author&gt;&lt;/authors&gt;&lt;/contributors&gt;&lt;auth-address&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;National Center for Biotechnology Information,
+National Library of Medicine, National Institutes of Health, Bethesda, MD
+20894.&lt;/style&gt;&lt;/auth-address&gt;&lt;titles&gt;&lt;title&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot; size=&quot;100%&quot;&gt;Basic
+local alignment search tool&lt;/style&gt;&lt;/title&gt;&lt;secondary-title&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot; size=&quot;100%&quot;&gt;J Mol
+Biol&lt;/style&gt;&lt;/secondary-title&gt;&lt;/titles&gt;&lt;periodical&gt;&lt;full-title&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot; size=&quot;100%&quot;&gt;J Mol
+Biol&lt;/style&gt;&lt;/full-title&gt;&lt;/periodical&gt;&lt;pages&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot; size=&quot;100%&quot;&gt;403-10&lt;/style&gt;&lt;/pages&gt;&lt;volume&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;215&lt;/style&gt;&lt;/volume&gt;&lt;number&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;3&lt;/style&gt;&lt;/number&gt;&lt;keywords&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Algorithms&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot; size=&quot;100%&quot;&gt;Amino
+Acid Sequence&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot; size=&quot;100%&quot;&gt;*Base
+Sequence&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot; size=&quot;100%&quot;&gt;Databases,
+Factual&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;*Mutation&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Research Support, U.S. Gov&amp;apos;t,
+P.H.S.&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Sensitivity and
+Specificity&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Sequence Homology, Nucleic
+Acid&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;*Software&lt;/style&gt;&lt;/keyword&gt;&lt;/keywords&gt;&lt;dates&gt;&lt;year&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;1990&lt;/style&gt;&lt;/year&gt;&lt;pub-dates&gt;&lt;date&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot; size=&quot;100%&quot;&gt;Oct
+5&lt;/style&gt;&lt;/date&gt;&lt;/pub-dates&gt;&lt;/dates&gt;&lt;accession-num&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;2231712&lt;/style&gt;&lt;/accession-num&gt;&lt;urls&gt;&lt;related-urls&gt;&lt;url&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;http://www.ncbi.nlm.nih.gov/entrez/query.fcgi?cmd=Retrieve&amp;amp;db=PubMed&amp;amp;dopt=Citation&amp;amp;list_uids=2231712<span
+style='mso-spacerun:yes'>&nbsp; </span>&lt;/style&gt;&lt;/url&gt;&lt;/related-urls&gt;&lt;/urls&gt;&lt;/record&gt;&lt;/Cite&gt;&lt;/EndNote&gt;<span
+style='mso-element:field-separator'></span></span><![endif]--><span
+style='font-size:11.0pt'>[10]</span><!--[if supportFields]><span
+style='font-size:11.0pt'><span style='mso-element:field-end'></span></span><![endif]--><span
+style='font-size:11.0pt'> to net a list of several possible orthologs between
+two genomes and then filters this list using a global alignment threshold and
+evolutionary distance measure. Explicitly, if the alignable region exceeds a
+predefined fraction of the total length of the protein, a distance is
+calculated as a maximum likelihood estimate of the number of amino acid
+substitutions separating the two putatively orthologous protein sequences,
+given an empirical amino acid substitution rate matrix </span><!--[if supportFields]><span
+style='font-size:11.0pt'><span style='mso-element:field-begin'></span><span
+style='mso-spacerun:yes'>&nbsp;</span>ADDIN EN.CITE
+&lt;EndNote&gt;&lt;Cite&gt;&lt;Author&gt;Jones&lt;/Author&gt;&lt;Year&gt;1992&lt;/Year&gt;&lt;RecNum&gt;18&lt;/RecNum&gt;&lt;record&gt;&lt;database
+name=&quot;Orthologs.enl&quot; path=&quot;C:\Documents and Settings\Dennis\My
+Documents\Projects_Papers\RoundUp_note\Orthologs.enl&quot;&gt;Orthologs.enl&lt;/database&gt;&lt;source-app
+name=&quot;EndNote&quot;
+version=&quot;8.0&quot;&gt;EndNote&lt;/source-app&gt;&lt;rec-number&gt;18&lt;/rec-number&gt;&lt;ref-type
+name=&quot;Journal
+Article&quot;&gt;17&lt;/ref-type&gt;&lt;contributors&gt;&lt;authors&gt;&lt;author&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Jones, D. T.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Taylor, W.
+R.&lt;/style&gt;&lt;/author&gt;&lt;author&gt;&lt;style face=&quot;normal&quot;
+font=&quot;default&quot; size=&quot;100%&quot;&gt;Thornton, J. M.&lt;/style&gt;&lt;/author&gt;&lt;/authors&gt;&lt;/contributors&gt;&lt;auth-address&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot; size=&quot;100%&quot;&gt;Department
+of Biochemistry and Molecular Biology, University College, London,
+UK.&lt;/style&gt;&lt;/auth-address&gt;&lt;titles&gt;&lt;title&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot; size=&quot;100%&quot;&gt;The
+rapid generation of mutation data matrices from protein
+sequences&lt;/style&gt;&lt;/title&gt;&lt;secondary-title&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Comput Appl
+Biosci&lt;/style&gt;&lt;/secondary-title&gt;&lt;/titles&gt;&lt;periodical&gt;&lt;full-title&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Comput Appl
+Biosci&lt;/style&gt;&lt;/full-title&gt;&lt;/periodical&gt;&lt;pages&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;275-82&lt;/style&gt;&lt;/pages&gt;&lt;volume&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;8&lt;/style&gt;&lt;/volume&gt;&lt;number&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;3&lt;/style&gt;&lt;/number&gt;&lt;keywords&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;*Algorithms&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot; size=&quot;100%&quot;&gt;Amino
+Acid Sequence&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;*Mutation&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Phylogeny&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Proteins/*genetics&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Research Support, Non-U.S.
+Gov&amp;apos;t&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Sequence Alignment/*methods/statistics &amp;amp;
+numerical data&lt;/style&gt;&lt;/keyword&gt;&lt;keyword&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Software&lt;/style&gt;&lt;/keyword&gt;&lt;/keywords&gt;&lt;dates&gt;&lt;year&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;1992&lt;/style&gt;&lt;/year&gt;&lt;pub-dates&gt;&lt;date&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;Jun&lt;/style&gt;&lt;/date&gt;&lt;/pub-dates&gt;&lt;/dates&gt;&lt;accession-num&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;1633570&lt;/style&gt;&lt;/accession-num&gt;&lt;urls&gt;&lt;related-urls&gt;&lt;url&gt;&lt;style
+face=&quot;normal&quot; font=&quot;default&quot;
+size=&quot;100%&quot;&gt;http://www.ncbi.nlm.nih.gov/entrez/query.fcgi?cmd=Retrieve&amp;amp;db=PubMed&amp;amp;dopt=Citation&amp;amp;list_uids=1633570<span
+style='mso-spacerun:yes'>&nbsp;
+</span>&lt;/style&gt;&lt;/url&gt;&lt;/related-urls&gt;&lt;/urls&gt;&lt;/record&gt;&lt;/Cite&gt;&lt;/EndNote&gt;<span
+style='mso-element:field-separator'></span></span><![endif]--><span
+style='font-size:11.0pt'>[11]</span><!--[if supportFields]><span
+style='font-size:11.0pt'><span style='mso-element:field-end'></span></span><![endif]--><span
+style='font-size:11.0pt'>. <span style='mso-spacerun:yes'>&nbsp;</span>The
+smallest distance is considered to be consistent with a hypothesis of
+functional equivalency between the two proteins.<o:p></o:p></span></p>
+
+<p class=MsoNormal><span style='font-size:11.0pt'>________________________________________<o:p></o:p></span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt'>The Computational Biology
+Initiative, Department of Systems Biology, Harvard Medical School, Boston, MA,
+Email: dpwall@hms.harvard.edu<o:p></o:p></span></p>
+
+<p class=MsoNormal style='text-indent:.5in'><span style='font-size:11.0pt'>Recovering
+the true set of orthologs between two lineages will depend on many parameters,
+including date of divergence between the lineages, rates of gene duplication in
+either lineage, intensity of molecular selection, and others. To account for
+such variables that can have a large impact on the size and content of a list
+of orthologs, and to provide users of RoundUp a certain degree of exploratory
+power, we adjusted two parameters &#8211; BLAST E-value and global pair-wise
+sequence divergence<span style='mso-spacerun:yes'>&nbsp; </span>&#8211;<span
+style='mso-spacerun:yes'>&nbsp; </span>when pre-calculating orthology between
+genomes. Specifically, in our pre-calculations we used four increasingly
+stringent BLAST scores, 1e-5, 1e-10, 1e-15, and 1e-20, and three increasingly
+stringent divergence thresholds, 0.8, 0.5, and 0.2.<span
+style='mso-spacerun:yes'>&nbsp; </span>Therefore, for every pair of genomes,
+our RoundUp repository contains twelve ortholog lists representing all possible
+combinations of the two variables. <o:p></o:p></span></p>
+
+<p class=MsoNormal style='text-indent:.5in'><span style='font-size:11.0pt'>Presently,
+the RoundUp repository contains orthologs from all possible pair-wise analyses
+of 213 genomes, comprising 22791 ortholog files. The results are stored in
+relational form and accessible through a flexible web interface that allows the
+user to build arbitrarily complex and exploratory queries without needing to
+know how to construct SQL statements. For example, a user of the RoundUp system
+can build queries to find all orthologs in all 213 genomes for a given search
+sequence that are evolutionarily conserved, according to some <i>a priori</i>
+chosen distance threshold.<span style='mso-spacerun:yes'>&nbsp;
+</span>Alternatively, a user may quickly build clusters of orthologous genes
+for any number of genomes, i.e., build groups of orthologs that exhibit
+complete transitive closure. To our knowledge, this is the first database of
+its kind. We expect it will be of value to many molecular biological fields.<o:p></o:p></span></p>
+
+<p class=MsoNormal><span style='font-size:11.0pt'><o:p>&nbsp;</o:p></span></p>
+
+<p class=MsoNormal><b><span style='font-size:14.0pt'>References<o:p></o:p></span></b></p>
+
+<p class=MsoNormal><b><span style='font-size:11.0pt'><o:p>&nbsp;</o:p></span></b></p>
+
+<p class=MsoNormal style='margin-left:.5in;text-indent:-.5in'><span
+style='font-size:11.0pt'>[</span><!--[if supportFields]><span style='font-size:
+11.0pt'><span style='mso-element:field-begin'></span> ADDIN EN.REFLIST <span
+style='mso-element:field-separator'></span></span><![endif]--><span
+style='font-size:11.0pt'>1.]<span style='mso-tab-count:1'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </span>Fraser,
+H.B., et al., <i style='mso-bidi-font-style:normal'>Evolutionary rate in the
+protein interaction network.</i> Science, 2002. <b style='mso-bidi-font-weight:
+normal'>296</b>(5568): p. 750-2.<o:p></o:p></span></p>
+
+<p class=MsoNormal style='margin-left:.5in;text-indent:-.5in'><span
+style='font-size:11.0pt'>[2.]<span style='mso-tab-count:1'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </span>Fraser,
+H.B., D.P. Wall, and A.E. Hirsh, <i style='mso-bidi-font-style:normal'>A simple
+dependence between protein evolution rate and the number of protein-protein
+interactions.</i> BMC Evol Biol, 2003. <b style='mso-bidi-font-weight:normal'>3</b>(1):
+p. 11.<o:p></o:p></span></p>
+
+<p class=MsoNormal style='margin-left:.5in;text-indent:-.5in'><span
+style='font-size:11.0pt'>[3.]<span style='mso-tab-count:1'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </span>Hirsh,
+A.E. and H.B. Fraser, <i style='mso-bidi-font-style:normal'>Protein
+dispensability and rate of evolution.</i> Nature, 2001. <b style='mso-bidi-font-weight:
+normal'>411</b>(6841): p. 1046-9.<o:p></o:p></span></p>
+
+<p class=MsoNormal style='margin-left:.5in;text-indent:-.5in'><span
+style='font-size:11.0pt'>[4.]<span style='mso-tab-count:1'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </span>Waterston,
+R.H., et al., <i style='mso-bidi-font-style:normal'>Initial sequencing and
+comparative analysis of the mouse genome.</i> Nature, 2002. <b
+style='mso-bidi-font-weight:normal'>420</b>(6915): p. 520-62.<o:p></o:p></span></p>
+
+<p class=MsoNormal style='margin-left:.5in;text-indent:-.5in'><span
+style='font-size:11.0pt'>[5.]<span style='mso-tab-count:1'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </span>Brown,
+J.R., et al., <i style='mso-bidi-font-style:normal'>Evolutionary relationships of
+Aurora kinases: implications for model organism studies and the development of
+anti-cancer drugs.</i> BMC Evol Biol, 2004. <b style='mso-bidi-font-weight:
+normal'>4</b>(1): p. 39.<o:p></o:p></span></p>
+
+<p class=MsoNormal style='margin-left:.5in;text-indent:-.5in'><span
+style='font-size:11.0pt'>[6.]<span style='mso-tab-count:1'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </span>Wall,
+D.P., H.B. Fraser, and A.E. Hirsh, <i style='mso-bidi-font-style:normal'>Detecting
+putative orthologs.</i> Bioinformatics, 2003. <b style='mso-bidi-font-weight:
+normal'>19</b>(13): p. 1710-1.<o:p></o:p></span></p>
+
+<p class=MsoNormal style='margin-left:.5in;text-indent:-.5in'><span
+style='font-size:11.0pt'>[7.]<span style='mso-tab-count:1'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </span>Koski,
+L.B. and G.B. Golding, <i style='mso-bidi-font-style:normal'>The closest BLAST
+hit is often not the nearest neighbor.</i> J Mol Evol, 2001. <b
+style='mso-bidi-font-weight:normal'>52</b>(6): p. 540-2.<o:p></o:p></span></p>
+
+<p class=MsoNormal style='margin-left:.5in;text-indent:-.5in'><span
+style='font-size:11.0pt'>[8.]<span style='mso-tab-count:1'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </span>Remm,
+M., C.E. Storm, and E.L. Sonnhammer, <i style='mso-bidi-font-style:normal'>Automatic
+clustering of orthologs and in-paralogs from pairwise species comparisons.</i> J
+Mol Biol, 2001. <b style='mso-bidi-font-weight:normal'>314</b>(5): p. 1041-52.<o:p></o:p></span></p>
+
+<p class=MsoNormal style='margin-left:.5in;text-indent:-.5in'><span
+style='font-size:11.0pt'>[9.]<span style='mso-tab-count:1'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </span>Tatusov,
+R.L., et al., <i style='mso-bidi-font-style:normal'>The COG database: a tool
+for genome-scale analysis of protein functions and evolution.</i> Nucleic Acids
+Res, 2000. <b style='mso-bidi-font-weight:normal'>28</b>(1): p. 33-6.<o:p></o:p></span></p>
+
+<p class=MsoNormal style='margin-left:.5in;text-indent:-.5in'><span
+style='font-size:11.0pt'>[10.]<span style='mso-tab-count:1'>&nbsp;&nbsp;&nbsp;&nbsp; </span>Altschul,
+S.F., et al., <i style='mso-bidi-font-style:normal'>Basic local alignment
+search tool.</i> J Mol Biol, 1990. <b style='mso-bidi-font-weight:normal'>215</b>(3):
+p. 403-10.<o:p></o:p></span></p>
+
+<p class=MsoNormal style='margin-left:.5in;text-indent:-.5in'><span
+style='font-size:11.0pt'>[11.]<span style='mso-tab-count:1'>&nbsp;&nbsp;&nbsp;&nbsp; </span>Jones,
+D.T., W.R. Taylor, and J.M. Thornton, <i style='mso-bidi-font-style:normal'>The
+rapid generation of mutation data matrices from protein sequences.</i> Comput
+Appl Biosci, 1992. <b style='mso-bidi-font-weight:normal'>8</b>(3): p. 275-82.<o:p></o:p></span></p>
+
+<p class=MsoNormal><span style='font-size:11.0pt'><o:p>&nbsp;</o:p></span></p>
+
+<p class=MsoNormal><!--[if supportFields]><span style='font-size:11.0pt'><span
+style='mso-element:field-end'></span></span><![endif]--><span style='font-size:
+11.0pt'><o:p>&nbsp;</o:p></span></p>
+
+</div>
+
+</body>
+
+</html>

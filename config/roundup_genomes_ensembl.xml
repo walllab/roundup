@@ -1,0 +1,952 @@
+<genomes>
+<db>
+    <id>Anolis_carolinensis.aa</id>
+    <description></description>
+    <format>fasta</format>
+    <db_type>genome</db_type>
+    <processing>gunzip,concat</processing>
+    <label></label>
+    <type>protein</type>
+    <urls>
+      <dir_pattern>
+        <url>
+        ftp://ftp.ensembl.org/pub/current_fasta/anolis_carolinensis/pep
+        </url>
+        <pattern>
+        .pep\.all\.fa\.gz$
+        </pattern>
+      </dir_pattern>
+    </urls>
+</db>
+<db>
+    <id>Bos_taurus.aa</id>
+    <description></description>
+    <format>fasta</format>
+    <db_type>genome</db_type>
+    <processing>gunzip,concat</processing>
+    <label></label>
+    <type>protein</type>
+    <urls>
+      <dir_pattern>
+        <url>
+        ftp://ftp.ensembl.org/pub/current_fasta/bos_taurus/pep
+        </url>
+        <pattern>
+        .pep\.all\.fa\.gz$
+        </pattern>
+      </dir_pattern>
+    </urls>
+</db>
+<db>
+    <id>Caenorhabditis_elegans.aa</id>
+    <description></description>
+    <format>fasta</format>
+    <db_type>genome</db_type>
+    <processing>gunzip,concat</processing>
+    <label></label>
+    <type>protein</type>
+    <urls>
+      <dir_pattern>
+        <url>
+        ftp://ftp.ensembl.org/pub/current_fasta/caenorhabditis_elegans/pep
+        </url>
+        <pattern>
+        .pep\.all\.fa\.gz$
+        </pattern>
+      </dir_pattern>
+    </urls>
+</db>
+<db>
+    <id>Callithrix_jacchus.aa</id>
+    <description></description>
+    <format>fasta</format>
+    <db_type>genome</db_type>
+    <processing>gunzip,concat</processing>
+    <label></label>
+    <type>protein</type>
+    <urls>
+      <dir_pattern>
+        <url>
+        ftp://ftp.ensembl.org/pub/current_fasta/callithrix_jacchus/pep
+        </url>
+        <pattern>
+        .pep\.all\.fa\.gz$
+        </pattern>
+      </dir_pattern>
+    </urls>
+</db>
+<db>
+    <id>Canis_familiaris.aa</id>
+    <description></description>
+    <format>fasta</format>
+    <db_type>genome</db_type>
+    <processing>gunzip,concat</processing>
+    <label></label>
+    <type>protein</type>
+    <urls>
+      <dir_pattern>
+        <url>
+        ftp://ftp.ensembl.org/pub/current_fasta/canis_familiaris/pep
+        </url>
+        <pattern>
+        .pep\.all\.fa\.gz$
+        </pattern>
+      </dir_pattern>
+    </urls>
+</db>
+<db>
+    <id>Cavia_porcellus.aa</id>
+    <description></description>
+    <format>fasta</format>
+    <db_type>genome</db_type>
+    <processing>gunzip,concat</processing>
+    <label></label>
+    <type>protein</type>
+    <urls>
+      <dir_pattern>
+        <url>
+        ftp://ftp.ensembl.org/pub/current_fasta/cavia_porcellus/pep
+        </url>
+        <pattern>
+        .pep\.all\.fa\.gz$
+        </pattern>
+      </dir_pattern>
+    </urls>
+</db>
+<db>
+    <id>Choloepus_hoffmanni.aa</id>
+    <description></description>
+    <format>fasta</format>
+    <db_type>genome</db_type>
+    <processing>gunzip,concat</processing>
+    <label></label>
+    <type>protein</type>
+    <urls>
+      <dir_pattern>
+        <url>
+        ftp://ftp.ensembl.org/pub/current_fasta/choloepus_hoffmanni/pep
+        </url>
+        <pattern>
+        .pep\.all\.fa\.gz$
+        </pattern>
+      </dir_pattern>
+    </urls>
+</db>
+<db>
+    <id>Ciona_intestinalis.aa</id>
+    <description></description>
+    <format>fasta</format>
+    <db_type>genome</db_type>
+    <processing>gunzip,concat</processing>
+    <label></label>
+    <type>protein</type>
+    <urls>
+      <dir_pattern>
+        <url>
+        ftp://ftp.ensembl.org/pub/current_fasta/ciona_intestinalis/pep
+        </url>
+        <pattern>
+        .pep\.all\.fa\.gz$
+        </pattern>
+      </dir_pattern>
+    </urls>
+</db>
+<db>
+    <id>Ciona_savignyi.aa</id>
+    <description></description>
+    <format>fasta</format>
+    <db_type>genome</db_type>
+    <processing>gunzip,concat</processing>
+    <label></label>
+    <type>protein</type>
+    <urls>
+      <dir_pattern>
+        <url>
+        ftp://ftp.ensembl.org/pub/current_fasta/ciona_savignyi/pep
+        </url>
+        <pattern>
+        .pep\.all\.fa\.gz$
+        </pattern>
+      </dir_pattern>
+    </urls>
+</db>
+<db>
+    <id>Danio_rerio.aa</id>
+    <description></description>
+    <format>fasta</format>
+    <db_type>genome</db_type>
+    <processing>gunzip,concat</processing>
+    <label></label>
+    <type>protein</type>
+    <urls>
+      <dir_pattern>
+        <url>
+        ftp://ftp.ensembl.org/pub/current_fasta/danio_rerio/pep
+        </url>
+        <pattern>
+        .pep\.all\.fa\.gz$
+        </pattern>
+      </dir_pattern>
+    </urls>
+</db>
+<db>
+    <id>Dasypus_novemcinctus.aa</id>
+    <description></description>
+    <format>fasta</format>
+    <db_type>genome</db_type>
+    <processing>gunzip,concat</processing>
+    <label></label>
+    <type>protein</type>
+    <urls>
+      <dir_pattern>
+        <url>
+        ftp://ftp.ensembl.org/pub/current_fasta/dasypus_novemcinctus/pep
+        </url>
+        <pattern>
+        .pep\.all\.fa\.gz$
+        </pattern>
+      </dir_pattern>
+    </urls>
+</db>
+<db>
+    <id>Dipodomys_ordii.aa</id>
+    <description></description>
+    <format>fasta</format>
+    <db_type>genome</db_type>
+    <processing>gunzip,concat</processing>
+    <label></label>
+    <type>protein</type>
+    <urls>
+      <dir_pattern>
+        <url>
+        ftp://ftp.ensembl.org/pub/current_fasta/dipodomys_ordii/pep
+        </url>
+        <pattern>
+        .pep\.all\.fa\.gz$
+        </pattern>
+      </dir_pattern>
+    </urls>
+</db>
+<db>
+    <id>Drosophila_melanogaster.aa</id>
+    <description></description>
+    <format>fasta</format>
+    <db_type>genome</db_type>
+    <processing>gunzip,concat</processing>
+    <label></label>
+    <type>protein</type>
+    <urls>
+      <dir_pattern>
+        <url>
+        ftp://ftp.ensembl.org/pub/current_fasta/drosophila_melanogaster/pep
+        </url>
+        <pattern>
+        .pep\.all\.fa\.gz$
+        </pattern>
+      </dir_pattern>
+    </urls>
+</db>
+<db>
+    <id>Echinops_telfairi.aa</id>
+    <description></description>
+    <format>fasta</format>
+    <db_type>genome</db_type>
+    <processing>gunzip,concat</processing>
+    <label></label>
+    <type>protein</type>
+    <urls>
+      <dir_pattern>
+        <url>
+        ftp://ftp.ensembl.org/pub/current_fasta/echinops_telfairi/pep
+        </url>
+        <pattern>
+        .pep\.all\.fa\.gz$
+        </pattern>
+      </dir_pattern>
+    </urls>
+</db>
+<db>
+    <id>Equus_caballus.aa</id>
+    <description></description>
+    <format>fasta</format>
+    <db_type>genome</db_type>
+    <processing>gunzip,concat</processing>
+    <label></label>
+    <type>protein</type>
+    <urls>
+      <dir_pattern>
+        <url>
+        ftp://ftp.ensembl.org/pub/current_fasta/equus_caballus/pep
+        </url>
+        <pattern>
+        .pep\.all\.fa\.gz$
+        </pattern>
+      </dir_pattern>
+    </urls>
+</db>
+<db>
+    <id>Erinaceus_europaeus.aa</id>
+    <description></description>
+    <format>fasta</format>
+    <db_type>genome</db_type>
+    <processing>gunzip,concat</processing>
+    <label></label>
+    <type>protein</type>
+    <urls>
+      <dir_pattern>
+        <url>
+        ftp://ftp.ensembl.org/pub/current_fasta/erinaceus_europaeus/pep
+        </url>
+        <pattern>
+        .pep\.all\.fa\.gz$
+        </pattern>
+      </dir_pattern>
+    </urls>
+</db>
+<db>
+    <id>Felis_catus.aa</id>
+    <description></description>
+    <format>fasta</format>
+    <db_type>genome</db_type>
+    <processing>gunzip,concat</processing>
+    <label></label>
+    <type>protein</type>
+    <urls>
+      <dir_pattern>
+        <url>
+        ftp://ftp.ensembl.org/pub/current_fasta/felis_catus/pep
+        </url>
+        <pattern>
+        .pep\.all\.fa\.gz$
+        </pattern>
+      </dir_pattern>
+    </urls>
+</db>
+<db>
+    <id>Gallus_gallus.aa</id>
+    <description></description>
+    <format>fasta</format>
+    <db_type>genome</db_type>
+    <processing>gunzip,concat</processing>
+    <label></label>
+    <type>protein</type>
+    <urls>
+      <dir_pattern>
+        <url>
+        ftp://ftp.ensembl.org/pub/current_fasta/gallus_gallus/pep
+        </url>
+        <pattern>
+        .pep\.all\.fa\.gz$
+        </pattern>
+      </dir_pattern>
+    </urls>
+</db>
+<db>
+    <id>Gasterosteus_aculeatus.aa</id>
+    <description></description>
+    <format>fasta</format>
+    <db_type>genome</db_type>
+    <processing>gunzip,concat</processing>
+    <label></label>
+    <type>protein</type>
+    <urls>
+      <dir_pattern>
+        <url>
+        ftp://ftp.ensembl.org/pub/current_fasta/gasterosteus_aculeatus/pep
+        </url>
+        <pattern>
+        .pep\.all\.fa\.gz$
+        </pattern>
+      </dir_pattern>
+    </urls>
+</db>
+<db>
+    <id>Gorilla_gorilla.aa</id>
+    <description></description>
+    <format>fasta</format>
+    <db_type>genome</db_type>
+    <processing>gunzip,concat</processing>
+    <label></label>
+    <type>protein</type>
+    <urls>
+      <dir_pattern>
+        <url>
+        ftp://ftp.ensembl.org/pub/current_fasta/gorilla_gorilla/pep
+        </url>
+        <pattern>
+        .pep\.all\.fa\.gz$
+        </pattern>
+      </dir_pattern>
+    </urls>
+</db>
+<db>
+    <id>Homo_sapiens.aa</id>
+    <description></description>
+    <format>fasta</format>
+    <db_type>genome</db_type>
+    <processing>gunzip,concat</processing>
+    <label></label>
+    <type>protein</type>
+    <urls>
+      <dir_pattern>
+        <url>
+        ftp://ftp.ensembl.org/pub/current_fasta/homo_sapiens/pep
+        </url>
+        <pattern>
+        .pep\.all\.fa\.gz$
+        </pattern>
+      </dir_pattern>
+    </urls>
+</db>
+<db>
+    <id>Loxodonta_africana.aa</id>
+    <description></description>
+    <format>fasta</format>
+    <db_type>genome</db_type>
+    <processing>gunzip,concat</processing>
+    <label></label>
+    <type>protein</type>
+    <urls>
+      <dir_pattern>
+        <url>
+        ftp://ftp.ensembl.org/pub/current_fasta/loxodonta_africana/pep
+        </url>
+        <pattern>
+        .pep\.all\.fa\.gz$
+        </pattern>
+      </dir_pattern>
+    </urls>
+</db>
+<db>
+    <id>Macaca_mulatta.aa</id>
+    <description></description>
+    <format>fasta</format>
+    <db_type>genome</db_type>
+    <processing>gunzip,concat</processing>
+    <label></label>
+    <type>protein</type>
+    <urls>
+      <dir_pattern>
+        <url>
+        ftp://ftp.ensembl.org/pub/current_fasta/macaca_mulatta/pep
+        </url>
+        <pattern>
+        .pep\.all\.fa\.gz$
+        </pattern>
+      </dir_pattern>
+    </urls>
+</db>
+<db>
+    <id>Macropus_eugenii.aa</id>
+    <description></description>
+    <format>fasta</format>
+    <db_type>genome</db_type>
+    <processing>gunzip,concat</processing>
+    <label></label>
+    <type>protein</type>
+    <urls>
+      <dir_pattern>
+        <url>
+        ftp://ftp.ensembl.org/pub/current_fasta/macropus_eugenii/pep
+        </url>
+        <pattern>
+        .pep\.all\.fa\.gz$
+        </pattern>
+      </dir_pattern>
+    </urls>
+</db>
+<db>
+    <id>Microcebus_murinus.aa</id>
+    <description></description>
+    <format>fasta</format>
+    <db_type>genome</db_type>
+    <processing>gunzip,concat</processing>
+    <label></label>
+    <type>protein</type>
+    <urls>
+      <dir_pattern>
+        <url>
+        ftp://ftp.ensembl.org/pub/current_fasta/microcebus_murinus/pep
+        </url>
+        <pattern>
+        .pep\.all\.fa\.gz$
+        </pattern>
+      </dir_pattern>
+    </urls>
+</db>
+<db>
+    <id>Monodelphis_domestica.aa</id>
+    <description></description>
+    <format>fasta</format>
+    <db_type>genome</db_type>
+    <processing>gunzip,concat</processing>
+    <label></label>
+    <type>protein</type>
+    <urls>
+      <dir_pattern>
+        <url>
+        ftp://ftp.ensembl.org/pub/current_fasta/monodelphis_domestica/pep
+        </url>
+        <pattern>
+        .pep\.all\.fa\.gz$
+        </pattern>
+      </dir_pattern>
+    </urls>
+</db>
+<db>
+    <id>Mus_musculus.aa</id>
+    <description></description>
+    <format>fasta</format>
+    <db_type>genome</db_type>
+    <processing>gunzip,concat</processing>
+    <label></label>
+    <type>protein</type>
+    <urls>
+      <dir_pattern>
+        <url>
+        ftp://ftp.ensembl.org/pub/current_fasta/mus_musculus/pep
+        </url>
+        <pattern>
+        .pep\.all\.fa\.gz$
+        </pattern>
+      </dir_pattern>
+    </urls>
+</db>
+<db>
+    <id>Myotis_lucifugus.aa</id>
+    <description></description>
+    <format>fasta</format>
+    <db_type>genome</db_type>
+    <processing>gunzip,concat</processing>
+    <label></label>
+    <type>protein</type>
+    <urls>
+      <dir_pattern>
+        <url>
+        ftp://ftp.ensembl.org/pub/current_fasta/myotis_lucifugus/pep
+        </url>
+        <pattern>
+        .pep\.all\.fa\.gz$
+        </pattern>
+      </dir_pattern>
+    </urls>
+</db>
+<db>
+    <id>Ochotona_princeps.aa</id>
+    <description></description>
+    <format>fasta</format>
+    <db_type>genome</db_type>
+    <processing>gunzip,concat</processing>
+    <label></label>
+    <type>protein</type>
+    <urls>
+      <dir_pattern>
+        <url>
+        ftp://ftp.ensembl.org/pub/current_fasta/ochotona_princeps/pep
+        </url>
+        <pattern>
+        .pep\.all\.fa\.gz$
+        </pattern>
+      </dir_pattern>
+    </urls>
+</db>
+<db>
+    <id>Ornithorhynchus_anatinus.aa</id>
+    <description></description>
+    <format>fasta</format>
+    <db_type>genome</db_type>
+    <processing>gunzip,concat</processing>
+    <label></label>
+    <type>protein</type>
+    <urls>
+      <dir_pattern>
+        <url>
+        ftp://ftp.ensembl.org/pub/current_fasta/ornithorhynchus_anatinus/pep
+        </url>
+        <pattern>
+        .pep\.all\.fa\.gz$
+        </pattern>
+      </dir_pattern>
+    </urls>
+</db>
+<db>
+    <id>Oryctolagus_cuniculus.aa</id>
+    <description></description>
+    <format>fasta</format>
+    <db_type>genome</db_type>
+    <processing>gunzip,concat</processing>
+    <label></label>
+    <type>protein</type>
+    <urls>
+      <dir_pattern>
+        <url>
+        ftp://ftp.ensembl.org/pub/current_fasta/oryctolagus_cuniculus/pep
+        </url>
+        <pattern>
+        .pep\.all\.fa\.gz$
+        </pattern>
+      </dir_pattern>
+    </urls>
+</db>
+<db>
+    <id>Oryzias_latipes.aa</id>
+    <description></description>
+    <format>fasta</format>
+    <db_type>genome</db_type>
+    <processing>gunzip,concat</processing>
+    <label></label>
+    <type>protein</type>
+    <urls>
+      <dir_pattern>
+        <url>
+        ftp://ftp.ensembl.org/pub/current_fasta/oryzias_latipes/pep
+        </url>
+        <pattern>
+        .pep\.all\.fa\.gz$
+        </pattern>
+      </dir_pattern>
+    </urls>
+</db>
+<db>
+    <id>Otolemur_garnettii.aa</id>
+    <description></description>
+    <format>fasta</format>
+    <db_type>genome</db_type>
+    <processing>gunzip,concat</processing>
+    <label></label>
+    <type>protein</type>
+    <urls>
+      <dir_pattern>
+        <url>
+        ftp://ftp.ensembl.org/pub/current_fasta/otolemur_garnettii/pep
+        </url>
+        <pattern>
+        .pep\.all\.fa\.gz$
+        </pattern>
+      </dir_pattern>
+    </urls>
+</db>
+<db>
+    <id>Pan_troglodytes.aa</id>
+    <description></description>
+    <format>fasta</format>
+    <db_type>genome</db_type>
+    <processing>gunzip,concat</processing>
+    <label></label>
+    <type>protein</type>
+    <urls>
+      <dir_pattern>
+        <url>
+        ftp://ftp.ensembl.org/pub/current_fasta/pan_troglodytes/pep
+        </url>
+        <pattern>
+        .pep\.all\.fa\.gz$
+        </pattern>
+      </dir_pattern>
+    </urls>
+</db>
+<db>
+    <id>Pongo_pygmaeus.aa</id>
+    <description></description>
+    <format>fasta</format>
+    <db_type>genome</db_type>
+    <processing>gunzip,concat</processing>
+    <label></label>
+    <type>protein</type>
+    <urls>
+      <dir_pattern>
+        <url>
+        ftp://ftp.ensembl.org/pub/current_fasta/pongo_pygmaeus/pep
+        </url>
+        <pattern>
+        .pep\.all\.fa\.gz$
+        </pattern>
+      </dir_pattern>
+    </urls>
+</db>
+<db>
+    <id>Procavia_capensis.aa</id>
+    <description></description>
+    <format>fasta</format>
+    <db_type>genome</db_type>
+    <processing>gunzip,concat</processing>
+    <label></label>
+    <type>protein</type>
+    <urls>
+      <dir_pattern>
+        <url>
+        ftp://ftp.ensembl.org/pub/current_fasta/procavia_capensis/pep
+        </url>
+        <pattern>
+        .pep\.all\.fa\.gz$
+        </pattern>
+      </dir_pattern>
+    </urls>
+</db>
+<db>
+    <id>Pteropus_vampyrus.aa</id>
+    <description></description>
+    <format>fasta</format>
+    <db_type>genome</db_type>
+    <processing>gunzip,concat</processing>
+    <label></label>
+    <type>protein</type>
+    <urls>
+      <dir_pattern>
+        <url>
+        ftp://ftp.ensembl.org/pub/current_fasta/pteropus_vampyrus/pep
+        </url>
+        <pattern>
+        .pep\.all\.fa\.gz$
+        </pattern>
+      </dir_pattern>
+    </urls>
+</db>
+<db>
+    <id>Rattus_norvegicus.aa</id>
+    <description></description>
+    <format>fasta</format>
+    <db_type>genome</db_type>
+    <processing>gunzip,concat</processing>
+    <label></label>
+    <type>protein</type>
+    <urls>
+      <dir_pattern>
+        <url>
+        ftp://ftp.ensembl.org/pub/current_fasta/rattus_norvegicus/pep
+        </url>
+        <pattern>
+        .pep\.all\.fa\.gz$
+        </pattern>
+      </dir_pattern>
+    </urls>
+</db>
+<db>
+    <id>Saccharomyces_cerevisiae.aa</id>
+    <description></description>
+    <format>fasta</format>
+    <db_type>genome</db_type>
+    <processing>gunzip,concat</processing>
+    <label></label>
+    <type>protein</type>
+    <urls>
+      <dir_pattern>
+        <url>
+        ftp://ftp.ensembl.org/pub/current_fasta/saccharomyces_cerevisiae/pep
+        </url>
+        <pattern>
+        .pep\.all\.fa\.gz$
+        </pattern>
+      </dir_pattern>
+    </urls>
+</db>
+<db>
+    <id>Sorex_araneus.aa</id>
+    <description></description>
+    <format>fasta</format>
+    <db_type>genome</db_type>
+    <processing>gunzip,concat</processing>
+    <label></label>
+    <type>protein</type>
+    <urls>
+      <dir_pattern>
+        <url>
+        ftp://ftp.ensembl.org/pub/current_fasta/sorex_araneus/pep
+        </url>
+        <pattern>
+        .pep\.all\.fa\.gz$
+        </pattern>
+      </dir_pattern>
+    </urls>
+</db>
+<db>
+    <id>Spermophilus_tridecemlineatus.aa</id>
+    <description></description>
+    <format>fasta</format>
+    <db_type>genome</db_type>
+    <processing>gunzip,concat</processing>
+    <label></label>
+    <type>protein</type>
+    <urls>
+      <dir_pattern>
+        <url>
+        ftp://ftp.ensembl.org/pub/current_fasta/spermophilus_tridecemlineatus/pep
+        </url>
+        <pattern>
+        .pep\.all\.fa\.gz$
+        </pattern>
+      </dir_pattern>
+    </urls>
+</db>
+<db>
+    <id>Sus_scrofa.aa</id>
+    <description></description>
+    <format>fasta</format>
+    <db_type>genome</db_type>
+    <processing>gunzip,concat</processing>
+    <label></label>
+    <type>protein</type>
+    <urls>
+      <dir_pattern>
+        <url>
+        ftp://ftp.ensembl.org/pub/current_fasta/sus_scrofa/pep
+        </url>
+        <pattern>
+        .pep\.all\.fa\.gz$
+        </pattern>
+      </dir_pattern>
+    </urls>
+</db>
+<db>
+    <id>Taeniopygia_guttata.aa</id>
+    <description></description>
+    <format>fasta</format>
+    <db_type>genome</db_type>
+    <processing>gunzip,concat</processing>
+    <label></label>
+    <type>protein</type>
+    <urls>
+      <dir_pattern>
+        <url>
+        ftp://ftp.ensembl.org/pub/current_fasta/taeniopygia_guttata/pep
+        </url>
+        <pattern>
+        .pep\.all\.fa\.gz$
+        </pattern>
+      </dir_pattern>
+    </urls>
+</db>
+<db>
+    <id>Takifugu_rubripes.aa</id>
+    <description></description>
+    <format>fasta</format>
+    <db_type>genome</db_type>
+    <processing>gunzip,concat</processing>
+    <label></label>
+    <type>protein</type>
+    <urls>
+      <dir_pattern>
+        <url>
+        ftp://ftp.ensembl.org/pub/current_fasta/takifugu_rubripes/pep
+        </url>
+        <pattern>
+        .pep\.all\.fa\.gz$
+        </pattern>
+      </dir_pattern>
+    </urls>
+</db>
+<db>
+    <id>Tarsius_syrichta.aa</id>
+    <description></description>
+    <format>fasta</format>
+    <db_type>genome</db_type>
+    <processing>gunzip,concat</processing>
+    <label></label>
+    <type>protein</type>
+    <urls>
+      <dir_pattern>
+        <url>
+        ftp://ftp.ensembl.org/pub/current_fasta/tarsius_syrichta/pep
+        </url>
+        <pattern>
+        .pep\.all\.fa\.gz$
+        </pattern>
+      </dir_pattern>
+    </urls>
+</db>
+<db>
+    <id>Tetraodon_nigroviridis.aa</id>
+    <description></description>
+    <format>fasta</format>
+    <db_type>genome</db_type>
+    <processing>gunzip,concat</processing>
+    <label></label>
+    <type>protein</type>
+    <urls>
+      <dir_pattern>
+        <url>
+        ftp://ftp.ensembl.org/pub/current_fasta/tetraodon_nigroviridis/pep
+        </url>
+        <pattern>
+        .pep\.all\.fa\.gz$
+        </pattern>
+      </dir_pattern>
+    </urls>
+</db>
+<db>
+    <id>Tupaia_belangeri.aa</id>
+    <description></description>
+    <format>fasta</format>
+    <db_type>genome</db_type>
+    <processing>gunzip,concat</processing>
+    <label></label>
+    <type>protein</type>
+    <urls>
+      <dir_pattern>
+        <url>
+        ftp://ftp.ensembl.org/pub/current_fasta/tupaia_belangeri/pep
+        </url>
+        <pattern>
+        .pep\.all\.fa\.gz$
+        </pattern>
+      </dir_pattern>
+    </urls>
+</db>
+<db>
+    <id>Tursiops_truncatus.aa</id>
+    <description></description>
+    <format>fasta</format>
+    <db_type>genome</db_type>
+    <processing>gunzip,concat</processing>
+    <label></label>
+    <type>protein</type>
+    <urls>
+      <dir_pattern>
+        <url>
+        ftp://ftp.ensembl.org/pub/current_fasta/tursiops_truncatus/pep
+        </url>
+        <pattern>
+        .pep\.all\.fa\.gz$
+        </pattern>
+      </dir_pattern>
+    </urls>
+</db>
+<db>
+    <id>Vicugna_pacos.aa</id>
+    <description></description>
+    <format>fasta</format>
+    <db_type>genome</db_type>
+    <processing>gunzip,concat</processing>
+    <label></label>
+    <type>protein</type>
+    <urls>
+      <dir_pattern>
+        <url>
+        ftp://ftp.ensembl.org/pub/current_fasta/vicugna_pacos/pep
+        </url>
+        <pattern>
+        .pep\.all\.fa\.gz$
+        </pattern>
+      </dir_pattern>
+    </urls>
+</db>
+<db>
+    <id>Xenopus_tropicalis.aa</id>
+    <description></description>
+    <format>fasta</format>
+    <db_type>genome</db_type>
+    <processing>gunzip,concat</processing>
+    <label></label>
+    <type>protein</type>
+    <urls>
+      <dir_pattern>
+        <url>
+        ftp://ftp.ensembl.org/pub/current_fasta/xenopus_tropicalis/pep
+        </url>
+        <pattern>
+        .pep\.all\.fa\.gz$
+        </pattern>
+      </dir_pattern>
+    </urls>
+</db>
+</genomes>
