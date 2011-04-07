@@ -803,6 +803,8 @@ def prepareComputeDir(dir=roundup_common.COMPUTE_DIR, computeId=None):
     os.makedirs(computeDir, 0770)
     genomesDir = getGenomesDirFromComputeDir(computeDir)
     os.makedirs(genomesDir, 0770)
+    # jobsDir = getJobsDirFromComputeDir(computeDir)
+    # os.makedirs(jobsDir, 0770)
     return computeDir
 
 
