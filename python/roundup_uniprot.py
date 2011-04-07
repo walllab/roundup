@@ -10,10 +10,74 @@ Why use dat files and not fasta files?  Because dat file has much more metadata 
 Description of dat files, aka swissprot format, http://arep.med.harvard.edu/labgc/jong/Fetch/SwissProtAll.html.
 '''
 
-def downloadCurrentUniprot(workDir):
-    sprotUrl = 'ftp://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/complete/uniprot_sprot.dat.gz'
-    tremblUrl = 'ftp://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/complete/uniprot_trembl.dat.gz'
+
+import os
+import urlparse
+
+
+def getGenomesDir(dsDir):
+    return os.path.join(dsDir, 'genomes')
+
+
+def getJobsDir(dsDir):
+    return os.path.join(dsDir, 'jobs')
+
     
+def getResultsDir(dsDir):
+    return os.path.join(dsDir, 'results')
+
+    
+def getSourcesDir(dsDir):
+    return os.path.join(dsDir, 'sources')
+
+    
+def prepareDataset(dsDir):
+    os.makedirs(getGenomesDir(dsDir), 0770)
+    os.makedirs(getResultsDir(dsDir), 0770)
+    os.makedirs(getJobsDir(dsDir), 0770)
+    os.makedirs(getSourcesDir(dsDir), 0770)
+
+
+####################
+# COMPLETE FUNCTIONS
+####################
+
+def isFileComplete(path):
+    return os.path.exists(path+'.complete.txt')
+
+
+def markFileComplete(path):
+    util.writeToFile(path, os.path.exists(path+'.complete.txt'))
+
+
+def isSourcesComplete(dsDir):
+    return os.path.exists(os.path.join(getSourcesDir(dsDir), 'sources.complete.txt'))
+
+    
+def markSourcesComplete(dsDir):
+    util.writeToFile('sources complete', os.path.exists(os.path.join(getSourcesDir(dsDir), 'sources.complete.txt')))
+
+    
+def downloadCurrentUniprot(dsDir):
+    if isSourcesComplete(dsDir):
+        return
+    
+    sprotDatUrl = 'ftp://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/complete/uniprot_sprot.dat.gz'
+    sprotXmlUrl = 'ftp://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/complete/uniprot_sprot.xml.gz'
+    tremblDatUrl = 'ftp://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/complete/uniprot_trembl.dat.gz'
+    tremblXmlUrl = 'ftp://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/complete/uniprot_trembl.xml.gz'
+    idMappingUrl = 'ftp://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/idmapping/idmapping.dat.gz'
+    idMappingSelectedUrl = 'ftp://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/idmapping/idmapping_selected.tab.gz'
+    sourcesDir = getSourcesDir(dsDir)
+    for url in [sprotDatUrl, sprotXmlUrl, tremblDatUrl, tremblXmlUrl, idMappingUrl, idMappingSelectedUrl]:
+        dest = os.path.join(sourcesDir, os.path.basename(urlparse.urlparse(sprotUrl).path))
+        if isFileComplete(dest)
+            continue
+        cmd = 'curl --remote-time --output '+dest+' '+url
+        execute.run(cmd)
+        markFileComplete(dest)
+    markSourcesComplete(dsDir)
+
 
 def parseUniprotDat(path):
     with open(path) as fh:

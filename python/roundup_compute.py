@@ -739,6 +739,24 @@ def getGenomesFromComputeDir(computeDir):
     return roundup_common.getGenomes(dir=getGenomesDirFromComputeDir(computeDir))
 
 
+#########
+# JOBS
+#########
+# A job is a group of pairs that is run as a single job, and whose results are stored in a single file.
+# It is a coarser grain of parallelism than a single pair.
+
+def getJobsDirFromComputeDir(computeDir):
+    return os.path.join(computeDir, 'jobs')
+
+
+def getJobPath(computeDir, job):
+    return os.path.join(job, getJobsDirFromComputeDir(computeDir))
+
+
+def getJobsFromComputeDir(computeDir):
+    return os.listdir(getJobsDirFromComputeDir(computeDir))
+
+
 ##########
 # METADATA
 ##########
@@ -794,7 +812,7 @@ def prepareComputeDir(dir=roundup_common.COMPUTE_DIR, computeId=None):
     '''
     dir: parent directory containing the created compute dir.
     computeId: if None, a unique id is created.  If not none, computeId is used to create the computeDir.
-    creates the directories needed for a computation, ones for pairs and genomes, etc., all underneath a unique path.
+    creates the directories needed for a computation, ones for jobs and genomes, etc., all underneath a unique path.
     '''
     # make unique directory structure for computation.  Use the date as a prefix for human readability and sortability.
     if computeId is None:
@@ -803,8 +821,8 @@ def prepareComputeDir(dir=roundup_common.COMPUTE_DIR, computeId=None):
     os.makedirs(computeDir, 0770)
     genomesDir = getGenomesDirFromComputeDir(computeDir)
     os.makedirs(genomesDir, 0770)
-    # jobsDir = getJobsDirFromComputeDir(computeDir)
-    # os.makedirs(jobsDir, 0770)
+    jobsDir = getJobsDirFromComputeDir(computeDir)
+    os.makedirs(jobsDir, 0770)
     return computeDir
 
 
