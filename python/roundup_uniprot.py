@@ -13,6 +13,10 @@ Description of dat files, aka swissprot format, http://arep.med.harvard.edu/labg
 
 import os
 import urlparse
+import subprocess
+import time
+
+import util
 
 
 def getGenomesDir(dsDir):
@@ -47,7 +51,7 @@ def isFileComplete(path):
 
 
 def markFileComplete(path):
-    util.writeToFile(path, os.path.exists(path+'.complete.txt'))
+    util.writeToFile(path, path+'.complete.txt')
 
 
 def isSourcesComplete(dsDir):
@@ -55,7 +59,7 @@ def isSourcesComplete(dsDir):
 
     
 def markSourcesComplete(dsDir):
-    util.writeToFile('sources complete', os.path.exists(os.path.join(dsDir, 'sources.complete.txt')))
+    util.writeToFile('sources complete', os.path.join(dsDir, 'sources.complete.txt'))
 
     
 def isGenomesComplete(dsDir):
@@ -63,9 +67,46 @@ def isGenomesComplete(dsDir):
 
     
 def markGenomesComplete(dsDir):
-    util.writeToFile('genomes complete', os.path.exists(os.path.join(dsDir, 'genomes.complete.txt')))
+    util.writeToFile('genomes complete', os.path.join(dsDir, 'genomes.complete.txt'))
 
         
+#######
+# PAIRS
+#######
+
+PAIRS_CACHE = {}
+def getPairs(dsDir):
+    '''
+    get the pairs that need computing.
+    '''
+    if not PAIRS_CACHE.has_key(dsDir):
+        pairs = []
+        if os.path.exists(pairsCacheFile(dsDir)):
+            with open(pairsCacheFile(dsDir)) as fh:
+                for line in fh:
+                    if line.strip():
+                        pairs.append(line.split())
+        PAIRS_CACHE[dsDir] = roundup_common.normalizePairs(pairs)
+    return PAIRS_CACHE[dsDir]
+
+
+def setPairs(dsDir, pairs):
+    '''
+    cache the set of pairs that need computing.
+    '''
+    PAIRS_CACHE[dsDir] = pairs
+    with open(pairsCacheFile(dsDir), 'w') as fh:
+        for qdb, sdb in pairs:
+            fh.write('%s %s\n'%(qdb, sdb))
+    
+        
+def pairsCacheFile(dsDir):
+    '''
+    A file containing pairs of genomes that need to be computed.
+    '''
+    return os.path.join(dsDir, 'pairs.txt')    
+
+
 def downloadCurrentUniprot(dsDir):
     '''
     Download uniprot files containing protein fasta sequences and associated meta data (gene names, go annotations, dbxrefs, etc.)
@@ -82,12 +123,18 @@ def downloadCurrentUniprot(dsDir):
 
     sourcesDir = getSourcesDir(dsDir)
     for url in [sprotDatUrl, sprotXmlUrl, tremblDatUrl, tremblXmlUrl, idMappingUrl, idMappingSelectedUrl]:
-        dest = os.path.join(sourcesDir, os.path.basename(urlparse.urlparse(sprotUrl).path))
-        if isFileComplete(dest)
+        dest = os.path.join(sourcesDir, os.path.basename(urlparse.urlparse(url).path))
+        print 'downloading {} to {}...'.format(url, dest)
+        if isFileComplete(dest):
+            print '...skipping because already downloaded.'
             continue
         cmd = 'curl --remote-time --output '+dest+' '+url
-        execute.run(cmd)
+        subprocess.check_call(cmd, shell=True)
+        print
+        # execute.run(cmd)
         markFileComplete(dest)
+        print '...done.'
+        time.sleep(5)
     markSourcesComplete(dsDir)
 
 
@@ -98,7 +145,8 @@ def splitUniprotIntoGenomes(dsDir):
     taxons = set()
     import Bio.SeqIO, cPickle, sys, os
     sourceFiles = [os.path.join(getSourcesDir(dsDir), f) for f in ('uniprot_sprot.dat', 'uniprot_trembl.dat')]
-    for file in sourceFiles:
+    for file in sourceFiles[:1]:
+        print 'splitting {} into genomes'.format(file)
         for i, record in enumerate(Bio.SeqIO.parse(file, "swiss")):
             if record.annotations.has_key("keywords") and "Complete proteome" in record.annotations["keywords"]:
                 taxon = record.annotations["ncbi_taxid"][0]
@@ -110,9 +158,30 @@ def splitUniprotIntoGenomes(dsDir):
                 fasta = ">%s\n%s\n"%(record.id, record.seq)
                 with open("%s.aa"%taxon, "a") as fh:
                     fh.write(fasta)
-    markSourcesComplete(dsDir)
-    
-    
+    # markSourcesComplete(dsDir)
+
+
+def getNewAndDonePairs(dsDir, oldDsDir):
+    '''
+    dsDir: current dataset, containing genomes
+    oldDsDir: a previous dataset.
+    Sort all pairs of genomes in the current dataset into todo and done pairs:
+      new pairs need to be computed because each pair contains at least one genome that does not exist in or is different from the genomes of the old dataset.
+      done pairs do not need to be computed because the genomes of each pair are the same as the old dataset, so the old results are still valid.
+    returns: the tuple, (newPairs, donePairs)
+    '''
+    genomesAndPaths = roundup_common.getGenomesAndPaths(dsDir)
+    genomes = [genome for genome, path in genomesAndPaths]
+    pairs = roundup_common.getPairs(genomes)
+    oldGenomesAndPaths = roundup_common.getGenomesAndPaths(oldDsDir)
+    newGenomes = [genome for genome in genomes if not roundup_common.dbPathsEqual(
+    allPairs = roundup_common.getPairs(allGenomes)
+    pairs = [pair for pair in allPairs if pair[0] in updatedGenomesAndPaths or pair[1] in updatedGenomesAndPaths]
+    setPairs(computeDir, pairs)
+    return pairs
+
+
+
 def parseUniprotDat(path):
     with open(path) as fh:
         for line in fh:
@@ -125,13 +194,21 @@ def parseUniprotDat(path):
             if tokens and tokens[0] == 'KW' and line.find('Complete genome') > -1:
                 complete = True
             if tokens and tokens[0] == 'SQ':
-                
-
+                pass
             if tokens and tokens[0] == '//':
-                
-
+                pass
             if tokens and tokens[0] == 'KW':
-                
+                pass
+
+
+def main(dsDir='.'):
+    downloadCurrentUniprot(dsDir)
+    splitUniprotIntoGenomes(dsDir)
+
+    
+if __name__ == '__main__':
+    pass
+
 
 example_dat_sequence = '''
 ID   003L_IIV3               Reviewed;         156 AA.
