@@ -51,14 +51,25 @@ def markFileComplete(path):
 
 
 def isSourcesComplete(dsDir):
-    return os.path.exists(os.path.join(getSourcesDir(dsDir), 'sources.complete.txt'))
+    return os.path.exists(os.path.join(dsDir, 'sources.complete.txt'))
 
     
 def markSourcesComplete(dsDir):
-    util.writeToFile('sources complete', os.path.exists(os.path.join(getSourcesDir(dsDir), 'sources.complete.txt')))
+    util.writeToFile('sources complete', os.path.exists(os.path.join(dsDir, 'sources.complete.txt')))
 
     
+def isGenomesComplete(dsDir):
+    return os.path.exists(os.path.join(dsDir, 'genomes.complete.txt'))
+
+    
+def markGenomesComplete(dsDir):
+    util.writeToFile('genomes complete', os.path.exists(os.path.join(dsDir, 'genomes.complete.txt')))
+
+        
 def downloadCurrentUniprot(dsDir):
+    '''
+    Download uniprot files containing protein fasta sequences and associated meta data (gene names, go annotations, dbxrefs, etc.)
+    '''
     if isSourcesComplete(dsDir):
         return
     
@@ -68,6 +79,7 @@ def downloadCurrentUniprot(dsDir):
     tremblXmlUrl = 'ftp://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/complete/uniprot_trembl.xml.gz'
     idMappingUrl = 'ftp://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/idmapping/idmapping.dat.gz'
     idMappingSelectedUrl = 'ftp://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/idmapping/idmapping_selected.tab.gz'
+
     sourcesDir = getSourcesDir(dsDir)
     for url in [sprotDatUrl, sprotXmlUrl, tremblDatUrl, tremblXmlUrl, idMappingUrl, idMappingSelectedUrl]:
         dest = os.path.join(sourcesDir, os.path.basename(urlparse.urlparse(sprotUrl).path))
@@ -79,6 +91,28 @@ def downloadCurrentUniprot(dsDir):
     markSourcesComplete(dsDir)
 
 
+def splitUniprotIntoGenomes(dsDir):
+    if isGenomesComplete(dsDir):
+        return
+
+    taxons = set()
+    import Bio.SeqIO, cPickle, sys, os
+    sourceFiles = [os.path.join(getSourcesDir(dsDir), f) for f in ('uniprot_sprot.dat', 'uniprot_trembl.dat')]
+    for file in sourceFiles:
+        for i, record in enumerate(Bio.SeqIO.parse(file, "swiss")):
+            if record.annotations.has_key("keywords") and "Complete proteome" in record.annotations["keywords"]:
+                taxon = record.annotations["ncbi_taxid"][0]
+                if taxon not in taxons:
+                    # first time a taxon is seen, start a fresh genome file.
+                    taxons.add(taxon)
+                    with open("foo", "w") as fh:
+                        pass
+                fasta = ">%s\n%s\n"%(record.id, record.seq)
+                with open("%s.aa"%taxon, "a") as fh:
+                    fh.write(fasta)
+    markSourcesComplete(dsDir)
+    
+    
 def parseUniprotDat(path):
     with open(path) as fh:
         for line in fh:
