@@ -7,30 +7,12 @@ Use to precompute blasting of genomes for later use by RSD algorithm
 import os
 import shutil
 import logging
+import glob
 
 import config
 import util
 import execute
 import nested
-import roundup_common
-
-
-def findSeqIdWithFasta(fasta, genome):
-    ''' return first hit '''
-    subjectIndexPath = roundup_common.fastaFileForDbPath(roundup_common.makeDbPath(genome))
-    try:
-        path = nested.makeTempPath()
-        util.writeToFile(fasta, path)
-        cmd = 'blastp -outfmt 6 -query %s -db %s'%(path, subjectIndexPath)
-        results = execute.run(cmd)
-    finally:
-        os.remove(path)        
-    hitName = None
-    for line in results.splitlines():
-        splits = line.split()
-        hitName = splits[1] # lcl| is already removed.  go figure.  that is just how ncbi does it.
-        break
-    return hitName
 
 
 def getHitName(hit):
@@ -57,14 +39,28 @@ def _runBlast(**keywords):
     return execute.run(cmd, stdin=keywords.get('stdin'))
 
 
-def getBlastHits(queryFastaPath, subjectIndexPath, evalue, workingDir='.', limitHits=roundup_common.MAX_GOOD_EVALUE_HITS):
+def getBlastHits(queryFastaPath, subjectIndexPath, evalue, workingDir='.', limitHits=config.MAX_HITS, copyToWorking=False):
     '''
     queryFastaPath: location of fasta file of query sequences
     subjectIndexPath: location and name of blast-formatted indexes.
-    workingDir: creates, uses, and removes a directory under workingDir.  
+    workingDir: creates, uses, and removes a directory under workingDir.
+    copyToWorking: if True, copy query fasta path and subject index files to within the working directory and use the copies to blast.
+      useful for performance if the working directory is local and the files are on a network.
     blasts every sequence in query agaist subject, adding hits that are better than evalue to a list stored in a dict keyed on the query id.
     '''
+    # work in a nested tmp dir to avoid junking up the working dir.
     with nested.NestedTempDir(dir=workingDir, nesting=0) as tmpDir:
+        if copyToWorking:
+            localFastaPath = os.path.join(tmpDir, 'query.fa')
+            shutil.copyfile(queryFastaPath, localFastaPath)
+            localIndexDir = os.path.join(tmpDir, 'local_blast')
+            os.makedirs(localIndexDir, 0770)
+            localIndexPath = os.path.join(localIndexDir, os.path.basename(subjectIndexPath))
+            for path in glob.glob(subjectIndexPath+'*'):
+                if os.path.isfile:
+                    shutil.copy(path, localIndexDir)
+            queryFastaPath = localFastaPath
+            subjectIndexPath = localIndexPath
         blastResultsPath = os.path.join(tmpDir, 'blast_results')
         # blast query vs subject, using /opt/blast-2.2.22/bin/blastp
         cmd = 'blastp -outfmt 6 -evalue %s -query %s -db %s -out %s'%(evalue, queryFastaPath, subjectIndexPath, blastResultsPath)
@@ -74,12 +70,14 @@ def getBlastHits(queryFastaPath, subjectIndexPath, evalue, workingDir='.', limit
     return hitsMap
 
 
-def computeBlastHits(queryFastaPath, subjectIndexPath, outPath, evalue, workingDir='.', limitHits=roundup_common.MAX_GOOD_EVALUE_HITS):
+def computeBlastHits(queryFastaPath, subjectIndexPath, outPath, evalue, workingDir='.', limitHits=config.MAX_HITS, copyToWorking=False):
     '''
     queryFastaPath: location of fasta file of query sequences
     subjectIndexPath: location and name of blast-formatted indexes.
     outPath: location of file where blast hits are saved.
     workingDir: creates, uses, and removes a directory under workingDir.  
+    copyToWorking: if True, copy query fasta path and subject index files to within the working directory and use the copies to blast.
+      useful for performance if the working directory is local and the files are on a network.
     blasts every sequence in query agaist subject, adding hits that are better than evalue to a list stored in a dict keyed on the query id.
     Persists hits dict to outPath.
     '''
@@ -87,7 +85,7 @@ def computeBlastHits(queryFastaPath, subjectIndexPath, outPath, evalue, workingD
     util.dumpObject(hitsMap, outPath)
 
 
-def parseResults(blastResultsPath, limitHits=roundup_common.MAX_GOOD_EVALUE_HITS):
+def parseResults(blastResultsPath, limitHits=config.MAX_HITS):
     # parse tabular results into hits.  thank you, ncbi, for creating results this easy to parse.
     hitsMap = {}
     hitsCountMap = {}
@@ -100,7 +98,7 @@ def parseResults(blastResultsPath, limitHits=roundup_common.MAX_GOOD_EVALUE_HITS
         hitName = splits[1] # lcl| is already removed.  go figure.  that is just how ncbi does it.
         hitEvalue = float(splits[10])
         # results table reports multiple "alignments" per "hit" in ascending order by evalue
-        # we only store the top MAX_GOOD_EVALUE_HITS hits.
+        # we only store the top hits.
         if prevSeqName != seqName or prevHitName != hitName:
             prevSeqName = seqName
             prevHitName = hitName

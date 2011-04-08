@@ -15,6 +15,27 @@ import util
 import fasta
 
 
+PAML_ERROR_MSG = 'paml_GetDistances'
+
+
+def findSeqIdWithFasta(fasta, genome):
+    ''' return first hit '''
+    subjectIndexPath = roundup_common.fastaFileForDbPath(roundup_common.makeDbPath(genome))
+    try:
+        path = nested.makeTempPath()
+        util.writeToFile(fasta, path)
+        cmd = 'blastp -outfmt 6 -query %s -db %s'%(path, subjectIndexPath)
+        results = execute.run(cmd)
+    finally:
+        os.remove(path)        
+    hitName = None
+    for line in results.splitlines():
+        splits = line.split()
+        hitName = splits[1] # lcl| is already removed.  go figure.  that is just how ncbi does it.
+        break
+    return hitName
+
+
 def getIdsForDbPath(dbPath):
     '''
     dbPath: path to a genome directory, aka a "dbPath".  e.g. /groups/rodeo/roundup/genomes/current/Homo_sapiens.aa
@@ -404,7 +425,7 @@ def paml_GetDistance(path):
         os.unlink(filename)
         
 	if not get_rst:
-            raise roundup_common.RoundupException('paml_GetDistances(): no get_rst for path=%s'%(path))
+            raise Exception(PAML_ERROR_MSG, path)
         		
 	str = ''
 	for line in get_rst[1:]:

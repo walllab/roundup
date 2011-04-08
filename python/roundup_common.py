@@ -61,11 +61,6 @@ BLAST_PROGRAM = '/opt/blast2/blastp'
 EVALUES = ['1e-5', '1e-10', '1e-15', '1e-20']
 DIVERGENCES = ['0.2', '0.5', '0.8']
 
-# running rsd
-MATRIX_PATH = os.path.join(config.CONFIG_DIR, 'jones.dat')
-CODEML_CONTROL_PATH = os.path.join(config.CONFIG_DIR, 'codeml.ctl')
-MAX_GOOD_EVALUE_HITS = 3
-
 # LSF OPTIONS
 # You can override the default LSF.py short and long queues by using env vars.  setLSF_SHORT_QUEUE=cbi_15m and LSF_LONG_QUEUE=cbi_unlimited on command line.
 # output option is where to store lsf job output files.  this output is not used.
@@ -157,6 +152,8 @@ def updatedDbPath(dbId, dir=UPDATED_GENOMES_DIR):
     return makeDbPath(dbId, dir)
 
 
+def genomePathsEqual(genomePath1, genomePath2):
+    return dbPathsEqual(genomePath1, genomePath2)
 def dbPathsEqual(dbPath1, dbPath2):
     '''
     test if the two fasta files of the given dbs are equal.  If either dbPath or fasta file is non-existent, False is returned.

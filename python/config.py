@@ -37,6 +37,15 @@ else: # default to dev
     COMPUTE_DIR = '/groups/rodeo/dev.roundup/compute'
 
 
+#####
+# RSD
+#####
+
+MAX_HITS = 3
+MATRIX_PATH = os.path.join(CONFIG_DIR, 'jones.dat')
+CODEML_CONTROL_PATH = os.path.join(CONFIG_DIR, 'codeml.ctl')
+
+
 #######################################
 # TMP DIRS, WORKING DIRS, SCRATCH SPACE
 #######################################

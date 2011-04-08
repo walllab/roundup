@@ -19,29 +19,56 @@ import time
 import util
 
 
-def getGenomesDir(dsDir):
-    return os.path.join(dsDir, 'genomes')
+def getGenomesDir(ds):
+    return os.path.join(ds, 'genomes')
 
 
-def getJobsDir(dsDir):
-    return os.path.join(dsDir, 'jobs')
-
-    
-def getResultsDir(dsDir):
-    return os.path.join(dsDir, 'results')
+def getJobsDir(ds):
+    return os.path.join(ds, 'jobs')
 
     
-def getSourcesDir(dsDir):
-    return os.path.join(dsDir, 'sources')
+def getResultsDir(ds):
+    return os.path.join(ds, 'results')
 
     
-def prepareDataset(dsDir):
-    os.makedirs(getGenomesDir(dsDir), 0770)
-    os.makedirs(getResultsDir(dsDir), 0770)
-    os.makedirs(getJobsDir(dsDir), 0770)
-    os.makedirs(getSourcesDir(dsDir), 0770)
+def getSourcesDir(ds):
+    return os.path.join(ds, 'sources')
+
+    
+def prepareDataset(ds):
+    os.makedirs(getGenomesDir(ds), 0770)
+    os.makedirs(getResultsDir(ds), 0770)
+    os.makedirs(getJobsDir(ds), 0770)
+    os.makedirs(getSourcesDir(ds), 0770)
 
 
+def getPairs(ds):
+    return roundup_common.getPairs(getGenomes(ds))
+
+
+def getGenomes(ds):
+    return getGenomesAndPaths.keys()
+
+    
+def getGenomesAndPaths(ds):
+    '''
+    returns: a dict mapping every genome in the dataset to its genomePath.
+    '''
+    genomesAndPaths = {}
+    genomesDir = getGenomesDir(ds)
+    for genome in set(os.listdir(genomesDir)):
+        genomesAndPaths[genome] = os.path.join(genomesDir, genome)
+    return genomesAndPaths
+
+
+def getGenomeFastaFile(genome, ds):
+    return os.path.join(getGenomesDir(ds), genome, genome+'.aa')
+
+
+def getGenomeBlastIndex(genome, ds):
+    return os.path.join(getGenomesDir(ds), genome, genome+'.aa')
+    
+    
 ####################
 # COMPLETE FUNCTIONS
 ####################
@@ -54,20 +81,20 @@ def markFileComplete(path):
     util.writeToFile(path, path+'.complete.txt')
 
 
-def isSourcesComplete(dsDir):
-    return os.path.exists(os.path.join(dsDir, 'sources.complete.txt'))
+def isSourcesComplete(ds):
+    return os.path.exists(os.path.join(ds, 'sources.complete.txt'))
 
     
-def markSourcesComplete(dsDir):
-    util.writeToFile('sources complete', os.path.join(dsDir, 'sources.complete.txt'))
+def markSourcesComplete(ds):
+    util.writeToFile('sources complete', os.path.join(ds, 'sources.complete.txt'))
 
     
-def isGenomesComplete(dsDir):
-    return os.path.exists(os.path.join(dsDir, 'genomes.complete.txt'))
+def isGenomesComplete(ds):
+    return os.path.exists(os.path.join(ds, 'genomes.complete.txt'))
 
     
-def markGenomesComplete(dsDir):
-    util.writeToFile('genomes complete', os.path.join(dsDir, 'genomes.complete.txt'))
+def markGenomesComplete(ds):
+    util.writeToFile('genomes complete', os.path.join(ds, 'genomes.complete.txt'))
 
         
 #######
@@ -75,43 +102,43 @@ def markGenomesComplete(dsDir):
 #######
 
 PAIRS_CACHE = {}
-def getPairs(dsDir):
+def getPairs(ds):
     '''
     get the pairs that need computing.
     '''
-    if not PAIRS_CACHE.has_key(dsDir):
+    if not PAIRS_CACHE.has_key(ds):
         pairs = []
-        if os.path.exists(pairsCacheFile(dsDir)):
-            with open(pairsCacheFile(dsDir)) as fh:
+        if os.path.exists(pairsCacheFile(ds)):
+            with open(pairsCacheFile(ds)) as fh:
                 for line in fh:
                     if line.strip():
                         pairs.append(line.split())
-        PAIRS_CACHE[dsDir] = roundup_common.normalizePairs(pairs)
-    return PAIRS_CACHE[dsDir]
+        PAIRS_CACHE[ds] = roundup_common.normalizePairs(pairs)
+    return PAIRS_CACHE[ds]
 
 
-def setPairs(dsDir, pairs):
+def setPairs(ds, pairs):
     '''
     cache the set of pairs that need computing.
     '''
-    PAIRS_CACHE[dsDir] = pairs
-    with open(pairsCacheFile(dsDir), 'w') as fh:
+    PAIRS_CACHE[ds] = pairs
+    with open(pairsCacheFile(ds), 'w') as fh:
         for qdb, sdb in pairs:
             fh.write('%s %s\n'%(qdb, sdb))
     
         
-def pairsCacheFile(dsDir):
+def pairsCacheFile(ds):
     '''
     A file containing pairs of genomes that need to be computed.
     '''
-    return os.path.join(dsDir, 'pairs.txt')    
+    return os.path.join(ds, 'pairs.txt')    
 
 
-def downloadCurrentUniprot(dsDir):
+def downloadCurrentUniprot(ds):
     '''
     Download uniprot files containing protein fasta sequences and associated meta data (gene names, go annotations, dbxrefs, etc.)
     '''
-    if isSourcesComplete(dsDir):
+    if isSourcesComplete(ds):
         return
     
     sprotDatUrl = 'ftp://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/complete/uniprot_sprot.dat.gz'
@@ -121,7 +148,7 @@ def downloadCurrentUniprot(dsDir):
     idMappingUrl = 'ftp://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/idmapping/idmapping.dat.gz'
     idMappingSelectedUrl = 'ftp://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/idmapping/idmapping_selected.tab.gz'
 
-    sourcesDir = getSourcesDir(dsDir)
+    sourcesDir = getSourcesDir(ds)
     for url in [sprotDatUrl, sprotXmlUrl, tremblDatUrl, tremblXmlUrl, idMappingUrl, idMappingSelectedUrl]:
         dest = os.path.join(sourcesDir, os.path.basename(urlparse.urlparse(url).path))
         print 'downloading {} to {}...'.format(url, dest)
@@ -135,16 +162,19 @@ def downloadCurrentUniprot(dsDir):
         markFileComplete(dest)
         print '...done.'
         time.sleep(5)
-    markSourcesComplete(dsDir)
+    markSourcesComplete(ds)
 
 
-def splitUniprotIntoGenomes(dsDir):
-    if isGenomesComplete(dsDir):
+def splitUniprotIntoGenomes(ds):
+    '''
+    create separate fasta files for each complete genome in the uniprot (sprot and trembl) data.
+    '''
+    if isGenomesComplete(ds):
         return
 
     taxons = set()
     import Bio.SeqIO, cPickle, sys, os
-    sourceFiles = [os.path.join(getSourcesDir(dsDir), f) for f in ('uniprot_sprot.dat', 'uniprot_trembl.dat')]
+    sourceFiles = [os.path.join(getSourcesDir(ds), f) for f in ('uniprot_sprot.dat', 'uniprot_trembl.dat')]
     for file in sourceFiles[:1]:
         print 'splitting {} into genomes'.format(file)
         for i, record in enumerate(Bio.SeqIO.parse(file, "swiss")):
@@ -156,30 +186,55 @@ def splitUniprotIntoGenomes(dsDir):
                     with open("foo", "w") as fh:
                         pass
                 fasta = ">%s\n%s\n"%(record.id, record.seq)
-                with open("%s.aa"%taxon, "a") as fh:
+                fastaFile = getGenomeFastaFile(taxon, ds)
+                with open(fastaFile, "a") as fh:
                     fh.write(fasta)
-    # markSourcesComplete(dsDir)
+    markSourcesComplete(ds)
 
 
-def getNewAndDonePairs(dsDir, oldDsDir):
+def getNewAndDonePairs(ds, oldDs):
     '''
-    dsDir: current dataset, containing genomes
-    oldDsDir: a previous dataset.
+    ds: current dataset, containing genomes
+    oldDs: a previous dataset.
     Sort all pairs of genomes in the current dataset into todo and done pairs:
       new pairs need to be computed because each pair contains at least one genome that does not exist in or is different from the genomes of the old dataset.
       done pairs do not need to be computed because the genomes of each pair are the same as the old dataset, so the old results are still valid.
     returns: the tuple, (newPairs, donePairs)
     '''
-    genomesAndPaths = roundup_common.getGenomesAndPaths(dsDir)
-    genomes = [genome for genome, path in genomesAndPaths]
-    pairs = roundup_common.getPairs(genomes)
-    oldGenomesAndPaths = roundup_common.getGenomesAndPaths(oldDsDir)
-    newGenomes = [genome for genome in genomes if not roundup_common.dbPathsEqual(
-    allPairs = roundup_common.getPairs(allGenomes)
-    pairs = [pair for pair in allPairs if pair[0] in updatedGenomesAndPaths or pair[1] in updatedGenomesAndPaths]
+    genomesAndPaths = getGenomesAndPaths(ds)
+    oldGenomesAndPaths = getGenomesAndPaths(oldDs)
+    # a new genome is one not in the old genomes or different from the old genome.
+    newGenomes = set()
+    for genome in genomesAndPaths:
+        if genome not in oldGenomesAndPaths or not roundup_common.genomePathsEqual(genomesAndPaths[genome], oldGenomesAndPaths[genome]):
+            newGenomes.add(genome)
+
+    pairs = roundup_common.getPairs(genomesAndPaths.keys())
+    newPairs = []
+    oldPairs = []
+    for pair in pairs:
+        if pair[0] in newGenomes or pair[1] in newGenomes:
+            newPairs.append(pair)
+        else:
+            oldPairs.append(pair)
+
+    return (newPairs, oldPairs)
+
     setPairs(computeDir, pairs)
     return pairs
 
+
+def prepareComputation(ds, oldDs=None, numJobs=):
+    if oldDs:
+        # get new and old pairs
+        pairs, oldPairs = getNewAndDonePairs(ds, oldDs)
+        # get results for old pairs and dump them into a results file.
+    else:
+        pairs = getPairs(ds)
+    # save the pairs to be computed.
+    setPairs(ds, pairs)
+    # create N jobs for the pairs to be computed.  
+    
 
 
 def parseUniprotDat(path):
@@ -201,9 +256,9 @@ def parseUniprotDat(path):
                 pass
 
 
-def main(dsDir='.'):
-    downloadCurrentUniprot(dsDir)
-    splitUniprotIntoGenomes(dsDir)
+def main(ds='.'):
+    downloadCurrentUniprot(ds)
+    splitUniprotIntoGenomes(ds)
 
     
 if __name__ == '__main__':

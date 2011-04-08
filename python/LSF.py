@@ -262,7 +262,7 @@ def bsub(cmds=None, queue=None, interactive=False, outputFile=None):
 ########################################
 
 def setEnviron():
-    LSF_DIR = '/opt/lsf/6.0/linux2.4-glibc2.3-x86'
+    LSF_DIR = '/opt/lsf/7.0/linux2.6-glibc2.3-x86_64' # '/opt/lsf/6.0/linux2.4-glibc2.3-x86'
     BIN_DIR = os.path.join(LSF_DIR, 'bin')
     CONF_DIR = '/opt/lsf/conf'
     LIB_DIR = os.path.join(LSF_DIR, 'lib')

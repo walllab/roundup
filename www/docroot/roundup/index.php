@@ -234,9 +234,9 @@ function roundupControlFlow($action, $genomes, $divergences, $evalues, $browse_i
       $fasta = $info['data']['fasta'];
       $genome = $info['data']['fasta_genome'];
       $keywords = array('fasta' => $fasta, 'genome' => $genome);
-      list($seqId, $exitcode) = python_dispatch('blast_results_db.findSeqIdWithFasta', $keywords);
+      list($seqId, $exitcode) = python_dispatch('BioUtilities.findSeqIdWithFasta', $keywords);
       if ($exitcode) {
-	logError('SeqIdLookup: exit code encountered when running blast_results_db.findSeqIdWithFasta. keywords='.serialize($keywords));
+	logError('SeqIdLookup: exit code encountered when running BioUtilities.findSeqIdWithFasta. keywords='.serialize($keywords));
 	// forward to generic error page.
 	echoRunCommandErrorPage();
       } else {
