@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-
+ 
 # test getGenomes()
 # test splitting source files
 # test preparing computation.  are the jobs and pair files created?
