@@ -39,6 +39,11 @@ import BioUtilities
 NUM_PAIRS_DEFAULT = 20000 # avoid overloading lsf with jobs.
 
 
+def main(ds):
+    prepareDataset(ds)
+    downloadCurrentUniprot(ds)
+    splitUniprotIntoGenomes(ds)
+
 
 def _getDatasetId(ds):
     return 'roundup_' + os.path.basename(ds)
@@ -61,11 +66,14 @@ def getSourcesDir(ds):
 
     
 def prepareDataset(ds):
+    if os.path.exists(ds) and isDatasetPrepared(ds):
+        print 'dataset already prepared. {}'.format(ds)
     os.makedirs(getGenomesDir(ds), 0770)
     os.makedirs(getOrthologsDir(ds), 0770)
     os.makedirs(getJobsDir(ds), 0770)
     os.makedirs(getSourcesDir(ds), 0770)
-
+    markDatasetPrepared(ds)
+    
 
 def getPairs(ds):
     return roundup_common.getPairs(getGenomes(ds))
@@ -480,6 +488,12 @@ def isGenomesComplete(ds):
     
 def markGenomesComplete(ds):
     util.writeToFile('genomes complete', os.path.join(ds, 'genomes.complete.txt'))
+
+def isDatasetPrepared(ds):
+    return os.path.exists(os.path.join(ds, 'prepared.complete.txt'))
+    
+def markDatasetPrepared(ds):
+    util.writeToFile('dataset prepared', os.path.join(ds, 'prepared.complete.txt'))
 
         
 #######
