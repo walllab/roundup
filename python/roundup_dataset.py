@@ -436,7 +436,7 @@ def computePair(ds, pair, workingDir, orthologsPath):
     maxEvalue = max([float(evalue) for evalue in roundup_common.EVALUES]) # evalues are strings like '1e-5'
     divEvalues = list(roundup_common.genDivEvalueParams())    
     with nested.NestedTempDir(dir=roundup_common.LOCAL_DIR) as tmpDir:
-        if not isComplete(ds, 'blast', queryGenome, subjectGenome)
+        if not isComplete(ds, 'blast', queryGenome, subjectGenome):
             blast_results_db.computeBlastHits(queryFastaPath, subjectIndexPath, forwardHitsPath, maxEvalue, tmpDir, copyToWorking=roundup_common.ROUNDUP_LOCAL)
             markComplete(ds, 'blast', queryGenome, subjectGenome)
 
