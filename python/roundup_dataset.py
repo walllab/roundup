@@ -19,34 +19,35 @@ import logging
 import urlparse
 import subprocess
 import random
+import gzip
+import json
 
 import config
 import blast_results_db
-import execute
 import fasta
 import LSF
 import nested
 import kvstore
-import RoundUp
 import roundup_common
 import util
 import roundup_db
 import lsfdispatch
-import BioUtilities
+import RSD
 
 
-# NUM_PAIRS_DEFAULT = None # submit all pairs to lsf
-NUM_PAIRS_DEFAULT = 20000 # avoid overloading lsf with jobs.
+MIN_GENOME_SIZE = 200 # ignore genomes with fewer sequences
 
 
 def main(ds):
     prepareDataset(ds)
     downloadCurrentUniprot(ds)
     splitUniprotIntoGenomes(ds)
-
+    filterAndFormatGenomes(ds)
+    prepareComputation(ds)
+    
 
 def _getDatasetId(ds):
-    return 'roundup_' + os.path.basename(ds)
+    return 'roundup_ds_' + os.path.basename(ds)
 
 
 def getGenomesDir(ds):
@@ -65,37 +66,29 @@ def getSourcesDir(ds):
     return os.path.join(ds, 'sources')
 
     
-def prepareDataset(ds):
-    if os.path.exists(ds) and isDatasetPrepared(ds):
-        print 'dataset already prepared. {}'.format(ds)
-    os.makedirs(getGenomesDir(ds), 0770)
-    os.makedirs(getOrthologsDir(ds), 0770)
-    os.makedirs(getJobsDir(ds), 0770)
-    os.makedirs(getSourcesDir(ds), 0770)
-    markDatasetPrepared(ds)
-    
-
-def getPairs(ds):
-    return roundup_common.getPairs(getGenomes(ds))
-
-
-def getGenomes(ds, refreshCache=False):
+def getPairs(ds, genomes=None):
     '''
-    returns genomes in the dataset.  caches genomes in genomes.txt if they have not already been cached, b/c the isilon is wicked slow at listing dirs.
+    returns: a sorted list of pairs, where every pair is a sorted list of each combination of two genomes.
     '''
-    path = os.path.join(ds, 'genomes.txt')
-    if refreshCache or not os.path.exists(path):
-        genomes = os.listdir(getGenomesDir())
-        with open(path, 'w') as fh:
-            for genome in genomes:
-                fh.write('{}\n'.format(genome))
+    if genomes is None:
+        genomes = getGenomes(ds)
+    return sorted(set([tuple(sorted((g1, g2))) for g1 in genomes for g2 in genomes if g1 != g2]))
+
+
+def getGenomes(ds, refresh=False):
+    '''
+    caches genomes in the dataset metadata if they have not already been
+    cached, b/c the isilon is wicked slow at listing dirs.
+    returns: list of genomes in the dataset.
+    '''
+    if refresh:
+        return updateMetadata(ds, {'genomes': os.listdir(getGenomesDir(ds))})['genomes']
     else:
-        genomes = []
-        with open(path) as fh:
-            for line in fh:
-                if line.strip():
-                    genomes.append(line.strip())
-    return genomes
+        genomes = loadMetadata(ds).get('genomes')
+        if not genomes:
+            return updateMetadata(ds, {'genomes': os.listdir(getGenomesDir(ds))})['genomes']
+        else:
+            return genomes
 
     
 def getGenomesAndPaths(ds):
@@ -117,47 +110,62 @@ def getGenomePath(genome, ds):
 
 
 def getGenomeFastaPath(genome, ds):
-    return os.path.join(getGenomePath(genome, ds), genome+'.aa')
+    return os.path.join(getGenomePath(genome, ds), genome+'.faa')
 
 
 def getGenomeIndexPath(genome, ds):
     '''
     location of blast index files
     '''
-    return os.path.join(getGenomePath(genome, ds), genome+'.aa')
+    return os.path.join(getGenomePath(genome, ds), genome+'.faa')
+
     
+#######################
+# MAIN DATASET PIPELINE
+#######################
+
+def prepareDataset(ds):
+    if os.path.exists(ds) and isStepComplete(ds, 'prepare dataset'):
+        print 'dataset already prepared. {}'.format(ds)
+        return
+    for path in (getGenomesDir(ds), getOrthologsDir(ds), getJobsDir(ds), getSourcesDir(ds)):
+        if not os.path.exists(path):
+            os.makedirs(path, 0770)
+    markStepComplete(ds, 'prepare dataset')
     
+
 def downloadCurrentUniprot(ds):
     '''
     Download uniprot files containing protein fasta sequences and associated meta data (gene names, go annotations, dbxrefs, etc.)
     '''
     print 'downloadCurrentUniprot: {}'.format(ds)
-    if isSourcesComplete(ds):
+    if isStepComplete(ds, 'download current uniprot'):
         print 'already complete'
         return
     
     sprotDatUrl = 'ftp://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/complete/uniprot_sprot.dat.gz'
-    sprotXmlUrl = 'ftp://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/complete/uniprot_sprot.xml.gz'
+    sprotFastaUrl = 'ftp://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/complete/uniprot_sprot.fasta.gz'
     tremblDatUrl = 'ftp://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/complete/uniprot_trembl.dat.gz'
-    tremblXmlUrl = 'ftp://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/complete/uniprot_trembl.xml.gz'
+    tremblFastaUrl = 'ftp://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/complete/uniprot_trembl.fasta.gz'
     idMappingUrl = 'ftp://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/idmapping/idmapping.dat.gz'
     idMappingSelectedUrl = 'ftp://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/idmapping/idmapping_selected.tab.gz'
 
     sourcesDir = getSourcesDir(ds)
-    for url in [sprotDatUrl, sprotXmlUrl, tremblDatUrl, tremblXmlUrl, idMappingUrl, idMappingSelectedUrl]:
+    urls = [sprotDatUrl, sprotFastaUrl, tremblDatUrl, tremblFastaUrl, idMappingUrl, idMappingSelectedUrl]
+    for url in urls:
         dest = os.path.join(sourcesDir, os.path.basename(urlparse.urlparse(url).path))
         print 'downloading {} to {}...'.format(url, dest)
-        if isFileComplete(dest):
+        if isStepComplete(ds, 'download', url):
             print '...skipping because already downloaded.'
             continue
         cmd = 'curl --remote-time --output '+dest+' '+url
         subprocess.check_call(cmd, shell=True)
         print
-        # execute.run(cmd)
-        markFileComplete(dest)
+        markStepComplete(ds, 'download', url)
         print '...done.'
         time.sleep(5)
-    markSourcesComplete(ds)
+    updateMetadata(ds, {'sources': {'download_time': str(datatime.datetime.now), 'urls': urls}})
+    markStepComplete(ds, 'download current uniprot')
     print 'done downloading sources.'
 
 
@@ -166,30 +174,142 @@ def splitUniprotIntoGenomes(ds):
     create separate fasta files for each complete genome in the uniprot (sprot and trembl) data.
     '''
     print 'splitUniprotIntoGenomes: {}'.format(ds)
-    if isGenomesComplete(ds):
+    if isStepComplete(ds, 'split sources into fasta genomes'):
         print 'already complete'
         return
 
     genomes = set()
     import Bio.SeqIO, cPickle, sys, os
-    sourceFiles = [os.path.join(getSourcesDir(ds), f) for f in ('uniprot_sprot.dat', 'uniprot_trembl.dat')]
-    for file in sourceFiles[:1]:
-        print 'splitting {} into genomes'.format(file)
-        for i, record in enumerate(Bio.SeqIO.parse(file, "swiss")):
+    seqToGenome = {}
+    dats = [os.path.join(getSourcesDir(ds), 'uniprot_sprot.dat.gz'), os.path.join(getSourcesDir(ds), 'uniprot_trembl.dat.gz')]
+    fastas = [os.path.join(getSourcesDir(ds), 'uniprot_sprot.fasta.gz'), os.path.join(getSourcesDir(ds), 'uniprot_trembl.fasta.gz')]
+    # dats = [os.path.join(getSourcesDir(ds), 'test_uniprot_sprot.dat.gz')]
+    # fastas = [os.path.join(getSourcesDir(ds), 'test_uniprot_sprot.fasta.gz')]
+
+    # gather which sequences belong to complete genomes.
+    # the dats have all the info needed to make fasta files, but I am lazy and the namelines in the uniprot fasta files are nice.
+    for path in dats:
+        print 'gathering ids in {}'.format(path)
+        for i, record in enumerate(Bio.SeqIO.parse(gzip.open(path), "swiss")):
+            if i % 1e4 == 0: print i
             if record.annotations.has_key("keywords") and "Complete proteome" in record.annotations["keywords"]:
-                genome = record.annotations["ncbi_taxid"][0]
-                if genome not in genomes:
-                    # first time a genome is seen, start a fresh genome file.
-                    genomes.add(genome)
-                    with open("foo", "w") as fh:
-                        pass
-                fasta = ">%s\n%s\n"%(record.id, record.seq)
-                fastaPath = getGenomeFastaPath(genome, ds)
-                with open(fastaPath, "a") as fh:
-                    fh.write(fasta)
-    # markSourcesComplete(ds)
-    print 'done splitting sources.'
+                seqToGenome[record.id] = record.annotations["ncbi_taxid"][0]
+    # create individual fasta files for those sequences, one for each complete genome.
+    for path in fastas:
+        print 'splitting {} into genomes'.format(path)
+        with gzip.open(path) as fh:
+            for i, (nameline, seq) in enumerate(fasta.readFastaIter(fh)): # , ignoreParseError=True):
+                if i % 1e4 == 0: print i
+                seqId = fasta.idFromName(nameline)
+                if seqId in seqToGenome:
+                    genome = seqToGenome[seqId]
+                    if genome not in genomes:
+                        print 'new genome', genome
+                        genomes.add(genome)
+                        genomePath = getGenomePath(genome, ds)
+                        if os.path.exists(genomePath):
+                            shutil.rmtree(genomePath)
+                        os.makedirs(genomePath, 0770)
+                    fastaPath = getGenomeFastaPath(genome, ds)
+                    with open(fastaPath, "a") as fh:
+                        fh.write('{}\n{}'.format(nameline, fasta.prettySeq(seq)))
+    markStepComplete(ds, 'split sources into fasta genomes')
+
+
+def filterAndFormatGenomes(ds):
+    print 'filtering and formatting genomes. {}'.format(ds)
+    if isStepComplete(ds, 'filter and format genomes'):
+        print 'already complete'
+        return
+
+    genomes = getGenomes(ds)
+    genomeToSize = {}
+    preNum = len(genomes)
+    print 'before: {} genomes in dataset.'.format(len(genomes))
+    for genome in getGenomes(ds):
+        print 'filter/format {}'.format(genome)
+        fastaPath = getGenomeFastaPath(genome, ds)
+        size = fasta.numSeqsInFastaDb(fastaPath)
+        if size < MIN_GENOME_SIZE:
+            # filter out genomes with too few sequences (mostly viruses, etc.)
+            shutil.rmtree(getGenomePath(genome, ds))
+        else:
+            genomeToSize[genome] = size
+            # format for blast genomes with enough sequences.
+            os.chdir(os.path.dirname(fastaPath))
+            cmd = 'formatdb -p -o -i'+os.path.basename(fastaPath)
+            subprocess.check_call(cmd, shell=True)
+
+    # since genomes might have been removed from the dataset, refresh the cached genomes in the metadata
+    genomes = getGenomes(ds, refresh=True)
+    postNum = len(genomes)
+    print 'after: {} genomes in dataset.'.format(len(genomes))
+    updateMetadata(ds, {'filter': {'num_genome_before': preNum, 'num_genomes_after': postNum}, 'genomeToSize': genomeToSize})
+
+    print 'genome size'
+    for genome, size in sorted(genomeToSize.items(), key=lambda x: (x[1], x[0])):
+        print size, genome
+
+    print 'done filtering and formatting genomes'
+    markStepComplete(ds, 'filter and format genomes')
+
+
+def prepareComputation(ds, oldDs=None, numJobs=4000):
+    print 'preparint computations for {}'.format(ds)
+    if isStepComplete(ds, 'prepare computation'):
+        print 'already complete'
+        return
     
+    if oldDs:
+        # get new and old pairs
+        newPairs, oldPairs = getNewAndDonePairs(ds, oldDs)
+        # get orthologs for old pairs and dump them into a orthologs file.
+    else:
+        newPairs = getPairs(ds)
+        oldPairs = []
+    # save the pairs to be computed and the pairs whose orthologs need to be moved.
+    print 'saving new and old pairs'
+    setNewPairs(ds, newPairs)
+    setOldPairs(ds, oldPairs)
+    print 'new pair count:', len(newPairs)
+    print 'old pair count:', len(oldPairs)
+    # create up to N jobs for the pairs to be computed.
+    # each job contain len(pairs)/N pairs, except if N does not divide len(pairs) evenly, some jobs get an extra pair.
+    # permute the pairs so (on average) each job will have about the same running time.  Ideally job running time would be explictly balanced.
+    random.shuffle(newPairs)
+    numJobs = min(numJobs, len(newPairs))
+    jobSize = len(newPairs) // numJobs
+    print 'jobSize = ', jobSize
+    numExtraPairs = len(newPairs) % numJobs
+    print 'numExtraPairs =',numExtraPairs
+    start = 0
+    end = jobSize
+    # create jobs in multiple processes (i.e. using multiprocessing module) to speed up.
+    for i in range(numJobs):
+        if i % 100 == 0: print 'preparing job', i
+        job = 'job_{}'.format(i)
+        if i < numExtraPairs:
+            end += 1
+        print 'job =', job, 'start =', start, 'end =', end
+        jobPairs = newPairs[start:end]
+        print 'jobPairs=', jobPairs
+        start = end
+        end = end + jobSize
+        getJobDir(ds, job)
+        os.makedirs(getJobDir(ds, job), 0770)
+        setJobPairs(ds, job, jobPairs)
+    markStepComplete(ds, 'prepare computation')
+    
+
+def loadDatabase(ds):
+    # parse results files, getting a list of sequences.
+    # get gene name from fasta lines.
+    # get go ids from idmapping file.
+    # get go name from ...
+    
+    # drop and create tables for dataset.
+    pass
+
 
 def getNewAndDonePairs(ds, oldDs):
     '''
@@ -229,134 +349,13 @@ def moveOldOrthologs(ds, oldDs, pairs):
     raise Exception('unimplemented')
 
 
-def prepareComputation(ds, oldDs=None, numJobs=10000):
-    if oldDs:
-        # get new and old pairs
-        newPairs, oldPairs = getNewAndDonePairs(ds, oldDs)
-        # get orthologs for old pairs and dump them into a orthologs file.
-    else:
-        newPairs = getPairs(ds)
-        oldPairs = []
-    # save the pairs to be computed and the pairs whose orthologs need to be moved.
-    setNewPairs(ds, newPairs)
-    setOldPairs(ds, oldPairs)
-    # create up to N jobs for the pairs to be computed.
-    # each job contain len(pairs)/N pairs, except if N does not divide len(pairs) evenly, some jobs get an extra pair.
-    # permute the pairs so (on average) each job will have about the same running time.  Ideally job running time would be explictly balanced.
-    random.shuffle(newPairs)
-    numJobs = min(numJobs, len(newPairs))
-    jobSize = len(newPairs) // numJobs
-    numExtraPairs = len(newPairs) % numJobs
-    start = 0
-    end = jobSize
-    for i in range(min(numJobs, len(pairs))):
-        job = 'job_{}'.format(i)
-        if i < numExtraPairs:
-            end += 1
-        jobPairs = newPairs[start:end]
-        getJobDir(ds, job)
-        os.makedirs(getJobDir(ds, job), 0770)
-        setJobPairs(ds, job, jobPairs)
-
-
-######
-# JOBS
-######
-
-def getJobs(ds, refreshCache=False):
-    '''
-    returns jobs in the dataset.  caches jobs in jobs.txt if they have not already been cached, b/c the isilon is wicked slow at listing dirs.
-    '''
-    path = os.path.join(ds, 'jobs.txt')
-    if refreshCache or not os.path.exists(path):
-        jobs = os.listdir(getJobsDir())
-        with open(path, 'w') as fh:
-            for genome in jobs:
-                fh.write('{}\n'.format(genome))
-    else:
-        jobs = []
-        with open(path) as fh:
-            for line in fh:
-                if line.strip():
-                    jobs.append(line.strip())
-    return jobs
-
-
-def getJobPairs(ds, job):
-    readPairsFile(os.path.join(getJobDir(ds, job), 'job_pairs.txt'))
-
-
-def setJobPairs(ds, job, pairs):
-    writePairsFile(pairs, os.path.join(getJobDir(ds, job), 'job_pairs.txt'))
-
-
-def getJobDir(ds, job):
-    return os.path.join(getJobsDir(ds), job)
-
-
-def getJobOrthologsPath(ds, job):
-    return os.path.join(getOrthologsDir(ds), 'job_{}.orthologs.txt'.format(job))
-
-
-def getJobOrthologs(ds, job):
-    readOrthologsFile(getJobOrthologsPath(ds, job))
-
-
-def removeJobOrthologs(ds, job):
-    writeOrthologsFile([], getJobOrthologsPath(ds, job))
-
-
-def addJobOrthologs(ds, job, orthologs):
-    writeOrthologsFile(orthologs, getJobOrthologsPath(ds, job), mode='a')
-
-
-def getComputeJobName(ds, job):
-    return _getDatasetId(ds) + '_' + job
-
-
-def isJobRunning(ds, job):
-    '''
-    checks if job is running on LSF.
-    returns: True if job is on LSF and has not ended.  False otherwise.
-    '''
-    jobName = getComputeJobName(ds, job)
-    infos = LSF.getJobInfosByJobName(jobName)
-    statuses = [s for s in [info[LSF.STATUS] for info in infos] if not LSF.isEndedStatus(s)]
-    if len(statuses) > 1:
-        msg = 'isJobRunning: more than one non-ended LSF job for '+jobName+'\ndataset='+str(ds)+'\nstatuses='+str(statuses)
-        raise Exception(msg)
-    if statuses:
-        return True
-    else:
-        return False
-
-                                                        
-
-###########
-# ORTHOLOGS
-###########
-
-def orthologFileGen(path):
-    '''
-    useful for iterating through the orthologs in a large file
-    '''
-    if os.path.exists(path):
-        with open(path) as fh:
-            for line in fh:
-                line = line.strip()
-                if line and not line.startswith('#'):
-                    yield line.split('\t')
-    
-
-def readOrthologsFile(path):
-    return list(orthologFileGen(path))
-
-
-def writeOrthologsFile(orthologs, path, mode='w'):
-    with open(path, mode) as fh:
-        for ortholog in orthologs:
-            fh.write('{}\n'.format('\t'.join(ortholog)))
-
+def splitOrthologsIntoOldResultsFiles(ds, here='.'):
+    for job in getJobs(ds):
+        for (qdb, sdb, div, evalue, qhit, shit, dist) in getJobOrthologs(ds, job):
+            with open(os.path.join(here, '{}.aa_{}.aa_{}_{}'.format(qdb, sdb, div, evalue)), 'a') as fh:
+                fh.write('{} {} {}\n'.format(shit, qhit, dist))
+                
+        
 
 #################
 # RUN COMPUTATION
@@ -370,14 +369,19 @@ def computeJobs(ds):
     jobs = getJobs(ds)
     util.writeToFile('computeJobs: ds={}\njobs={}\n'.format(ds, jobs), os.path.join(ds, makeUniqueDatetimeName(prefix='roundup_compute_history_')))
     for job in jobs:
-        if isComplete(ds, 'job', job) or isJobRunning(ds, job):
+        if isComplete(ds, 'job', job):
+            print 'job is already complete:', job
+            continue
+        if isJobRunning(ds, job):
+            print 'job is already running:', job
             continue
         funcName = 'roundup_dataset.computeJob'
         keywords = {'ds': ds, 'job': job}
         # request that /scratch has at least ~10GB free space to avoid nodes where someone, not naming any names, has been a bad neighbor.
         lsfOptions = ['-R "scratch > 10000"', '-q '+LSF.LSF_LONG_QUEUE, roundup_common.ROUNDUP_LSF_OUTPUT_OPTION, '-J '+getComputeJobName(ds, job)]
         jobid = lsfdispatch.dispatch(funcName, keywords=keywords, lsfOptions=lsfOptions)
-        msg = 'computeJobs(): running job on grid.  jobid={}, ds={}, job={}'.format(jobid, computeDir, pair)
+        msg = 'computeJobs(): running job on grid.  lsfjobid={}, ds={}, job={}'.format(jobid, ds, job)
+        print msg
         logging.log(roundup_common.ROUNDUP_LOG_LEVEL, msg)
 
 
@@ -389,11 +393,16 @@ def computeJob(ds, job):
     if isComplete(ds, 'job', job):
         return
     # a job is complete when all of its pairs are complete and it has written all the orthologs for all the pairs to a file.
+    print ds
+    print job
     pairs = getJobPairs(ds, job)
+    print pairs
     jobDir = getJobDir(ds, job)
+    print jobDir
     # compute orthologs for pairs
     for pair in pairs:
         orthologsPath = os.path.join(jobDir, '{}_{}.pair.orthologs.txt'.format(*pair))
+        print orthologsPath
         computePair(ds, pair, jobDir, orthologsPath)
     if not isComplete(ds, 'job_ologs_merge', job):
         # merge orthologs into a single file
@@ -406,7 +415,8 @@ def computeJob(ds, job):
     # delete the individual pair olog files
     for pair in pairs:
         orthologsPath = os.path.join(jobDir, '{}_{}.pair.orthologs.txt'.format(*pair))
-        os.remove(orthologsPath)
+        if os.path.exists(orthologsPath):
+            os.remove(orthologsPath)
     markComplete(ds, 'job', job)
     
             
@@ -453,48 +463,142 @@ def computePair(ds, pair, workingDir, orthologsPath):
                     orthologs.append((queryGenome, subjectGenome, div, evalue, query, subject, distance))
             writeOrthologsFile(orthologs, orthologsPath)
             markComplete(ds, 'roundup', pair)
-    os.remove(forwardHitsPath)
-    os.remove(reverseHitsPath)
+    # clean up files
+    if os.path.exists(forwardHitsPath):
+        os.remove(forwardHitsPath)
+    if os.path.exists(reverseHitsPath):
+        os.remove(reverseHitsPath)
     # complete pair computation
     pairEndTime = time.time()
-    storePairStats(ds, pair, pairStartTime, pairEndTime)
+    # storePairStats(ds, pair, pairStartTime, pairEndTime)
     markComplete(ds, 'pair', pair)
+
+
+######
+# JOBS
+######
+
+def getJobs(ds, refresh=False):
+    '''
+    caches jobs in the dataset metadata if they have not already been
+    cached, b/c the isilon is wicked slow at listing dirs.
+    returns: list of jobs in the dataset.
+    '''
+    if refresh:
+        return updateMetadata(ds, {'jobs': os.listdir(getJobsDir(ds))})['jobs']
+    else:
+        jobs = loadMetadata(ds).get('jobs')
+        if not jobs:
+            return updateMetadata(ds, {'jobs': os.listdir(getJobsDir(ds))})['jobs']
+        else:
+            return jobs
+
+def getJobPairs(ds, job):
+    return readPairsFile(os.path.join(getJobDir(ds, job), 'job_pairs.txt'))
+
+
+def setJobPairs(ds, job, pairs):
+    writePairsFile(pairs, os.path.join(getJobDir(ds, job), 'job_pairs.txt'))
+
+
+def getJobDir(ds, job):
+    return os.path.join(getJobsDir(ds), job)
+
+
+def getJobOrthologsPath(ds, job):
+    return os.path.join(getOrthologsDir(ds), '{}.orthologs.txt'.format(job))
+
+
+def getJobOrthologs(ds, job):
+    return readOrthologsFile(getJobOrthologsPath(ds, job))
+
+
+def removeJobOrthologs(ds, job):
+    writeOrthologsFile([], getJobOrthologsPath(ds, job))
+
+
+def addJobOrthologs(ds, job, orthologs):
+    writeOrthologsFile(orthologs, getJobOrthologsPath(ds, job), mode='a')
+
+
+def getComputeJobName(ds, job):
+    return _getDatasetId(ds) + '_' + job
+
+
+def isJobRunning(ds, job):
+    '''
+    checks if job is running on LSF.
+    returns: True if job is on LSF and has not ended.  False otherwise.
+    '''
+    jobName = getComputeJobName(ds, job)
+    infos = LSF.getJobInfosByJobName(jobName)
+    statuses = [s for s in [info[LSF.STATUS] for info in infos] if not LSF.isEndedStatus(s)]
+    if len(statuses) > 1:
+        msg = 'isJobRunning: more than one non-ended LSF job for '+jobName+'\ndataset='+str(ds)+'\nstatuses='+str(statuses)
+        raise Exception(msg)
+    if statuses:
+        return True
+    else:
+        return False
+                                                        
+
+###########
+# ORTHOLOGS
+###########
+
+def orthologFileGen(path):
+    '''
+    useful for iterating through the orthologs in a large file
+    '''
+    if os.path.exists(path):
+        with open(path) as fh:
+            for line in fh:
+                line = line.strip()
+                if line and not line.startswith('#'):
+                    yield line.split('\t')
+    
+
+def readOrthologsFile(path):
+    return list(orthologFileGen(path))
+
+
+def writeOrthologsFile(orthologs, path, mode='w'):
+    with open(path, mode) as fh:
+        for ortholog in orthologs:
+            fh.write('{}\n'.format('\t'.join([str(f) for f in ortholog])))
 
 
 ###########
 # COMPLETES
 ###########
+# two different completes: one better for many completes and concurrency, the other for hand editing and associated with the dataset.
 
+# isComplete uses the mysql database.  Used for concurrent execution of jobs, pairs, and other large numbers of completes.
+# pros: concurrency, fast even with millions of completes.  cons: different mysql db for dev and prod, so must use the prod code on a prod dataset.
 def isComplete(ds, *key):
     return bool(int(getKVCacheValue(ds, str(key), 0)))
+
 
 def markComplete(ds, *key):
     putKVCacheValue(ds, str(key), 1)
 
-def isFileComplete(path):
-    return os.path.exists(path+'.complete.txt')
 
-def markFileComplete(path):
-    util.writeToFile(path, path+'.complete.txt')
+# isStepComplete uses a flat file in the dataset.  Used for downloading source files and other few completes executed serially.
+# pros: completes associated with the dataset, not the code base.  easy to edit completes by hand.
+# cons: very slow for many completes; concurrent writing of completes is unsafe.
+def isStepComplete(ds, *key):
+    stepsPath = os.path.join(ds, 'steps.complete.txt')
+    keyStr = str(key)
+    with open(stepsPath) as fh:
+        completes = set(line.strip() for line in fh if line.strip())
+        return keyStr in completes
 
-def isSourcesComplete(ds):
-    return os.path.exists(os.path.join(ds, 'sources.complete.txt'))
     
-def markSourcesComplete(ds):
-    util.writeToFile('sources complete', os.path.join(ds, 'sources.complete.txt'))
-    
-def isGenomesComplete(ds):
-    return os.path.exists(os.path.join(ds, 'genomes.complete.txt'))
-    
-def markGenomesComplete(ds):
-    util.writeToFile('genomes complete', os.path.join(ds, 'genomes.complete.txt'))
-
-def isDatasetPrepared(ds):
-    return os.path.exists(os.path.join(ds, 'prepared.complete.txt'))
-    
-def markDatasetPrepared(ds):
-    util.writeToFile('dataset prepared', os.path.join(ds, 'prepared.complete.txt'))
-
+def markStepComplete(ds, *key):
+    stepsPath = os.path.join(ds, 'steps.complete.txt')
+    with open(stepsPath, 'a') as fh:
+        fh.write(str(key)+'\n')
+        
         
 #######
 # PAIRS
@@ -504,7 +608,7 @@ def getNewPairs(ds):
     return readPairsFile(os.path.join(ds, 'new_pairs.txt'))
 
 
-def setNewPairs(pairs, ds):
+def setNewPairs(ds, pairs):
     writePairsFile(pairs, os.path.join(ds, 'new_pairs.txt'))
 
 
@@ -512,24 +616,20 @@ def getOldPairs(ds):
     return readPairsFile(os.path.join(ds, 'old_pairs.txt'))
 
 
-def setOldPairs(pairs, ds):
+def setOldPairs(ds, pairs):
     writePairsFile(pairs, os.path.join(ds, 'old_pairs.txt'))
 
 
 def writePairsFile(pairs, path):
     with open(path, 'w') as fh:
-        for qdb, sdb in pairs:
-            fh.write('%s\t%s\n'%(qdb, sdb))
+        json.dump(pairs, fh, indent=2)
             
 
 def readPairsFile(path):
     pairs = []
     if os.path.exists(path):
         with open(path) as fh:
-            for line in fh:
-                line = line.strip()
-                if line and not line.startswith('#'):
-                    pairs.append(line.split('\t'))
+            pairs = json.load(fh)
     return pairs
 
 
@@ -583,28 +683,40 @@ def makeUniqueDatetimeName(datetimeObj=None, prefix='', suffix=''):
     return prefix + datetimeObj.strftime("%Y%m%d_%H%M%S") + "_" + uuid.uuid4().hex + suffix
 
 
-def getComputationJobName(ds):
-    return '_'.join(['roundup', getComputeIdFromComputeDir(ds)])
-
-
-def getComputeIdFromComputeDir(ds):
-    '''
-    /groups/rodeo/compute/roundup/compute/20090327_115318_fede852da99f43f9b63a0ba6c0c58e59 -> 20090327_115318_fede852da99f43f9b63a0ba6c0c58e59
-    '''
-    return os.path.basename(ds)
-
-
 ##########
 # METADATA
 ##########
+# The metadata of a dataset is persistent information describing the dataset.
+# It is stored in a file, so is not safe for concurrent updating.
 
-def dumpComputationMetadata(ds, metadata):
-    util.dumpObject(metadata, os.path.join(ds, 'computation.metadata.pickle'))
+def updateMetadata(ds, metadata):
+    '''
+    metadata: a dict containing information about the dataset.  e.g. source files, download times, genome names.
+    update existing dataset metadata with the values in metadata.
+    returns: the updated dataset metadata.
+    '''
+    md = loadMetadata(ds)
+    md.update(metadata)
+    return dumpMetadata(ds, md)
+
+    
+def loadMetadata(ds):
+    '''
+    returns: a dict, the existing persisted dataset metadata.
+    '''
+    path = os.path.join(ds, 'dataset.metadata.json')
+    if os.path.exists(path):
+        with open(os.path.join(ds, 'dataset.metadata.json')) as fh:
+            return json.load(fh)
+    else:
+        return {}
     
 
-def loadComputationMetadata(ds):
-    return util.loadObject(os.path.join(ds, 'computation.metadata.pickle'))
-    
+def dumpMetadata(ds, metadata):
+    with open(os.path.join(ds, 'dataset.metadata.json'), 'w') as fh:
+        json.dump(metadata, fh, indent=2)
+    return metadata
+
 
 #################
 # STATS FUNCTIONS
@@ -626,8 +738,9 @@ def makePairStats(ds, pair, startTime, endTime):
     sdbFastaPath = getGenomeFastaPath(sdb, ds)
     qdbBytes = os.path.getsize(qdbFastaPath)
     sdbBytes = os.path.getsize(sdbFastaPath)
-    qdbSeqs = fasta.numSeqsInPath(qdbFastaPath)
-    sdbSeqs = fasta.numSeqsInPath(sdbFastaPath)
+    genomeToSize = loadMetadata(ds)['genomeToSize']
+    qdbSeqs = genomeToSize[qdb]
+    sdbSeqs = genomeToSize[sdb]
     stats = {'type': 'pair', 'qdb': qdb, 'sdb': sdb, 'startTime': startTime, 'endTime': endTime,
              'qdbBytes': qdbBytes, 'sdbBytes': sdbBytes, 'qdbSeqs': qdbSeqs, 'sdbSeqs': sdbSeqs}
     return stats

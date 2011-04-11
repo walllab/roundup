@@ -81,16 +81,8 @@ def getIdsForFastaPath(fastaPath):
     ids = []
     with open(fastaPath) as fh:
         for nameline, seq in fasta.readFastaIter(fh, ignoreParseError=True):
-            ids.append(convertNamelineToId(nameline)) # e.g. >lcl|12345 becomes 12345
+            ids.append(fasta.idFromName(nameline)) # e.g. >lcl|12345 becomes 12345
     return ids
-
-
-def convertIdToNameline(seqId):
-    return '>lcl|'+seqId
-
-
-def convertNamelineToId(nameline):
-    return nameline.replace('>lcl|', '')
 
 
 def clustalToPhylip(alignment):
@@ -186,7 +178,7 @@ def makeGetSeqForId(genomeFastaPath):
     fastaMap = {}
     fh = open(genomeFastaPath)
     for (seqNameline, seq) in fasta.readFastaIter(fh, ignoreParseError=True):
-        seqId = convertNamelineToId(seqNameline)
+        seqId = fasta.idFromName(seqNameline)
         fastaMap[seqId] = seq
     fh.close()
     def getSeqForIdInMemory(seqId):
@@ -203,7 +195,8 @@ def makeGetHitsOnTheFly(genomeIndexPath, evalue, workingDir='.'):
     def getHitsOnTheFly(seqname, seq):
         with nested.NestedTempDir(dir=workingDir, nesting=0) as tmpDir:
             queryFastaPath = os.path.join(tmpDir, 'query.faa')
-            util.writeToFile('{0}\n{1}\n'.format(convertIdToNameline(seqname), seq), queryFastaPath)
+            # add 'lcl|' to make ncbi blast happy.
+            util.writeToFile('{0}\n{1}\n'.format('>lcl|'+seqname, seq), queryFastaPath)
             hitsDb = blast_results_db.getBlastHits(queryFastaPath, genomeIndexPath, evalue, workingDir)
         return hitsDb.get(seqname)
     return getHitsOnTheFly
@@ -489,18 +482,18 @@ def roundupSubSub(querySeqIds, getQuerySeqFunc, getSubjectSeqFunc, divEvalues, g
     maxDiv = max(float(div) for div, evalue in divEvalues)
 
     # get ortholog(s) for each query sequence
-    for queryName in querySeqIds:
+    for queryId in querySeqIds:
         if DEBUG:
             print
-            print 'forward\t{0}'.format(queryName)
-        querySeq = getQuerySeqFunc(queryName)
+            print 'forward\t{0}'.format(queryId)
+        querySeq = getQuerySeqFunc(queryId)
         # get forward hits, evalues, alignments, divergences, and distances that meet the loosest standards of all the divs and evalues.
         # get forward hits and evalues, filtered by max evalue
-        nameSeqEvalueOfForwardHits = getGoodEvalueHits(queryName, querySeq, getForwardHits, getSubjectSeqFunc, maxEvalue)
-        hitDataList = [{'hitName': hitName, 'hitSeq': hitSeq, 'hitEvalue': hitEvalue} for hitName, hitSeq, hitEvalue in nameSeqEvalueOfForwardHits]
+        nameSeqEvalueOfForwardHits = getGoodEvalueHits(queryId, querySeq, getForwardHits, getSubjectSeqFunc, maxEvalue)
+        hitDataList = [{'hitId': hitId, 'hitSeq': hitSeq, 'hitEvalue': hitEvalue} for hitId, hitSeq, hitEvalue in nameSeqEvalueOfForwardHits]
         # get alignments and divergences
         for hitData in hitDataList:
-            (queryName, alignedQuerySeq), (hitName, alignedHitSeq), tooDivergedPred = getGoodDivergenceAlignedTrimmedSeqPair(queryName, querySeq, hitData['hitName'], hitData['hitSeq'], workingDir)
+            (queryId, alignedQuerySeq), (hitId, alignedHitSeq), tooDivergedPred = getGoodDivergenceAlignedTrimmedSeqPair(queryId, querySeq, hitData['hitId'], hitData['hitSeq'], workingDir)
             hitData['alignedQuerySeq'] = alignedQuerySeq
             hitData['alignedHitSeq'] = alignedHitSeq
             hitData['tooDivergedPred'] = tooDivergedPred
@@ -510,7 +503,7 @@ def roundupSubSub(querySeqIds, getQuerySeqFunc, getSubjectSeqFunc, divEvalues, g
         distancesHitDataList = []
         for hitData in hitDataList:
             try:
-                hitData['distance'] = getDistanceForAlignedSeqPair(queryName, hitData['alignedQuerySeq'], hitData['hitName'], hitData['alignedHitSeq'], workingDir)
+                hitData['distance'] = getDistanceForAlignedSeqPair(queryId, hitData['alignedQuerySeq'], hitData['hitId'], hitData['alignedHitSeq'], workingDir)
                 distancesHitDataList.append(hitData)
             except Exception as e:
                 if e.args and e.args[0] == PAML_ERROR_MSG:
@@ -520,8 +513,8 @@ def roundupSubSub(querySeqIds, getQuerySeqFunc, getSubjectSeqFunc, divEvalues, g
                 
         # filter hits by specific div and evalue combinations.
         divEvalueToMinimumDistanceHitDatas = {}
-        minimumHitNameToDivEvalues = {}
-        minimumHitNameToHitData = {}
+        minimumHitIdToDivEvalues = {}
+        minimumHitIdToHitData = {}
         for divEvalue in divEvalues:
             div, evalue = divEvalue
             # collect hit datas that pass thresholds.
@@ -533,41 +526,41 @@ def roundupSubSub(querySeqIds, getQuerySeqFunc, getSubjectSeqFunc, divEvalues, g
             minimumHitDatas = minimumDicts(goodHitDatas, 'distance')
             divEvalueToMinimumDistanceHitDatas[divEvalue] = minimumHitDatas
             for hitData in minimumHitDatas:
-                minimumHitNameToDivEvalues.setdefault(hitData['hitName'], []).append(divEvalue)
-                minimumHitNameToHitData[hitData['hitName']] = hitData # possibly redundant, since if two divEvalues have same minimum hit, it gets inserted into dict twice.  
+                minimumHitIdToDivEvalues.setdefault(hitData['hitId'], []).append(divEvalue)
+                minimumHitIdToHitData[hitData['hitId']] = hitData # possibly redundant, since if two divEvalues have same minimum hit, it gets inserted into dict twice.  
         
         # get reverese hits that meet the loosest standards of the divs and evalues associated with that minimum distance hit.
         # performance note: wasteful or necessary to realign and compute distance between minimum hit and query seq?
-        for hitName in minimumHitNameToHitData:
+        for hitId in minimumHitIdToHitData:
             if DEBUG:
-                print 'reverse\t{0}'.format(hitName)
-            hitData = minimumHitNameToHitData[hitName]
+                print 'reverse\t{0}'.format(hitId)
+            hitData = minimumHitIdToHitData[hitId]
             hitSeq = hitData['hitSeq']
             # since minimum hit might not be associated with all divs and evalues, need to find the loosest div and evalue associated with this minimum hit.
-            maxHitEvalue = max(float(evalue) for div, evalue in minimumHitNameToDivEvalues[hitName])
-            maxHitDiv = max(float(div) for div, evalue in minimumHitNameToDivEvalues[hitName])
+            maxHitEvalue = max(float(evalue) for div, evalue in minimumHitIdToDivEvalues[hitId])
+            maxHitDiv = max(float(div) for div, evalue in minimumHitIdToDivEvalues[hitId])
             # get reverse hits and evalues, filtered by max evalue
-            nameSeqEvalueOfReverseHits = getGoodEvalueHits(hitName, hitSeq, getReverseHits, getQuerySeqFunc, maxHitEvalue)
-            revHitDataList = [{'revHitName': revHitName, 'revHitSeq': revHitSeq, 'revHitEvalue': revHitEvalue} for revHitName, revHitSeq, revHitEvalue in nameSeqEvalueOfReverseHits]
+            nameSeqEvalueOfReverseHits = getGoodEvalueHits(hitId, hitSeq, getReverseHits, getQuerySeqFunc, maxHitEvalue)
+            revHitDataList = [{'revHitId': revHitId, 'revHitSeq': revHitSeq, 'revHitEvalue': revHitEvalue} for revHitId, revHitSeq, revHitEvalue in nameSeqEvalueOfReverseHits]
             # if the query is not in the reverese hits, there is no way we can find an ortholog
-            if queryName not in [revHitData['revHitName'] for revHitData in revHitDataList]:
+            if queryId not in [revHitData['revHitId'] for revHitData in revHitDataList]:
                 continue
             for revHitData in revHitDataList:
-                values = getGoodDivergenceAlignedTrimmedSeqPair(hitName, hitSeq, revHitData['revHitName'], revHitData['revHitSeq'], workingDir)
-                (hitName, alignedHitSeq), (revHitName, alignedRevHitSeq), tooDivergedPred = values
+                values = getGoodDivergenceAlignedTrimmedSeqPair(hitId, hitSeq, revHitData['revHitId'], revHitData['revHitSeq'], workingDir)
+                (hitId, alignedHitSeq), (revHitId, alignedRevHitSeq), tooDivergedPred = values
                 revHitData['alignedHitSeq'] = alignedHitSeq
                 revHitData['alignedRevHitSeq'] = alignedRevHitSeq
                 revHitData['tooDivergedPred'] = tooDivergedPred
             # filter by max divergence.
             revHitDataList = [revHitData for revHitData in revHitDataList if not revHitData['tooDivergedPred'](maxHitDiv)]
             # if the query is not in the reverese hits, there is no way we can find an ortholog
-            if queryName not in [revHitData['revHitName'] for revHitData in revHitDataList]:
+            if queryId not in [revHitData['revHitId'] for revHitData in revHitDataList]:
                 continue
             # get distances of remaining reverse hits, discarding reverse hits for which paml generates no rst data.
             distancesRevHitDataList = []
             for revHitData in revHitDataList:
                 try:
-                    revHitData['distance'] = getDistanceForAlignedSeqPair(hitName, revHitData['alignedHitSeq'], revHitData['revHitName'], revHitData['alignedRevHitSeq'], workingDir)
+                    revHitData['distance'] = getDistanceForAlignedSeqPair(hitId, revHitData['alignedHitSeq'], revHitData['revHitId'], revHitData['alignedRevHitSeq'], workingDir)
                     distancesRevHitDataList.append(revHitData)
                 except Exception as e:
                     if e.args and e.args[0] == PAML_ERROR_MSG:
@@ -578,7 +571,7 @@ def roundupSubSub(querySeqIds, getQuerySeqFunc, getSubjectSeqFunc, divEvalues, g
 
             # if passes div and evalue thresholds of the minimum hit and minimum reverse hit == query, write ortholog.
             # filter hits by specific div and evalue combinations.
-            for divEvalue in minimumHitNameToDivEvalues[hitName]:
+            for divEvalue in minimumHitIdToDivEvalues[hitId]:
                 div, evalue = divEvalue
                 # collect hit datas that pass thresholds.
                 goodRevHitDatas = []
@@ -587,10 +580,10 @@ def roundupSubSub(querySeqIds, getQuerySeqFunc, getSubjectSeqFunc, divEvalues, g
                         goodRevHitDatas.append(revHitData)
                 # get the minimum hit or hits.
                 minimumRevHitDatas = minimumDicts(goodRevHitDatas, 'distance')
-                if queryName in [revHitData['revHitName'] for revHitData in minimumRevHitDatas]:
-                    divEvalueToOrthologs[divEvalue].append((queryName, hitName, hitData['distance']))
+                if queryId in [revHitData['revHitId'] for revHitData in minimumRevHitDatas]:
+                    divEvalueToOrthologs[divEvalue].append((queryId, hitId, hitData['distance']))
                     if DEBUG:
-                        print 'ortholog\t{0}\t{1}\t{2}'.format(queryName, hitName, hitData['distance'])
+                        print 'ortholog\t{0}\t{1}\t{2}'.format(queryId, hitId, hitData['distance'])
 
     return divEvalueToOrthologs
 

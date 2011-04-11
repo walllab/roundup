@@ -8,11 +8,13 @@ import os
 import shutil
 import logging
 import glob
+import re
 
 import config
 import util
 import execute
 import nested
+import fasta
 
 
 def getHitName(hit):
@@ -93,9 +95,10 @@ def parseResults(blastResultsPath, limitHits=config.MAX_HITS):
     prevHitName = None
     fh = open(blastResultsPath)
     for line in fh:
+        print line
         splits = line.split()
-        seqName = splits[0][4:] # remove 'lcl|'
-        hitName = splits[1] # lcl| is already removed.  go figure.  that is just how ncbi does it.
+        seqName = fasta.idFromName(splits[0]) # remove namespace prefix, e.g. 'gi|'
+        hitName = fasta.idFromName(splits[1])
         hitEvalue = float(splits[10])
         # results table reports multiple "alignments" per "hit" in ascending order by evalue
         # we only store the top hits.

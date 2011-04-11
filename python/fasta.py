@@ -2,8 +2,47 @@
 
 
 import cStringIO
+import re
+import math
 
 import execute
+
+reId = re.compile("[^|]*[|]([^|]+)")
+def idFromName(line):
+    '''
+    id => id
+    >id => id
+    >ns|id => id
+    >ns|id| => id
+    >ns|id|desc => id
+    ns|id => id
+    ns|id| => id
+    ns|id|desc => id
+    '''
+    m = reId.search(line)
+    if m:
+        return m.group(1).strip()
+    else:
+        if line.startswith('>'):
+            return line[1:].strip()
+        else:
+            return line.strip()
+        
+
+def prettySeq(seq, n=60):
+    '''
+    seq: one long bare (no nameline) sequence. e.g. MASNTVSAQGGSNRPVRDFSNIQDVAQFLLFDPIWNEQPGSIVPWKMNREQALAERYPELQTSEPSEDYSGPVESLELLPLEIKLDIMQYLSWEQISWCKHPWLWTRWYKDNVVRVSAITFED
+    n: maximum length of sequence lines
+    returns: seq split over multiple lines, all terminated by newlines.
+    '''
+    if len(seq) == 0:
+        raise Exception('zero-length sequence', seq)
+    seq = ''.join(seq.strip().split())
+    chunks = int(math.ceil(len(seq)/float(n)))
+    pretty = ''
+    for i in range(chunks):
+        pretty += seq[i*n:(i+1)*n] + '\n'
+    return pretty
 
 
 def numSeqsInFastaDb(path):

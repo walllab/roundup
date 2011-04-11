@@ -1,0 +1,10 @@
+- *~
+- .git*
+- *.pyc
+- *.pyo
+- *.old
+- *.class
+- #*#
+- tmp/
+- .git/
+- .DS_Store
