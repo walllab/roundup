@@ -10,10 +10,6 @@ import os
 import sendmail
 
 
-# define error level for messages that need to be emailed but are not errors.
-IMPORTANT = logging.ERROR + 5
-
-
 class ConcurrentFileHandler(logging.Handler):
     """
     A handler class which writes logging records to a file.  Every time it writes it opens, writes, flushes, and closes the file.
@@ -80,7 +76,7 @@ class ClusterMailHandler(logging.Handler):
             self.handleError(record)
 
 
-def setupLogging(logFile, fromAddr, toAddrs, subject, loggingLevel, logger=None):
+def deprecated_setupLogging(logFile, fromAddr, toAddrs, subject, loggingLevel, mailLoggingLevel=logging.WARNING, logger=None):
     if logger is None:
         logger = logging.getLogger()
         
@@ -93,20 +89,14 @@ def setupLogging(logFile, fromAddr, toAddrs, subject, loggingLevel, logger=None)
     handler.setLevel(logging.DEBUG)
     logger.addHandler(handler)
     
-    # log ERROR and higher messages to email
+    # log WARNING and higher messages to email
     handler = ClusterMailHandler(fromAddr, toAddrs, subject)
     handler.setFormatter(formatter)
-    handler.setLevel(logging.ERROR)
+    handler.setLevel(mailLoggingLevel)
     logger.addHandler(handler)
 
     # process all log messages (i.e. send them to handlers.)
     logger.setLevel(loggingLevel)
-    
-    # add IMPORTANT as a log level and a logging function like debug() or error()
-    logging.addLevelName(IMPORTANT, 'IMPORTANT')
-    def important(msg, *args, **kwargs):
-        return logging.log(IMPORTANT, msg, *args, **kwargs)
-    logging.important = important
     
     return logger
 

@@ -15,6 +15,17 @@ This material is based upon work supported by the National Science Foundation un
 <br />
 <span class="credit">Copyright (©) 2004-2009 President and Fellows of Harvard College. All Rights Reserved</span>
 </div>
+<script> 
+<!-- google analytics -->
+   var _gaq = [['_setAccount', 'UA-11021999-4'], ['_trackPageview']];
+   (function(d, t) {
+    var g = d.createElement(t),
+        s = d.getElementsByTagName(t)[0];
+    g.async = true;
+    g.src = '//www.google-analytics.com/ga.js';
+    s.parentNode.insertBefore(g, s);
+   })(document, 'script');
+</script> 
 </div><!--close footer-->
 	
 		

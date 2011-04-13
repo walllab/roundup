@@ -1,5 +1,5 @@
 <project name="roundup" default="all" basedir=".">
-  
+   
   <!-- 
   usage: ant [-Ddeploy.env=dev|prod] [target1] [target2] ...
   The default deployment environment is the "dev" instance.
@@ -90,6 +90,7 @@
     <mkdir dir="${cluster.root}/python"/>
     <mkdir dir="${cluster.root}/config"/>
     <mkdir dir="${cluster.root}/log"/>
+    <mkdir dir="${cluster.root}/datasets"/>
     <mkdir dir="${cluster.root}/results"/>
     <mkdir dir="${cluster.root}/genomes"/>
     <mkdir dir="${cluster.root}/compute"/>
@@ -99,6 +100,7 @@
       <arg value="${cluster.root}/python" />
       <arg value="${cluster.root}/config" />
       <arg value="${cluster.root}/log" />
+      <arg value="${cluster.root}/datasets" />
       <arg value="${cluster.root}/results" />
       <arg value="${cluster.root}/genomes" />
       <arg value="${cluster.root}/compute" />
@@ -120,7 +122,7 @@
     <delete includeEmptyDirs="true">
       <!-- new roundup organization -->
       <!-- <fileset dir="${cluster.root}" includes="**/*" defaultexcludes="no"/> -->
-      <!-- only clean code and configuration.  do not clean data dirs like genomes, results, log, compute, tmp. -->
+      <!-- only clean code and configuration.  do not clean data dirs like datasets, genomes, results, log, compute, tmp. -->
       <fileset dir="${cluster.root}/python" includes="**/*" defaultexcludes="no"/>
       <fileset dir="${cluster.root}/config" includes="**/*" defaultexcludes="no"/>
     </delete>
@@ -136,7 +138,7 @@
       <!-- add group write perms to dirs and files to avoid deployment problems when deploying over another person. -->
       <!-- the ant chmod task only operates on files, not directories, so use 'exec' instead. -->
       <exec executable="find">
-	<arg value="${web.root}" />
+	    <arg value="${web.root}" />
         <arg value="-path" />
         <arg value="${web.root}/docroot/site" />
         <arg value="-prune" />
@@ -166,8 +168,8 @@
       </copy>
       <!-- add group write perms to dirs and files to avoid deployment problems when deploying over another person. -->
       <exec executable="find">
-	<arg value="${cluster.root}/python" />
-	<arg value="${cluster.root}/config" />
+	    <arg value="${cluster.root}/python" />
+	    <arg value="${cluster.root}/config" />
         <arg value="-exec" />
         <arg value="chmod" />
         <arg value="g+rw" />
@@ -176,9 +178,9 @@
       </exec>
       <!-- add executable perms to python scripts, b/c a few of them _might_ be used as executables -->
       <chmod perm="775">
-	<fileset dir="${cluster.root}/python">
-	    <patternset refid="python.ps"/>
-	</fileset>
+	    <fileset dir="${cluster.root}/python">
+	      <patternset refid="python.ps"/>
+	    </fileset>
       </chmod>
 
   </target>

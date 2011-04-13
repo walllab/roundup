@@ -52,6 +52,7 @@ def numSeqsInFastaDb(path):
 def readFastaIter(filehandle, ignoreParseError=False):
     '''
     This is meant as a drop-in replacement for roundup/ReadFasta.ReadFasta class
+    yields: tuple of nameline, including '>', without a newline, and concatenated sequence lines, without newlines
     '''
     iterator = fastaSeqIter(filehandle, ignoreParseError)
     for seq in iterator:

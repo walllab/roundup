@@ -3,7 +3,7 @@ import os
 import sys
 
 
-import loggingutil
+import logging.config
 import orchmysql
 
 
@@ -18,7 +18,7 @@ else:
     DEPLOY_ENV = 'dev'
 
 if DEPLOY_ENV == 'prod':
-    LOG_FILE = os.path.join('/groups/rodeo/roundup/log/python_roundup.log')
+    LOG_FILE = '/groups/rodeo/roundup/log/python_roundup.log'
     CONFIG_DIR = '/groups/rodeo/roundup/config' # contains roundup_genomes.xml genome download xml config, and codeml.ctl and jones.dat used by RoundUp.py
     RESULTS_DIR = '/groups/rodeo/roundup/results'
     GENOMES_DIR = '/groups/rodeo/roundup/genomes'
@@ -27,7 +27,7 @@ if DEPLOY_ENV == 'prod':
     TMP_DIR = '/groups/rodeo/roundup/tmp'
     COMPUTE_DIR = '/groups/rodeo/roundup/compute'
 else: # default to dev
-    LOG_FILE = os.path.join('/groups/rodeo/dev.roundup/log/python_roundup.log')
+    LOG_FILE = '/groups/rodeo/dev.roundup/log/python_roundup.log'
     CONFIG_DIR = '/groups/rodeo/dev.roundup/config' # contains roundup_genomes.xml genome download xml config, and codeml.ctl and jones.dat used by RoundUp.py
     RESULTS_DIR = '/groups/rodeo/dev.roundup/results'
     GENOMES_DIR = '/groups/rodeo/dev.roundup/genomes'
@@ -67,11 +67,41 @@ CACHE_TABLE = 'roundup_cache'
 LOG_TO_ADDRS = ['todddeluca@gmail.com']
 LOG_FROM_ADDR = 'roundup-noreply@hms.harvard.edu'
 LOG_SUBJECT = 'Roundup Logging Message'
-LOG_LEVEL = 10
-loggingutil.setupLogging(logFile=LOG_FILE, fromAddr=LOG_FROM_ADDR, toAddrs=LOG_TO_ADDRS, subject=LOG_SUBJECT, loggingLevel=LOG_LEVEL)
 
-# last line
-
+# configure the root logger to log all messages (>= DEBUG) to a file and email messages (>= WARNING) to admins.
+LOGGING_CONFIG = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'default': {
+            'format': '[%(asctime)s %(name)s %(levelname)s %(filename)s line %(lineno)d] %(message)s',
+            },
+        },
+    'handlers': {
+        'file_msg': {
+            'level': 'DEBUG',
+            'class': 'loggingutil.ConcurrentFileHandler',
+            'formatter': 'default',
+            'filename': LOG_FILE,
+            },
+        'mail_msg': {
+            'level': 'WARNING',
+            'class': 'loggingutil.ClusterMailHandler',
+            'formatter': 'default',
+            'fromAddr': LOG_FROM_ADDR,
+            'toAddrs': LOG_TO_ADDRS,
+            'subject': LOG_SUBJECT,
+            },
+        },
+    'loggers': {
+        '': {
+            'handlers': ['file_msg', 'mail_msg'],
+            'level': 'DEBUG',
+            'propagate': True,
+            },
+        },
+    }
+logging.config.dictConfig(LOGGING_CONFIG)
 
 
 ##########

@@ -1,5 +1,17 @@
 #!/usr/bin/env python
- 
+
+'''
+Dataset
+Genomes
+Pairs
+Jobs
+Sources
+Orthologs
+Database
+Metadata
+Completes
+'''
+
 # test getGenomes()
 # test splitting source files
 # test preparing computation.  are the jobs and pair files created?
@@ -7,6 +19,15 @@
 # test blast_results_db copyToWorking functionality
 
 '''
+# Fiddling with completes and dataset state to get completed stuff to run again.
+# remove existing orthologs
+rm -rf /groups/cbi/td23/roundup_uniprot/test_dataset/orthologs/*
+# remove existing jobs
+rm -rf /groups/cbi/td23/roundup_uniprot/test_dataset/jobs/*
+# drop completes table so jobs will run
+echo 'drop table key_value_store_roundup_ds_test_dataset' | mysql devroundup
+# remove prepare computation complete too
+emacs /groups/cbi/td23/roundup_uniprot/test_dataset/steps.complete.txt
 '''
 
 
@@ -44,82 +65,8 @@ def main(ds):
     splitUniprotIntoGenomes(ds)
     filterAndFormatGenomes(ds)
     prepareComputation(ds)
-    
-
-def _getDatasetId(ds):
-    return 'roundup_ds_' + os.path.basename(ds)
 
 
-def getGenomesDir(ds):
-    return os.path.join(ds, 'genomes')
-
-
-def getJobsDir(ds):
-    return os.path.join(ds, 'jobs')
-
-    
-def getOrthologsDir(ds):
-    return os.path.join(ds, 'orthologs')
-
-    
-def getSourcesDir(ds):
-    return os.path.join(ds, 'sources')
-
-    
-def getPairs(ds, genomes=None):
-    '''
-    returns: a sorted list of pairs, where every pair is a sorted list of each combination of two genomes.
-    '''
-    if genomes is None:
-        genomes = getGenomes(ds)
-    return sorted(set([tuple(sorted((g1, g2))) for g1 in genomes for g2 in genomes if g1 != g2]))
-
-
-def getGenomes(ds, refresh=False):
-    '''
-    caches genomes in the dataset metadata if they have not already been
-    cached, b/c the isilon is wicked slow at listing dirs.
-    returns: list of genomes in the dataset.
-    '''
-    if refresh:
-        return updateMetadata(ds, {'genomes': os.listdir(getGenomesDir(ds))})['genomes']
-    else:
-        genomes = loadMetadata(ds).get('genomes')
-        if not genomes:
-            return updateMetadata(ds, {'genomes': os.listdir(getGenomesDir(ds))})['genomes']
-        else:
-            return genomes
-
-    
-def getGenomesAndPaths(ds):
-    '''
-    returns: a dict mapping every genome in the dataset to its genomePath.
-    '''
-    genomesAndPaths = {}
-    genomesDir = getGenomesDir(ds)
-    for genome in getGenomes(ds):
-        genomesAndPaths[genome] = os.path.join(genomesDir, genome)
-    return genomesAndPaths
-
-
-def getGenomePath(genome, ds):
-    '''
-    a genomePath is a directory containing genome fasta files and blast indexes.
-    '''
-    return os.path.join(getGenomesDir(ds), genome)
-
-
-def getGenomeFastaPath(genome, ds):
-    return os.path.join(getGenomePath(genome, ds), genome+'.faa')
-
-
-def getGenomeIndexPath(genome, ds):
-    '''
-    location of blast index files
-    '''
-    return os.path.join(getGenomePath(genome, ds), genome+'.faa')
-
-    
 #######################
 # MAIN DATASET PIPELINE
 #######################
@@ -149,9 +96,10 @@ def downloadCurrentUniprot(ds):
     tremblFastaUrl = 'ftp://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/complete/uniprot_trembl.fasta.gz'
     idMappingUrl = 'ftp://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/idmapping/idmapping.dat.gz'
     idMappingSelectedUrl = 'ftp://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/idmapping/idmapping_selected.tab.gz'
-
+    releaseNotesUrl = 'ftp://ftp.uniprot.org/pub/databases/uniprot/current_release/relnotes.txt'
+    
     sourcesDir = getSourcesDir(ds)
-    urls = [sprotDatUrl, sprotFastaUrl, tremblDatUrl, tremblFastaUrl, idMappingUrl, idMappingSelectedUrl]
+    urls = [sprotDatUrl, sprotFastaUrl, tremblDatUrl, tremblFastaUrl, idMappingUrl, idMappingSelectedUrl, releaseNotesUrl]
     for url in urls:
         dest = os.path.join(sourcesDir, os.path.basename(urlparse.urlparse(url).path))
         print 'downloading {} to {}...'.format(url, dest)
@@ -206,16 +154,151 @@ def splitUniprotIntoGenomes(ds):
                     if genome not in genomes:
                         print 'new genome', genome
                         genomes.add(genome)
-                        genomePath = getGenomePath(genome, ds)
+                        genomePath = getGenomePath(ds, genome)
                         if os.path.exists(genomePath):
                             shutil.rmtree(genomePath)
                         os.makedirs(genomePath, 0770)
-                    fastaPath = getGenomeFastaPath(genome, ds)
+                    fastaPath = getGenomeFastaPath(ds, genome)
                     with open(fastaPath, "a") as fh:
                         fh.write('{}\n{}'.format(nameline, fasta.prettySeq(seq)))
     markStepComplete(ds, 'split sources into fasta genomes')
 
 
+def extractGeneIdsAndGoTerms(ds):
+    '''
+    ftp://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/idmapping/README
+    2) idmapping_selected.tab
+    We also provide this tab-delimited table which includes
+    the following mappings delimited by tab:
+
+        1. UniProtKB-AC
+        2. UniProtKB-ID
+        3. GeneID (EntrezGene)
+        4. RefSeq
+        5. GI
+        6. PDB
+        7. GO
+        8. IPI
+        9. UniRef100
+        10. UniRef90
+        11. UniRef50
+        12. UniParc
+        13. PIR
+        14. NCBI-taxon
+        15. MIM
+        16. UniGene
+        17. PubMed
+        18. EMBL
+        19. EMBL-CDS
+        20. Ensembl
+        21. Ensembl_TRS
+        22. Ensembl_PRO
+        23. Additional PubMed
+    Writes two dicts to files, one mapping gene to go terms, the other mapping gene to ncbi gene id.
+    '''
+    geneToGoTerms = {}
+    geneToGeneId = {}
+    with gzip.open(os.path.join(getSourcesDir(ds), 'idmapping_selected.tab.gz')) as fh:
+        for i, line in enumerate(fh):
+            if i % 1000 == 0: print i
+            seqId, b, geneId, d, e, f, goTerms, etc = line.split('\t', 7)
+            goTerms = goTerms.split('; ')
+            # print line
+            # print (seqId, b, geneId, d, e, f, goTerms)
+            geneToGoTerms[seqId] = goTerms
+            geneToGeneId[seqId] = geneId
+    with open(os.path.join(ds, 'gene_to_geneid.json'), 'w') as fh:
+        json.dump(geneToGeneId, fh)
+    with open(os.path.join(ds, 'gene_to_go_terms.json'), 'w') as fh:
+        json.dump(geneToGoTerms, fh)
+            
+
+    
+def extractGenomeAndGeneNames(ds):
+    '''
+    parse from the namelines the uniprot fasta files the gene name, genome/organism name, and genome/organism abbreviation.
+    The organism name and abbreviation must be present in every nameline.  The gene name is optional.
+    The org name and abbr must be the same in every nameline (for the same genome).
+    The must exactly one nameline per sequence.
+    example nameline: >sp|P38398|BRCA1_HUMAN Breast cancer type 1 susceptibility protein OS=Homo sapiens GN=BRCA1 PE=1 SV=2
+    gene name: BRCA1, organism abbr: HUMAN, organism: Homo sapiens
+    '''
+    genomeToName = {}
+    genomeToAbbr = {}
+    geneToName = {}
+    geneToDesc = {}
+    
+    # EXCEPTIONS to the exactly one name for a genome rule, found in UniProtKB release 2011_04.
+    # taxonid | 2nd name found | 1st name found
+    # 246196 | Mycobacterium smegmatis (strain ATCC 700084 / mc(2)155) | Mycobacterium smegmatis
+    # 321332 | Synechococcus sp. (strain JA-2-3B'a(2-13)) | Synechococcus sp.
+    # 771870 | Sordaria macrospora (strain ATCC MYA-333 / DSM 997 / K(L3346) / K-hell) | Sordaria macrospora
+    # 290318 | Prosthecochloris vibrioformis (strain DSM 265) | Prosthecochloris vibrioformis (strain DSM 265) (strain DSM 265)
+    # 710128 | Mycoplasma gallisepticum (strain R(high / passage 156)) | Mycoplasma gallisepticum
+    # 375286 | Janthinobacterium sp. (strain Marseille) (Minibacterium massiliensis) | Janthinobacterium sp. (strain Marseille)
+    # since the sprot/trembl data has genomes that have different names in sprot and trembl (see exceptions listed above),
+    # ignore these bad genomes.
+    badGenomes = set(['246196', '321332', '771870', '290318', '710128', '375286'])
+    
+    for i, genome in enumerate(getGenomes(ds)):
+        path = getGenomeFastaPath(ds, genome)
+        print '{}: extracting from {}'.format(i, path)
+        with open(path) as fh:
+            for nameline, seq in fasta.readFastaIter(fh):
+                nameline = nameline.strip()
+
+                # split apart nameline into seqId, genomeAbbr, genomeName, and geneName.
+                # example: >sp|P38398|BRCA1_HUMAN Breast cancer type 1 susceptibility protein OS=Homo sapiens GN=BRCA1 PE=1 SV=2
+                # sometimes no gene name: >sp|P38398|BRCA1_HUMAN Breast cancer type 1 susceptibility protein OS=Homo sapiens PE=1 SV=2
+                try:
+                    idAndAbbr, descOrgGNEtc = nameline.split(None, 1)
+                    etc, seqId, almostAbbr = idAndAbbr.split('|')
+                    etc, genomeAbbr = almostAbbr.rsplit('_', 1)
+                    geneDesc, orgGNEtc = (s.strip() for s in descOrgGNEtc.split('OS=', 1))
+                    orgGN, etc = orgGNEtc.split('PE=', 1)
+                    if orgGN.find('GN=') == -1:
+                        genomeName, geneName = (s.strip() for s in (orgGN, ''))
+                    else:
+                        genomeName, geneName = (s.strip() for s in orgGN.split('GN=', 1))
+                    # print nameline
+                    # print (seqId, genomeAbbr, geneDesc, genomeName, geneName)
+                except:
+                    print (i, genome, path, nameline)
+                    raise
+
+                if not geneDesc:
+                    print ('no gene desc found', seqId, genome, path)
+                if not geneName:
+                    print ('no gene name found', seqId, genome, path)
+                    
+                # assert exactly one abbreviation for genome
+                if not genomeToAbbr.has_key(genome):
+                    genomeToAbbr[genome] = genomeAbbr
+                elif genomeToAbbr[genome] != genomeAbbr:
+                    raise Exception('More than one abbreviation found for a genome', genomeAbbr, genomeToAbbr[genome], nameline, genome, path, i)
+                
+                # do not assert exactly one name for genome, b/c some genomes have a different name in sprot and trembl.
+                if not genomeToName.has_key(genome):
+                    genomeToName[genome] = genomeName
+                elif genomeToName[genome] != genomeName and genome not in badGenomes:
+                    raise Exception('More than one name found for a genome', genomeName, genomeToName[genome], nameline, genome, path, i)
+
+                # gene name and description are optional, but a sequence must be encountered only once.
+                if geneToName.has_key(seqId):
+                    raise Exception('Sequence encountered more than one time!', seqId, geneName, geneDesc, nameline, genome, path, i)
+                geneToName[seqId] = geneName
+                geneToDesc[seqId] = geneDesc
+
+    with open(os.path.join(ds, 'genome_to_name.json'), 'w') as fh:
+        json.dump(genomeToName, fh)
+    with open(os.path.join(ds, 'genome_to_abbr.json'), 'w') as fh:
+        json.dump(genomeToAbbr, fh)
+    with open(os.path.join(ds, 'gene_to_name.json'), 'w') as fh:
+        json.dump(geneToName, fh)
+    with open(os.path.join(ds, 'gene_to_desc.json'), 'w') as fh:
+        json.dump(geneToDesc, fh)
+        
+            
 def filterAndFormatGenomes(ds):
     print 'filtering and formatting genomes. {}'.format(ds)
     if isStepComplete(ds, 'filter and format genomes'):
@@ -228,11 +311,11 @@ def filterAndFormatGenomes(ds):
     print 'before: {} genomes in dataset.'.format(len(genomes))
     for genome in getGenomes(ds):
         print 'filter/format {}'.format(genome)
-        fastaPath = getGenomeFastaPath(genome, ds)
+        fastaPath = getGenomeFastaPath(ds, genome)
         size = fasta.numSeqsInFastaDb(fastaPath)
         if size < MIN_GENOME_SIZE:
             # filter out genomes with too few sequences (mostly viruses, etc.)
-            shutil.rmtree(getGenomePath(genome, ds))
+            shutil.rmtree(getGenomePath(ds, genome))
         else:
             genomeToSize[genome] = size
             # format for blast genomes with enough sequences.
@@ -301,16 +384,6 @@ def prepareComputation(ds, oldDs=None, numJobs=4000):
     markStepComplete(ds, 'prepare computation')
     
 
-def loadDatabase(ds):
-    # parse results files, getting a list of sequences.
-    # get gene name from fasta lines.
-    # get go ids from idmapping file.
-    # get go name from ...
-    
-    # drop and create tables for dataset.
-    pass
-
-
 def getNewAndDonePairs(ds, oldDs):
     '''
     ds: current dataset, containing genomes
@@ -349,18 +422,48 @@ def moveOldOrthologs(ds, oldDs, pairs):
     raise Exception('unimplemented')
 
 
+#########
+# TESTING
+#########
+
 def splitOrthologsIntoOldResultsFiles(ds, here='.'):
+    '''
+    This is useful for comparing new results, where orthologs for different pairs and parameter combinations are combined in a single file,
+    against old results, where every pair x param combo has its own file for orthologs.
+    '''
     for job in getJobs(ds):
         for (qdb, sdb, div, evalue, qhit, shit, dist) in getJobOrthologs(ds, job):
             with open(os.path.join(here, '{}.aa_{}.aa_{}_{}'.format(qdb, sdb, div, evalue)), 'a') as fh:
                 fh.write('{} {} {}\n'.format(shit, qhit, dist))
-                
+
         
+###############
+# DATASET STUFF
+###############
+
+def _getDatasetId(ds):
+    return 'roundup_ds_' + os.path.basename(ds)
+
+
+def getGenomesDir(ds):
+    return os.path.join(ds, 'genomes')
+
+
+def getJobsDir(ds):
+    return os.path.join(ds, 'jobs')
+
+    
+def getOrthologsDir(ds):
+    return os.path.join(ds, 'orthologs')
+
+    
+def getSourcesDir(ds):
+    return os.path.join(ds, 'sources')
+
 
 #################
 # RUN COMPUTATION
 #################
-
 
 def computeJobs(ds):
     '''
@@ -435,12 +538,12 @@ def computePair(ds, pair, workingDir, orthologsPath):
         return
     pairStartTime = time.time()
     queryGenome, subjectGenome = pair
-    queryGenomePath = getGenomePath(queryGenome, ds)
-    subjectGenomePath = getGenomePath(subjectGenome, ds)
-    queryFastaPath = getGenomeFastaPath(queryGenome, ds)
-    subjectFastaPath = getGenomeFastaPath(subjectGenome, ds)
-    queryIndexPath = getGenomeIndexPath(queryGenome, ds)
-    subjectIndexPath = getGenomeIndexPath(subjectGenome, ds)
+    queryGenomePath = getGenomePath(ds, queryGenome)
+    subjectGenomePath = getGenomePath(ds, subjectGenome)
+    queryFastaPath = getGenomeFastaPath(ds, queryGenome)
+    subjectFastaPath = getGenomeFastaPath(ds, subjectGenome)
+    queryIndexPath = getGenomeIndexPath(ds, queryGenome)
+    subjectIndexPath = getGenomeIndexPath(ds, subjectGenome)
     forwardHitsPath = os.path.join(workingDir, '{}_{}.forward_hits.pickle'.format(*pair))
     reverseHitsPath = os.path.join(workingDir, '{}_{}.reverse_hits.pickle'.format(*pair))
     maxEvalue = max([float(evalue) for evalue in roundup_common.EVALUES]) # evalues are strings like '1e-5'
@@ -472,6 +575,20 @@ def computePair(ds, pair, workingDir, orthologsPath):
     pairEndTime = time.time()
     # storePairStats(ds, pair, pairStartTime, pairEndTime)
     markComplete(ds, 'pair', pair)
+
+
+#################################
+# LOADING DATASET INTO DATABASE
+#################################
+
+def loadDatabase(ds):
+    # parse results files, getting a list of sequences.
+    # get gene name from fasta lines.
+    # get go ids from idmapping file.
+    # get go name from ...
+    
+    # drop and create tables for dataset.
+    pass
 
 
 ######
@@ -542,6 +659,56 @@ def isJobRunning(ds, job):
         return False
                                                         
 
+#########
+# GENOMES
+#########
+
+def getGenomes(ds, refresh=False):
+    '''
+    caches genomes in the dataset metadata if they have not already been
+    cached, b/c the isilon is wicked slow at listing dirs.
+    returns: list of genomes in the dataset.
+    '''
+    if refresh:
+        return updateMetadata(ds, {'genomes': os.listdir(getGenomesDir(ds))})['genomes']
+    else:
+        genomes = loadMetadata(ds).get('genomes')
+        if not genomes:
+            return updateMetadata(ds, {'genomes': os.listdir(getGenomesDir(ds))})['genomes']
+        else:
+            return genomes
+
+    
+def getGenomesAndPaths(ds):
+    '''
+    returns: a dict mapping every genome in the dataset to its genomePath.
+    '''
+    genomesAndPaths = {}
+    genomesDir = getGenomesDir(ds)
+    for genome in getGenomes(ds):
+        genomesAndPaths[genome] = os.path.join(genomesDir, genome)
+    return genomesAndPaths
+
+
+def getGenomePath(ds, genome):
+    '''
+    a genomePath is a directory containing genome fasta files and blast indexes.
+    '''
+    return os.path.join(getGenomesDir(ds), genome)
+
+
+def getGenomeFastaPath(ds, genome):
+    return os.path.join(getGenomePath(ds, genome), genome+'.faa')
+
+
+def getGenomeIndexPath(ds, genome):
+    '''
+    location of blast index files
+    '''
+    return os.path.join(getGenomePath(ds, genome), genome+'.faa')
+
+    
+
 ###########
 # ORTHOLOGS
 ###########
@@ -603,6 +770,15 @@ def markStepComplete(ds, *key):
 #######
 # PAIRS
 #######
+
+def getPairs(ds, genomes=None):
+    '''
+    returns: a sorted list of pairs, where every pair is a sorted list of each combination of two genomes.
+    '''
+    if genomes is None:
+        genomes = getGenomes(ds)
+    return sorted(set([tuple(sorted((g1, g2))) for g1 in genomes for g2 in genomes if g1 != g2]))
+
 
 def getNewPairs(ds):
     return readPairsFile(os.path.join(ds, 'new_pairs.txt'))
@@ -734,8 +910,8 @@ def makeRoundupStats(ds, qdb, sdb, div, evalue, startTime, endTime):
 
 def makePairStats(ds, pair, startTime, endTime):
     qdb, sdb = pair
-    qdbFastaPath = getGenomeFastaPath(qdb, ds)
-    sdbFastaPath = getGenomeFastaPath(sdb, ds)
+    qdbFastaPath = getGenomeFastaPath(ds, qdb)
+    sdbFastaPath = getGenomeFastaPath(ds, sdb)
     qdbBytes = os.path.getsize(qdbFastaPath)
     sdbBytes = os.path.getsize(sdbFastaPath)
     genomeToSize = loadMetadata(ds)['genomeToSize']
