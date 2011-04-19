@@ -85,23 +85,69 @@ def downloadCurrentUniprot(ds):
     '''
     Download uniprot files containing protein fasta sequences and associated meta data (gene names, go annotations, dbxrefs, etc.)
     '''
+    '''
+Download all these files to have a comprehensive set of data for a uniprotkb release:
+
+Index of /pub/databases/uniprot/current_release/knowledgebase/complete/
+NameSizeDate Modified
+README4.4 kB4/5/11 2:00:00 PM
+README.gunzip335 B4/5/11 2:00:00 PM
+README.reldate694 B4/5/11 2:00:00 PM
+README.varsplic10.5 kB4/5/11 2:00:00 PM
+4/5/11 2:00:00 PM
+reldate.txt151 B4/5/11 2:00:00 PM
+uniprot.xsd47.1 kB4/5/11 2:00:00 PM
+uniprot_sprot.dat.gz418 MB4/5/11 2:00:00 PM
+uniprot_sprot.fasta.gz73.8 MB4/5/11 2:00:00 PM
+uniprot_sprot.xml.gz722 MB4/5/11 2:00:00 PM
+uniprot_sprot_varsplic.fasta.gz6.2 MB4/5/11 2:00:00 PM
+uniprot_trembl.dat.gz5.5 GB4/5/11 2:00:00 PM
+uniprot_trembl.fasta.gz2.6 GB4/5/11 2:00:00 PM
+uniprot_trembl.xml.gz10.7 GB4/5/11 2:00:00 PMdocs/[parent directory]
+
+Index of /pub/databases/uniprot/current_release/knowledgebase/idmapping/
+NameSizeDate Modified
+README2906 B4/5/11 2:00:00 PM
+idmapping.dat.example254 kB4/5/11 2:00:00 PM
+idmapping.dat.gz914 MB4/5/11 2:00:00 PM
+idmapping_selected.tab.example948 kB4/5/11 2:00:00 PM
+idmapping_selected.tab.gz549 MB4/5/11 2:00:00 PM[parent directory]
+    '''
+    
     print 'downloadCurrentUniprot: {}'.format(ds)
     if isStepComplete(ds, 'download current uniprot'):
         print 'already complete'
         return
-    
-    sprotDatUrl = 'ftp://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/complete/uniprot_sprot.dat.gz'
-    sprotFastaUrl = 'ftp://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/complete/uniprot_sprot.fasta.gz'
-    tremblDatUrl = 'ftp://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/complete/uniprot_trembl.dat.gz'
-    tremblFastaUrl = 'ftp://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/complete/uniprot_trembl.fasta.gz'
-    idMappingUrl = 'ftp://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/idmapping/idmapping.dat.gz'
-    idMappingSelectedUrl = 'ftp://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/idmapping/idmapping_selected.tab.gz'
-    releaseNotesUrl = 'ftp://ftp.uniprot.org/pub/databases/uniprot/current_release/relnotes.txt'
+
+    # get as much as possible about the current uniprotkb release, in case it is needed later.
+    currentUrl = 'ftp://ftp.uniprot.org/pub/databases/uniprot/current_release'
+    files = ['relnotes.txt',
+             'knowledgebase/complete/README', 
+             'knowledgebase/complete/README.gunzip', 
+             'knowledgebase/complete/README.reldate', 
+             'knowledgebase/complete/README.varsplic', 
+             'knowledgebase/complete/reldate.txt', 
+             'knowledgebase/complete/uniprot.xsd', 
+             'knowledgebase/complete/uniprot_sprot.dat.gz', 
+             'knowledgebase/complete/uniprot_sprot.fasta.gz', 
+             'knowledgebase/complete/uniprot_sprot.xml.gz', 
+             'knowledgebase/complete/uniprot_sprot_varsplic.fasta.gz', 
+             'knowledgebase/complete/uniprot_trembl.dat.gz', 
+             'knowledgebase/complete/uniprot_trembl.fasta.gz', 
+             'knowledgebase/complete/uniprot_trembl.xml.gz', 
+             'knowledgebase/idmapping/README', 
+             'knowledgebase/idmapping/idmapping.dat.example', 
+             'knowledgebase/idmapping/idmapping.dat.gz', 
+             'knowledgebase/idmapping/idmapping_selected.tab.example', 
+             'knowledgebase/idmapping/idmapping_selected.tab.gz', 
+             ]
     
     sourcesDir = getSourcesDir(ds)
-    urls = [sprotDatUrl, sprotFastaUrl, tremblDatUrl, tremblFastaUrl, idMappingUrl, idMappingSelectedUrl, releaseNotesUrl]
-    for url in urls:
-        dest = os.path.join(sourcesDir, os.path.basename(urlparse.urlparse(url).path))
+    for f in files:
+        url = currentUrl + '/' + f
+        dest = os.path.join(sourcesDir, f)
+        if not os.path.exists(os.path.dirname(dest)):
+            os.makedirs(os.path.dirname(dest), 0770)
         print 'downloading {} to {}...'.format(url, dest)
         if isStepComplete(ds, 'download', url):
             print '...skipping because already downloaded.'
@@ -111,8 +157,10 @@ def downloadCurrentUniprot(ds):
         print
         markStepComplete(ds, 'download', url)
         print '...done.'
-        time.sleep(5)
-    updateMetadata(ds, {'sources': {'download_time': str(datatime.datetime.now), 'urls': urls}})
+        pause = 20
+        print 'pausing for {} seconds.'.format(pause)
+        time.sleep(pause)
+    updateMetadata(ds, {'sources': {'download_time': str(datetime.datetime.now()), 'currentUrl': currentUrl, 'files': files}})
     markStepComplete(ds, 'download current uniprot')
     print 'done downloading sources.'
 
