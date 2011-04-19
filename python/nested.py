@@ -8,7 +8,6 @@ import os
 import hashlib # sha
 import uuid
 import shutil
-import logging
 
 
 if os.environ.has_key('NESTED_TMP_DIR'):
@@ -21,7 +20,6 @@ elif os.environ.has_key('TMP'):
     DEFAULT_TMP_DIR = os.environ['TMP']
 else:
     DEFAULT_TMP_DIR = os.getcwd()
-logging.debug('nested. DEFAULT_TMP_DIR=%s'%DEFAULT_TMP_DIR)
 DEFAULT_NESTED_LEVELS = 2
 DEFAULT_TMP_PREFIX = 'tmp'
 DEFAULT_DIRS_MODE = 0777
@@ -117,10 +115,9 @@ def makeNestedSeedDir(seed, dir=DEFAULT_TMP_DIR, nesting=DEFAULT_NESTED_LEVELS, 
     for component in pathComponents:
         path = os.path.join(path, component)
         if makeDirs and not os.path.exists(path):
-            # lame attempt to avoid race conditions by double checking existence of path when an exception occurs.
+            # attempt to avoid race conditions by double checking existence of path when an exception occurs.
             try:
                 # mkdir automatically uses umask of the user.
-                logging.debug('nested.makeNestedSeedDir: %s'%path)
                 os.mkdir(path, dirsMode)
             except:
                 if not os.path.exists(path):
