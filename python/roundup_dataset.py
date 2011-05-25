@@ -12,6 +12,12 @@ Metadata
 Completes
 '''
 
+# A description of Uniprot Knowledgebase files:
+# http://ca.expasy.org/sprot/userman.html
+
+# A list of all species abbreviations, their kingdom, taxon id, and official names, common names, and synonyms.  Cool!
+# http://www.expasy.org/cgi-bin/speclist
+
 # test getGenomes()
 # test splitting source files
 # test preparing computation.  are the jobs and pair files created?
@@ -53,7 +59,7 @@ import roundup_common
 import util
 import roundup_db
 import lsfdispatch
-import RSD
+import rsd
 
 
 MIN_GENOME_SIZE = 200 # ignore genomes with fewer sequences
@@ -176,9 +182,9 @@ def splitUniprotIntoGenomes(ds):
 
     genomes = set()
     import Bio.SeqIO, cPickle, sys, os
-    seqToGenome = {}
-    dats = [os.path.join(getSourcesDir(ds), 'uniprot_sprot.dat.gz'), os.path.join(getSourcesDir(ds), 'uniprot_trembl.dat.gz')]
-    fastas = [os.path.join(getSourcesDir(ds), 'uniprot_sprot.fasta.gz'), os.path.join(getSourcesDir(ds), 'uniprot_trembl.fasta.gz')]
+    seqToGenome = {} # store sequences of all complete genomes
+    dats = [os.path.join(getSourcesDir(ds), 'knowledgebase/complete/uniprot_sprot.dat.gz'), os.path.join(getSourcesDir(ds), 'knowledgebase/complete/uniprot_trembl.dat.gz')]
+    fastas = [os.path.join(getSourcesDir(ds), 'knowledgebase/complete/uniprot_sprot.fasta.gz'), os.path.join(getSourcesDir(ds), 'knowledgebase/complete/uniprot_trembl.fasta.gz')]
     # dats = [os.path.join(getSourcesDir(ds), 'test_uniprot_sprot.dat.gz')]
     # fastas = [os.path.join(getSourcesDir(ds), 'test_uniprot_sprot.fasta.gz')]
 
@@ -197,7 +203,7 @@ def splitUniprotIntoGenomes(ds):
             for i, (nameline, seq) in enumerate(fasta.readFastaIter(fh)): # , ignoreParseError=True):
                 if i % 1e4 == 0: print i
                 seqId = fasta.idFromName(nameline)
-                if seqId in seqToGenome:
+                if seqId in seqToGenome: # a sequence in a complete genome
                     genome = seqToGenome[seqId]
                     if genome not in genomes:
                         print 'new genome', genome
@@ -246,7 +252,7 @@ def extractGeneIdsAndGoTerms(ds):
     '''
     geneToGoTerms = {}
     geneToGeneId = {}
-    with gzip.open(os.path.join(getSourcesDir(ds), 'idmapping_selected.tab.gz')) as fh:
+    with gzip.open(os.path.join(getSourcesDir(ds), 'knowledgebase/idmapping/idmapping_selected.tab.gz')) as fh:
         for i, line in enumerate(fh):
             if i % 1000 == 0: print i
             seqId, b, geneId, d, e, f, goTerms, etc = line.split('\t', 7)
@@ -606,7 +612,7 @@ def computePair(ds, pair, workingDir, orthologsPath):
             markComplete(ds, 'blast', subjectGenome, queryGenome)
 
         if not isComplete(ds, 'roundup', pair):
-            divEvalueToOrthologs =  RSD.roundup(queryFastaPath, subjectFastaPath, divEvalues, forwardHitsPath, reverseHitsPath, tmpDir)
+            divEvalueToOrthologs =  rsd.roundup(queryFastaPath, subjectFastaPath, divEvalues, forwardHitsPath, reverseHitsPath, tmpDir)
             # convert orthologs from a map to a table.
             orthologs = []
             for (div, evalue), partialOrthologs in divEvalueToOrthologs.items():
