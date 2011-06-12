@@ -39,7 +39,7 @@
 <li class="browse"><a href="{% url 'home.views.browse' %}"{% if nav_id == 'browse' %} class="thisPage"{% endif %}>Browse</a></li>
 <li class="retrieve"><a href="{% url 'home.views.cluster' %}"{% if nav_id == 'cluster' %} class="thisPage"{% endif %}>Retrieve</a></li>
 <li class="download"><a href="{% url 'home.views.raw' %}"{% if nav_id == 'raw' %} class="thisPage"{% endif %}>Download</a></li>
-<li class="proteomes"><a href="{% url 'home.views.sources' %}"{% if nav_id == 'genomes' %} class="thisPage"{% endif %}>Genomes</a></li>
+<li class="proteomes"><a href="{% url 'home.views.genomes' %}"{% if nav_id == 'genomes' %} class="thisPage"{% endif %}>Genomes</a></li>
 <li class="about"><a href="{% url 'home.views.about' %}"{% if nav_id == 'about' %} class="thisPage"{% endif %}>About</a></li>
 </ul>
 </div>

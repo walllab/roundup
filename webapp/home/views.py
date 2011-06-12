@@ -24,6 +24,7 @@ import roundup_util
 import orthquery
 import orthresult
 import BioUtilities
+import roundup_db
 
 
 USE_CACHE = False
@@ -33,19 +34,19 @@ DIVERGENCE_CHOICES = [(d, d) for d in roundup_common.DIVERGENCES]
 EVALUE_CHOICES = [(d, d) for d in reversed(roundup_common.EVALUES)] # 1e-20 .. 1e-5
 IDENTIFIER_TYPE_CHOICES = [('gene_name_type', 'Gene Name'), ('seq_id_type', 'Sequence Id')]
 DISPLAY_NAME_MAP = {'fasta': 'FASTA Sequence', 'genome': 'Genome', 
-                    'primary_genome': 'Primary Genome', 'secondary_genomes': 'Secondary Genomes', 'genomes': 'Genomes', 
+                    'primary_genome': 'Primary Genome', 'secondary_genomes': 'Secondary Genomes', 'limit_genomes': 'Secondary Genomes', 'genomes': 'Genomes', 
                     'query_genome': 'First Genome', 'subject_genome': 'Second Genome', 'divergence': 'Divergence', 'evalue': 'BLAST E-value',
                     'distance_lower_limit': 'Distance Lower Limit', 'distance_upper_limit': 'Distance Upper Limit', 
                     'gene_name': 'Include Gene Names in Result', 'go_term': 'Include GO Terms in Result', 
                     'tc_only': 'Only Show Transitively Closed Gene Clusters', 
-                    'browse_id': 'Identifier', 'browse_id_type': 'Identifier Type', 'gene_name_type': 'Gene Name', 'seq_id_type': 'Sequence Id',
+                    'identifier': 'Identifier', 'identifier_type': 'Identifier Type', 'gene_name_type': 'Gene Name', 'seq_id_type': 'Sequence Id',
                     'seq_ids': 'Sequence Identifiers',
                     'contains': 'Contain', 'equals': 'Equal', 'starts_with': 'Start With', 'ends_with': 'End With', 'substring': 'Text Substring'}
 DIST_LIMIT_HELP = 'from 0.0 to 19.0'
 SYNC_QUERY_LIMIT = 20 # run an asynchronous query (on lsf) if more than this many genomes are in the query.
 
 def displayName(key, nameMap=DISPLAY_NAME_MAP):
-  return nameMap.get(key, key)
+    return nameMap.get(key, key)
 
 
 def home(request):
@@ -241,6 +242,19 @@ def lookup_result(request, key):
         raise django.http.Http404
         
 
+#############################
+# SEARCH_GENE_NAMES FUNCTIONS
+#############################
+
+def search_gene_names(request, kind, query):
+    '''
+    kind: the kind of search: starts with, contains, etc.
+    query: the substring to search for
+    '''
+    logging.debug('search_gene_names: kind={}, query={}'.format(kind, query))
+    pass
+
+
 ###########################
 # ORTHOLOGY QUERY FUNCTIONS
 ###########################
@@ -277,12 +291,14 @@ def makeOrthQueryFromBrowseForm(form):
     orthQuery['distance_lower_limit'] = form.cleaned_data.get('distance_lower_limit')
     orthQuery['distance_upper_limit'] = form.cleaned_data.get('distance_upper_limit')
     
-    browseId = form.cleaned_data.get('indentifier')
+    browseId = form.cleaned_data.get('identifier')
     browseIdType = form.cleaned_data.get('identifier_type')
     queryDesc = 'Browse Query:\n'
     queryDesc += '\t{}={}\n'.format(displayName('genome'), orthresult.genomeDisplayName(orthQuery['genome']))
-    queryDesc += '\t{}={}\n'.format(displayName(browseIdType), browseId)
-    queryDesc += '\t{}={}\n'.format(displayName('seq_ids'), ', '.join(orthQuery['seq_ids']))
+    
+    queryDesc += '\t{}={}\n'.format(displayName('identifier_type'), displayName(form.cleaned_data.get('identifier_type')))
+    queryDesc += '\t{}={}\n'.format(displayName('identifier'), form.cleaned_data.get('identifier'))
+    # queryDesc += '\t{}={}\n'.format(displayName('seq_ids'), ', '.join(orthQuery['seq_ids']))
     queryDesc += '\t{}={}\n'.format(displayName('limit_genomes'), ', '.join([orthresult.genomeDisplayName(g) for g in orthQuery['limit_genomes']]))
     queryDesc += '\t{}={}\n'.format(displayName('divergence'), orthQuery['divergence'])
     queryDesc += '\t{}={}\n'.format(displayName('evalue'), orthQuery['evalue'])
@@ -375,6 +391,25 @@ def browse(request):
                 resultId = orthresult.makeResultId()
                 resultPath = orthresult.getResultFilename(resultId)
                 logging.debug('cache miss.\n\tcacheKey: {}\n\tresultId: {}\n\tresultPath: {}'.format(cacheKey, resultId, resultPath))
+
+                # handle browse ids.  I would rather not have this complexity in here at all.  it seems like there must be a more generic and powerful search mechanism.
+                browseId = form.cleaned_data.get('identifier')
+                browseIdType = form.cleaned_data.get('identifier_type')
+                logging.debug('browseId={}, browseIdType={}'.format(browseId, browseIdType))
+                if browseId and browseIdType == 'gene_name_type':
+                    genome = form.cleaned_data['primary_genome']
+                    seqIds = roundup_db.getSeqIdsForGeneName(geneName=browseId, database=genome)
+                    if not seqIds: # no seq ids matching the gene name were found.  oh no!
+                        return django.shortcuts.redirect(django.core.urlresolvers.reverse(search_gene_names, kwargs={'kind': 'contains', 'query': browseId}))
+                    else:
+                        # remake orthQuery with seqIds
+                        form.cleaned_data['seq_ids'] = seqIds
+                        orthQuery = makeOrthQueryFromBrowseForm(form)
+                elif browseId and browseIdType == 'seq_id_type':
+                    # remake orthQuery with seqIds
+                    form.cleaned_data['seq_ids'] = browseId.split() # split on whitespace
+                    orthQuery = makeOrthQueryFromBrowseForm(form)
+
                 querySize = len(orthQuery['limit_genomes']) + len(orthQuery['genomes'])
                 if (querySize <= SYNC_QUERY_LIMIT):
                     # wait for query to run and store query
@@ -429,7 +464,7 @@ def orth_wait(request, result_id, job_id):
     '''
     # url = django.core.urlresolvers.reverse(browse_wait, kwargs={'result_id': result_id, 'job_id': job_id})
     # return django.shortcuts.render(request, 'wait.html', {'url': url, 'message': 'Processing your request.  This might take a few minutes.  Thank you for your patience.'})
-    url = django.core.urlresolvers.reverse(browse_result, kwargs={'result_id': result_id})
+    url = django.core.urlresolvers.reverse(orth_result, kwargs={'result_id': result_id})
     message = 'Processing your request.  This might take a few minutes.  Thank you for your patience.'
     return django.shortcuts.render(request, 'wait.html', {'job_id': job_id, 'url': url, 'message': message})
 
