@@ -1,0 +1,10 @@
+# allow access to dev.* website from outside harvard.  how does this work?
+Allow from 24.61.46.150
+
+# passenger config only requires this one directive.
+PassengerAppRoot /www/roundup.hms.harvard.edu/webapp
+# PassengerAppRoot /www/%{HTTP_HOST}/support
+
+
+
+

@@ -1,0 +1,31 @@
+@charset "UTF-8";
+/**
+ROUNDUP MKII
+ */
+
+@media screen
+{
+  /**
+   * Repositioning content container
+
+   *
+   * |-------------------------------|
+   * | #header                       |
+   * |-------------------------------|
+   * | #col3   | #col1               |
+   * | flexible| 75%                 |
+   * |-------------------------------|
+   * | #footer                       |
+   * |-------------------------------|
+   */
+
+  /* left column | linke Spalte */
+  #col1 { width: 75%; float:right;}
+  #col1_content { padding-left: 10px; padding-right: 20px; }
+
+  /* right column | Rechte Spalte */
+  #col2, #col2_content { display:none; }
+
+  #col3 { margin-right: 75%; margin-left: 0; }
+  #col3_content { padding-left: 20px; padding-right: 10px; }
+}

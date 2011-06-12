@@ -1,0 +1,27 @@
+@charset "UTF-8";
+/**
+ * 
+work in progress
+*/
+
+/* import screen layout */
+
+@import url(screen/basemod.css);
+/*@import url(screen/basemod_2col_left_31.css);*/
+@import url(screen/content.css);
+
+/* important - this imports the css for the accordian effect*/
+@import url(screen/accordian.css);
+
+/* import print layout */
+/*@import url(screen/print_100_draft.css);*/
+
+.sortable th {
+background-color: #666;
+}
+.sortable .odd {
+ background-color: #ddd;
+}
+.sortable .even {
+ background-color: #fff;
+}

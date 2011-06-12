@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% load url from future %}
+{% load genoextras %}
+
+{% block content %}
+<h2>{{ disorder.name }}</h2>
+<p>
+<a href="{% url 'geno.views.disorder' disorder.acc %}?ct=txt">Download</a> as a tab-separated text file.
+</p>
+{% comment %}
+mesh id: <mesh id>
+description: <mesh desc>
+synonyms: <mesh/umls syn>  see e.g. http://hugenavigator.net/HuGENavigator/getUMLSInfo.do?cuiID=C0023343%20%20&labelString=Leprosy
+{% endcomment %}
+Genes associated with {{ disorder.name }}:
+<ul>
+{% for disordergene in disordergenes %}
+<li>
+<a href="{% url 'geno.views.gene' disordergene.gene.symbol %}">{{ disordergene.gene.symbol }}</a>
+<ul>
+<li>
+  Genotator Score: {{ disordergene.score }}
+</li>
+<li>
+  Description: {{ disordergene.gene.full_name }}
+</li>
+<li>
+  Chromosome: {{ disordergene.gene.chromosome }}, Band: {{ disordergene.gene.chromosome_band }}
+</li>
+<li>
+  Gene Synonyms: {{ disordergene.gene.symbol_synonyms|split:"|"|join:", " }}
+</li>
+<li>
+  Other Descriptions: {{ disordergene.gene.full_name_synonyms|split:"|"|join:", " }}
+</li>
+<li>
+  Cross-references: NCBI: <a href="http://www.ncbi.nlm.nih.gov/gene?term={{ disordergene.gene.ncbi_gene_id }}">{{ disordergene.gene.ncbi_gene_id }}</a>, 
+Ensembl: <a href="http://ensembl.org/Homo_sapiens/Gene/Summary?g={{ disordergene.gene.ensembl_gene_id }}">{{ disordergene.gene.ensembl_gene_id }}</a>
+</li>
+<li>
+  Evidence:
+<ul>
+<li>
+    Pubmed Ids: {{ disordergene.pmidlinks|safeseq|join:", " }}
+{# {% for pmid in disordergene.pmidlist %}<a href="http://www.ncbi.nlm.nih.gov/pubmed/{{ pmid }}">{{ pmid }}</a>, {% endfor %} #}
+{# {{ disordergene.pmids|split:","|join:", " }} #}
+</li>
+<li>
+    HuGE Navigator Score: {{ disordergene.hugeprospector_score }}
+</li>
+<li>
+    GAD counts: yes={{ disordergene.num_gad_yes }}, no={{ disordergene.num_gad_no }}, null={{ disordergene.num_gad_null }}
+</li>
+<li>
+    Evidence Sources: {{ disordergene.sourcelinks|safeseq|join:", " }}
+</li>
+</ul>
+</li>
+</ul>
+</li>
+{% endfor %}
+</ul>
+{% endblock content %}
+
+{% comment %}
+<table id="disorder_result">
+<tr class="header">
+{% for header in headers %}<th>{{ header }}</th>{% endfor %}
+</tr>
+{% for row in rows %}
+<tr class="{% cycle 'odd' 'even' %}">
+{% for field in row %}
+<td>{{ field|split:','|join:', ' }}</td>
+{% endfor %}
+</tr>
+{% endfor %}
+</table>
+{% endcomment %}
+

@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% load url from future %}
+{% comment %}
+{% endcomment %}
+
+{% block content %}
+<div id="mainpage"> 
+<h2>Orthologs for a Pair of Genomes</h2> 
+<p>
+Download these orthologs as a <a href="{% url 'home.views.orthologs' query_genome subject_genome div evalue %}?ct=txt">text file</a>
+</p> 
+<ul>
+<li>First genome: {{ query_genome }}</li>
+<li>Second genome: {{ subject_genome }}</li>
+<li>Divergence: {{ div }}</li>
+<li>BLAST E-value: {{ evalue }}</li>
+</ul>
+<p>
+Raw orthologs.  The columns are: <a href="javascript:docWindow2('{% url 'home.views.documentation' %}#second_genome')">Second genome</a> sequence id, 
+<a href="javascript:docWindow2('{% url 'home.views.documentation' %}#first_genome')">First genome</a> sequence id, and 
+<a href="javascript:docWindow2('{% url 'home.views.documentation' %}#distance')">Distance</a>.
+</p>
+<pre>
+{{ rawOrthologs }}
+</pre>
+</div>
+{% endblock content %}
+
