@@ -429,7 +429,7 @@ def orth_wait(request, result_id, job_id):
     '''
     # url = django.core.urlresolvers.reverse(browse_wait, kwargs={'result_id': result_id, 'job_id': job_id})
     # return django.shortcuts.render(request, 'wait.html', {'url': url, 'message': 'Processing your request.  This might take a few minutes.  Thank you for your patience.'})
-    url = django.core.urlresolvers.reverse(browse_result, kwargs={'result_id': result_id})
+    url = django.core.urlresolvers.reverse(orth_result, kwargs={'result_id': result_id})
     message = 'Processing your request.  This might take a few minutes.  Thank you for your patience.'
     return django.shortcuts.render(request, 'wait.html', {'job_id': job_id, 'url': url, 'message': message})
 
