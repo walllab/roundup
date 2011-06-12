@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+{% load url from future %}
+
+{% block content %}
+        
+<div class="node">   
+  <h1>documentation</h1> 
+
+<div class="content">
+<div id="doctext"> 
+
+<p><a id="browse"></a></p>
+<h3>Browse</h3> 
+<p>Search the Roundup Orthology Database for orthologs between a Primary Genome and any of several other Genomes.  The results can be restricted to a set of Sequence Ids of interest.</p> 
+<p><b>Parameters</b></p> 
+<ul> 
+<li> 
+<a id="primary_genome"></a><br /> 
+<b>Primary Genome</b> 
+<p>Required.  Search results must contain a gene from this genome to be returned.</p> 
+</li> 
+<li> 
+<a id="identifier_type"></a><br /> 
+<b>Identifier Type</b> 
+<p>Search results may be filtered so that they must contain a sequence matching an identifier.  An identifier may be either Gene Name or Sequence Id.  An example of a gene name is aatA1.  An example of a sequence id is the NCBI GI Number 18402218.</p> 
+</li> 
+<li> 
+<a id="identifier"></a><br /> 
+<b>Identifier</b> 
+<p>Optional.  After selecting the appropriate Identifier Type, an identifier of the selected type may be entered.  Search results will be filtered so that only results containing sequences from the Primary Genome matching the identifier will be returned.  If this field is left blank, all results will be returned.  If Sequence Id is chosen as the Identifier Type then more than one identifier may be entered.  Separate each identifier with a space.</p> 
+</li> 
+<li> 
+<a id="secondary_genomes"></a><br /> 
+<b>Secondary Genomes</b> 
+<p>At least one is required.  Search results are filtered so that they contain one of the genomes selected (in addition to the Primary Genome selected.)</p> 
+</li> 
+<li> 
+<b><a href="#common_params">See also Common Parameters</a></b> 
+</li> 
+</ul> 
+
+<p><a id="cluster"></a></p> 
+<h3>Retrieve Phylogenetic Profiles</h3> 
+<div id="doctext">Retrieve all phylogenetic profiles for a set of organisms.  Phylogenetic profiles are subgraphs in which the nodes are proteins from the genomes selected and the edges are undirected orthologous relationships computed by the reciprocal smallest distance (RSD) algorithm.</div> 
+<p><b>Parameters</b></p> 
+<ul> 
+<li> 
+<p><a id="genomes"></a><br /> 
+<b>Genomes</b></p> 
+<p>Two or more required.  Orthologs for all pairwise combinations of the Genomes selected are retrieved.</p> 
+</li> 
+<li> 
+<p><a id="tc_only"></a><br /> 
+<b>Only Show Transitively Closed Phylogenetic Profiles</b></p> 
+<p>If checked, only phylogenetic profiles where every protein is orthologous to every other protein are reported.  (These are the transitively closed subgraphs.)</p> 
+</li> 
+<li> 
+<a href="#common_params">See also Common Parameters</a> 
+</li> 
+</ul> 
+
+<p><a id="raw"></a></p> 
+<h3>Download Raw Data</h3> 
+<p>Download the raw data for a pair of genomes, choosing the parameters of the Reciprocal Smallest Distance (RSD) algorithm used to generate the data.  Raw data contains one row for every ortholog.  Each row contains 3 tab-separated values: the gene sequence id from the First Genome, the gene sequence id from Second Genome, and the maximum likelihood estimation of evolutionary distance between those genes.  For more user-friendly results, consider using the Browse or Retrieve Phylogenetic Profiles queries.</p> 
+<p><b>Parameters</b></p> 
+<ul> 
+<li> 
+<p><a id="first_genome"></a><br /> 
+<b>First Genome</b></p> 
+<p>Required.  Return orthologs between this genome and Second Genome.</p> 
+</li> 
+<li> 
+<a id="second_genome"></a><br /> 
+<b>Second Genome</b> 
+<p>Required.  Return orthologs between this genome and First Genome.</p> 
+</li> 
+<li> 
+<a href="#common_params">See also Common Parameters</a> 
+</li> 
+</ul> 
+
+<p><a id="search_gene_names"></a></p> 
+<h3>Search For Gene Names</h3> 
+<p>Search the list of gene names in the Roundup system.  This is the same list that is used when running a Browse query or when orthology search results are reported with gene names.  Searching for gene names is a useful way to find a gene name with which to limit orthology search results when using the Browse query.  Using Search For Gene Names, one can find gene names which either contain, start with, end with, or are exactly equal to a given search text.</p> 
+<p>After pressing Submit, any matching gene names in the Roundup system will be displayed at the bottom of the page.</p> 
+
+<p><a id="common_params"></a></p> 
+<h3>Common Parameters</h3> 
+<p>These parameters occur in one or more of the various query types.</p> 
+<p><b>Parameters</b></p> 
+<ul> 
+<li> 
+<a id="distance_lower_limit"></a><br /> 
+<b>Distance Lower Limit</b> 
+<p>Optional.  Enter a number between 0.0 and 19.0, (and not greater than Distance Upper Limit if one was entered).  Orthologs with a distance value (as calculated by the RSD algorithm) LESS than this limit will not be returned.  If left blank, ortholog results will not be limited.</p> 
+</li> 
+<li> 
+<p><a id="distance_upper_limit"></a><br /> 
+<b>Distance Upper Limit</b></p> 
+<p>Optional.  Enter a number between 0.0 and 19.0, (and not less than Distance Lower Limit if one was entered).  Orthologs with a distance value (as calculated by the RSD algorithm) GREATER than this limit will not be returned.  If left blank, ortholog results will not be limited.</p> 
+</li> 
+<li> 
+<p><a id="divergence"></a><br /> 
+<b>Divergence</b></p>
+<p>Required.  Return orthologs calculated by RSD using this divergence as a threshold.</p> 
+</li> 
+<p><a id="evalue"></a></br /> 
+<b>BLAST E-value</b></p>
+<p>Required.  Return orthologs calculated by RSD using this BLAST E-value as a threshold.</p> 
+ 
+<li> 
+<a id="include_gene_name"></a><br /> 
+<b>Include Gene Names in Results</b> 
+<p>If checked, results will include the gene name (if any) for each gene.  Some genes do not have a name.</p> 
+</li> 
+<li> 
+<a id="include_go_term"></a><br /> 
+<b>Include Functional GO Terms in Results</b> 
+<p>If checked, results will include any Molecular Function <a href="http://www.geneontology.org/">Gene Ontology</a> (GO) terms associated with each gene.  Some genes to not have any GO terms.</p> 
+</li> 
+</ul> 
+</div> 
+</div> 
+</div>  
+{% endblock content %}

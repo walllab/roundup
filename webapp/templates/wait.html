@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% load url from future %}
+{% comment %}
+job_id
+url
+message
+{% endcomment %}
+
+{% block content %}
+<script type="text/javascript">
+$(function(){waitOnJob("{{ job_id }}", "{{ url }}");});
+</script>
+<p id="wait_msg">{{ message }}</p>
+{% endblock content %}
+

@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% load url from future %}
+{% comment %}
+{% endcomment %}
+
+{% block content %}
+<div id="mainpage">
+<h1>The Latest Updates and News on the Roundup Orthology Database</h1>
+
+<div class="node"> 
+<h1>150 Genomes Added</h1><span class="submitted">By dennis on June 29th, 2009</span> 
+<div class="content"><p>Some great news: the most recent run of computation has finished after many months. The data from 150 new genomes are now available to roundup users. This brings us up to a total of 399. New computation is under way for a remaining 500 genomes, though this will take many months.</p> 
+</div> 
+</div> 
+
+<div class="node"> 
+<h1>About 790 genomes currently being computed</h1><span class="submitted">By dennis on June 8th, 2009</span> 
+<div class="content"><p>This amounts to about 6.4 gig of genomic data to compute, although the results files will be much, much larger...</p> 
+</div> 
+</div> 
+
+<div class="node"> 
+<h1>Last Friday&#039;s outage</h1><span class="submitted">By dennis on June 8th, 2009</span> 
+<div class="content"><p>Apologies to all for the outage on Friday 5 June. We hope it didn't inconvenience any research. The problem was caused by some older versions of code being uploaded to the new site. Roundup was running again by early Saturday 6 June. once again, our sincerest apologies to our users.</p> 
+</div> 
+</div> 
+
+<div class="node"> 
+<h1>Just a few more things</h1><span class="submitted">By dennis on April 22nd, 2009</span> 
+<div class="content"><p>I'm completing the new portal on the front end, while Todd works on various database improvements to improve performance and speed of computation.</p> 
+<p>Please be patient with us as things look a little flakey over the next few days, everything should be okay by the weekend.</p> 
+</div> 
+</div> 
+
+<div class="node"> 
+<h1>Orthologs transitioned to new schema in the production database</h1><span class="submitted">By todd on April 17th, 2009</span> 
+<div class="content"><p>Transitioned orthologs from the old schema to the new schema in the production roundup database.</p> 
+<p>Started computation of 60 more updated genomes.</p> 
+</div> 
+</div> 
+
+<div class="node"> 
+<h1>The New Roundup Interface</h1><span class="submitted">By dennis on April 11th, 2009</span> 
+<div class="content"><p>I've been hard at work making the Roundup portal more usable and informative to users.</p> 
+<p>There is a lot of back-end work being done by Todd Deluca geared towards improved performance, but I'll let him describe his activities here. Meanwhile Parul is doing some amazing work experimenting with heavy duty computation on Amazon's Elastic Cloud.</p> 
+<p>A lot of work background work is coming to fruition, though it's been less less visible to users for the past twelve months. So I'm adding to Roundup a microbloggins system where you can learn more about what we are doing with Roundup, and how we're doing it. More to come on this.</p> 
+</div> 
+</div> 
+
+<div class="node"> 
+<h1>Improving database schema</h1><span class="submitted">By todd on April 3rd, 2009</span> 
+<div class="content"><p>Started computation of new and updated genomes.<br /> 
+Improved speed and size of database schema.  The new schema might be half the size of the old one.</p> 
+</div> 
+</div> 
+
+<div class="node"> 
+<h1>New genomes, more to follow</h1><span class="submitted">By todd on March 30th, 2009</span> 
+<div class="content"><p>Improved incremental roundup computation. Added over 600 new genomes to Roundup</p> 
+</div> 
+</div> 
+
+<div class="node"> 
+<h1>Performance improvements</h1><span class="submitted">By todd on March 13th, 2009</span> 
+<div class="content"><p>Downloaded current genomes. Enhanced nesting of temp files and roundup files. Fully separated prod and dev instances.</p> 
+</div> 
+</div> 
+
+<div class="node"> 
+<h1>Improving computation efficiency</h1><span class="submitted">By todd on March 12th, 2009</span> 
+<div class="content"><p>Backing up of old results and genomes now a part of completing a computation.</p> 
+</div> 
+</div> 
+
+</div><!-- mainpage -->
+{% endblock content %}

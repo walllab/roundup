@@ -1,0 +1,30 @@
+{% load url from future %}
+{% comment %}
+form_doc_id: fragment identifier in documentation page
+form_id: used for javascript actions, e.g. filling in value in an example query
+form_action: e.g. a url where the form is submitted.
+form_method: defaults to 'post'.
+{% endcomment %}
+{% if form_doc_id %}
+<p><a href="javascript:docWindow2('{% url 'home.views.documentation' %}#{{ form_doc_id }}')">Documentation</a></p>
+{% endif %}
+<form id="{{ form_id|default:"input_form" }}" class="plain_table" action="{{ form_action }}" method="{{ form_method|default:"post" }}">
+{% csrf_token %}
+{{ form.non_field_errors }}
+<table class="paramTable">
+{% for field in form %}
+<tr>
+<td>
+{% if form_doc_id %}<a href="javascript:docWindow2('{% url 'home.views.documentation' %}#{{ field.name }}')">{% endif %}{{ field.label_tag }}{% if form_doc_id %}</a>{% endif %}
+{% if field.help_text %} ({{ field.help_text }}){% endif %}{% if not field.field.required %} (Optional){% endif %}:</td>
+<td>{{ field.errors }}{{ field }}</td>
+{% comment %}
+{% endcomment %}
+</tr>
+{% endfor %}
+</table>
+<input type="submit" value="Submit" />
+{% comment %}
+<input type="reset" value="Reset" />
+{% endcomment %}
+</form>

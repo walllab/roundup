@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% load url from future %}
+
+{% block content %}
+<p>
+Use this form to add a new disorder to Genotator.<br />
+For best results, choose terms from the NCBI <a href="http://www.nlm.nih.gov/mesh/MBrowser.html">Medical Subject Headings</a> as Disorder Names.<br />
+Add up to {{ max_disorders }} disorders, separated with semicolons.<br />
+</p>
+<form id="request_disorder_form" action="{% url 'geno.views.requestDisorders'%}" method="post">
+{% csrf_token %}
+<table>
+{{ form.as_table }}
+</table> 
+{% comment %}
+<table> 
+<!--<tr><th>Disorders:</th><td><input type="text" name="disorders" autofocus="autofocus" /></td></tr> -->
+<tr><th>Disorders:</th><td><input type="text" name="disorders" /></td></tr> 
+<tr><th>Email:</th><td><input type="text" name="email" size="60" /></td></tr> 
+</table>
+{% endcomment %}
+<input type="submit" value="Submit" />
+</form>
+{% endblock content %}

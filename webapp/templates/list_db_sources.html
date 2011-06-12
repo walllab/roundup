@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% load url from future %}
+
+{% block content %}
+<p>
+{% for source in sources %}
+<code>
+{{ source }}
+</code>
+{% endfor %}
+</p>
+{% endblock content %}
+

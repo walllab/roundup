@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% load url from future %}
+{% load genoextras %}
+
+{% block content %}
+<p>
+<div class="section">
+<h3>Disorders (last updated on {{ disorders|dictsortreversed:"results_last_updated"|first|lookup:"results_last_updated"|date:"SHORT_DATE_FORMAT" }})</h3>
+<ul id="disorderslist">
+{% for disorder in disorders %}
+    <li>
+    <a href="{% url 'geno.views.disorder' disorder.acc %}">{{ disorder.name }}</a> 
+{% comment %} (last updated on {{ disorder.results_last_updated|date:"SHORT_DATE_FORMAT" }})
+{% endcomment %}
+    </li>
+{% endfor %}
+</ul>
+<h3>Did not find the disorder you were looking for? <a href="{% url 'geno.views.requestDisorders' %}">Request a disorder.</a></h3>
+</div>
+{% endblock content %}
+
+
