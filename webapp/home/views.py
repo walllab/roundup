@@ -33,6 +33,8 @@ GENOME_CHOICES = [(g, orthresult.genomeDisplayName(g)) for g in GENOMES] # pairs
 DIVERGENCE_CHOICES = [(d, d) for d in roundup_common.DIVERGENCES]
 EVALUE_CHOICES = [(d, d) for d in reversed(roundup_common.EVALUES)] # 1e-20 .. 1e-5
 IDENTIFIER_TYPE_CHOICES = [('gene_name_type', 'Gene Name'), ('seq_id_type', 'Sequence Id')]
+SEARCH_GENE_NAMES_TYPE_CHOICES = [('contains', 'Contains'), ('equals', 'Equals'), ('starts_with', 'Starts with'), ('ends_with', 'Ends with')]
+
 DISPLAY_NAME_MAP = {'fasta': 'FASTA Sequence', 'genome': 'Genome', 
                     'primary_genome': 'Primary Genome', 'secondary_genomes': 'Secondary Genomes', 'limit_genomes': 'Secondary Genomes', 'genomes': 'Genomes', 
                     'query_genome': 'First Genome', 'subject_genome': 'Second Genome', 'divergence': 'Divergence', 'evalue': 'BLAST E-value',
@@ -116,7 +118,6 @@ Requestor contact information:
     else:
         form = ContactForm(auto_id=False) # An unbound form
 
-    # return django.shortcuts.render(request, 'contact.html', {'form': form, 'nav_id': 'contact'})
     return django.shortcuts.render(request, 'contact.html', {'form': form, 'nav_id': 'contact', 'form_doc_id': None,
                                                          'form_action': django.core.urlresolvers.reverse(contact)})
 
@@ -160,8 +161,9 @@ def raw(request):
     else:
         form = RawForm() # An unbound form
 
+    example = "{'first_genome': 'Homo_sapiens.aa', 'second_genome': 'Mus_musculus.aa'}"
     return django.shortcuts.render(request, 'raw.html', {'form': form, 'nav_id': 'raw', 'form_doc_id': 'raw',
-                                                         'form_action': django.core.urlresolvers.reverse(raw)})
+                                                         'form_action': django.core.urlresolvers.reverse(raw), 'form_example': example})
 
 
 def raw_download(request, first_genome, second_genome, divergence, evalue):
@@ -228,8 +230,9 @@ def lookup(request):
     else:
         form = LookupForm() # An unbound form
 
+    example = "{'fasta': '>example_nameline\\nMYSIVKEIIVDPYKRLKWGFIPVKRQVEDLPDDLNSTEIV\\nTISNSIQSHETAENFITTTSEKDQLHFETSSYSEHKDNVN\\nVTRSYEYRDEADRPWWRFFDEQEYRINEKERSHNKWYS\\nWFKQGTSFKEKKLLIKLDVLLAFYSCIAYWVKYLD', 'genome': 'Saccharomyces_cerevisiae.aa'}"
     return django.shortcuts.render(request, 'lookup.html', {'form': form, 'nav_id': 'lookup', 'form_doc_id': 'lookup',
-                                                         'form_action': django.core.urlresolvers.reverse(lookup)})
+                                                            'form_action': django.core.urlresolvers.reverse(lookup), 'form_example': example})
 
 def lookup_result(request, key):
     if roundup_util.cacheHasKey(key):
@@ -246,13 +249,233 @@ def lookup_result(request, key):
 # SEARCH_GENE_NAMES FUNCTIONS
 #############################
 
-def search_gene_names(request, kind, query):
+
+class SearchGeneNamesForm(django.forms.Form):
+    search_type = django.forms.ChoiceField(choices=SEARCH_GENE_NAMES_TYPE_CHOICES)
+    query_string = django.forms.CharField()
+
+
+def search_gene_names(request, key=None):
     '''
-    kind: the kind of search: starts with, contains, etc.
+    get: render a form for user to search_gene_names the sequence id for a fasta sequence from a genome.
+    post: redirect to a page which will show the id.
+    key: used to pass a message (via the cache) 
+    '''
+    message = ''
+    if request.method == 'POST': # If the form has been submitted...
+        form = SearchGeneNamesForm(request.POST) # A form bound to the POST data
+        if form.is_valid(): # All validation rules pass
+            logging.debug(form.cleaned_data)
+            search_type, query_string = form.cleaned_data['search_type'], form.cleaned_data['query_string']
+            pairs = roundup_db.findGeneNameGenomePairsLike(substring=query_string, searchType=search_type)
+            # store result in cache, so can do a redirect/get. 
+            key = orthresult.makeResultId()
+            roundup_util.cacheSet(key, {'search_type': search_type, 'query_string': query_string, 'pairs': pairs})
+            # redirect the post to a get.  http://en.wikipedia.org/wiki/Post/Redirect/Get
+            return django.shortcuts.redirect(django.core.urlresolvers.reverse(search_gene_names_result, kwargs={'key': key}))
+    else:
+        if key and roundup_util.cacheHasKey(key):
+            # a message for the search page can be passed via the cache.
+            kw = roundup_util.cacheGet(key)
+            message = kw['message']
+            form = SearchGeneNamesForm(kw) # A bound form
+        else:        
+            form = SearchGeneNamesForm() # An unbound form
+
+    example = "{'search_type': 'contains', 'query_string': 'ata'}" # javascript
+    return django.shortcuts.render(request, 'search_gene_names.html', {'message': message, 'form': form, 'nav_id': 'search_gene_names', 'form_doc_id': 'search_gene_names',
+                                                            'form_action': django.core.urlresolvers.reverse(search_gene_names), 'form_example': example})
+
+
+def search_gene_names_result(request, key):
+    '''
+    search_type: e.g. starts with, contains, etc.
     query: the substring to search for
     '''
-    logging.debug('search_gene_names: kind={}, query={}'.format(kind, query))
-    pass
+    if roundup_util.cacheHasKey(key):
+        kw = roundup_util.cacheGet(key)
+        pairs = kw['pairs']
+        page = '<h2>Gene Names Search Result</h2>\n'
+        page += '<p>Gene names that &quot;{}&quot; the query string &quot;{}&quot;:</p>\n'.format(displayName(kw['search_type']), django.utils.html.escape(kw['query_string']))
+        page += '<div>{} matching combination{} of gene name and genome found.  Try another <a href="{}">search</a>.</div>'.format(len(pairs), '' if len(pairs) == 1 else 's', django.core.urlresolvers.reverse(search_gene_names))
+        page += "<table>\n"
+        page += "<tr><td>Gene Name</td><td>Genome</td></tr>\n"
+        for geneName, genome in pairs:
+            page += "<tr><td>{}</td><td>{}</td></tr>\n".format(geneName, orthresult.genomeDisplayName(genome))
+        page += "</table>\n"
+        return django.shortcuts.render(request, 'regular.html', {'html': page, 'nav_id': 'search_gene_names'})
+    else:
+        raise django.http.Http404
+
+
+##################
+# BROWSE FUNCTIONS
+##################
+
+class BrowseForm(django.forms.Form):
+    primary_genome = django.forms.ChoiceField(choices=GENOME_CHOICES)
+    identifier_type = django.forms.ChoiceField(choices=IDENTIFIER_TYPE_CHOICES)
+    identifier = django.forms.CharField(required=False, max_length=100, widget=django.forms.TextInput(attrs={'size': '60'}))
+    secondary_genomes = django.forms.MultipleChoiceField(required=False, choices=GENOME_CHOICES)
+    divergence = django.forms.ChoiceField(choices=DIVERGENCE_CHOICES)
+    evalue = django.forms.ChoiceField(choices=EVALUE_CHOICES, label='BLAST E-value')
+    distance_lower_limit = django.forms.FloatField(help_text=DIST_LIMIT_HELP, required=False, max_value=19.0, min_value=0.0)
+    distance_upper_limit = django.forms.FloatField(help_text=DIST_LIMIT_HELP, required=False, max_value=19.0, min_value=0.0)
+    include_gene_names = django.forms.BooleanField(required=False, initial=True)
+    include_go_terms = django.forms.BooleanField(required=False, initial=True)
+
+    def clean(self):
+        primary_genome = self.cleaned_data.get('primary_genome')
+        secondary_genomes = self.cleaned_data.get('secondary_genomes')
+        logging.debug('clean(): secondary_genomes={}'.format(secondary_genomes))
+        if secondary_genomes and primary_genome in secondary_genomes:
+            raise django.forms.ValidationError('Primary genome must not be among the selected Secondary genomes.')
+        return self.cleaned_data
+
+
+def browse(request):
+    '''
+    GET: send user the form to make a browse query
+    POST: validate browse query and REDIRECT to results if it is good.
+    '''
+    if request.method == 'POST': # If the form has been submitted...
+        form = BrowseForm(request.POST) # A form bound to the POST data
+        if form.is_valid(): # All validation rules pass
+            logging.debug('form.cleaned_data={}'.format(form.cleaned_data))
+            orthQuery = makeOrthQueryFromBrowseForm(form)
+            logging.debug('orthQuery={}'.format(orthQuery))
+            cacheKey = orthQueryHash(orthQuery)
+            logging.debug(dir(request))
+            jobId = None
+            if USE_CACHE and roundup_util.cacheHasKey(cacheKey):
+                resultPath = roundup_util.cacheGet(cacheKey)
+                resultId = orthresult.resultFilenameToId(resultPath)
+                logging.debug('cache hit.\n\tcacheKey: {}\n\tresultId: {}\n\tresultPath: {}'.format(cacheKey, resultId, resultPath))
+            else:
+                resultId = orthresult.makeResultId()
+                resultPath = orthresult.getResultFilename(resultId)
+                logging.debug('cache miss.\n\tcacheKey: {}\n\tresultId: {}\n\tresultPath: {}'.format(cacheKey, resultId, resultPath))
+
+                # handle browse ids.  I would rather not have this complexity in here at all.  it seems like there must be a more generic and powerful search mechanism.
+                browseId = form.cleaned_data.get('identifier')
+                browseIdType = form.cleaned_data.get('identifier_type')
+                logging.debug('browseId={}, browseIdType={}'.format(browseId, browseIdType))
+                if browseId and browseIdType == 'gene_name_type':
+                    genome = form.cleaned_data['primary_genome']
+                    seqIds = roundup_db.getSeqIdsForGeneName(geneName=browseId, database=genome)
+                    if not seqIds: # no seq ids matching the gene name were found.  oh no!
+                        message = 'In your Browse query, Roudnup did not find the gene named "{}" in the genome "{}".  Try searching for a gene name.'.format(browseId, genome)
+                        # store result in cache, so can do a redirect/get. 
+                        key = orthresult.makeResultId()
+                        roundup_util.cacheSet(key, {'message': message, 'search_type': 'contains', 'query_string': browseId})
+                        return django.shortcuts.redirect(django.core.urlresolvers.reverse(search_gene_names, kwargs={'key': key}))
+                    else:
+                        # remake orthQuery with seqIds
+                        form.cleaned_data['seq_ids'] = seqIds
+                        orthQuery = makeOrthQueryFromBrowseForm(form)
+                elif browseId and browseIdType == 'seq_id_type':
+                    # remake orthQuery with seqIds
+                    form.cleaned_data['seq_ids'] = browseId.split() # split on whitespace
+                    orthQuery = makeOrthQueryFromBrowseForm(form)
+
+                querySize = len(orthQuery['limit_genomes']) + len(orthQuery['genomes'])
+                if (querySize <= SYNC_QUERY_LIMIT):
+                    # wait for query to run and store query
+                    roundup_util.cacheDispatch(fullyQualifiedFuncName='orthquery.doOrthologyQuery', keywords=orthQuery, cacheKey=cacheKey, outputPath=resultPath)
+                else:
+                    # run on lsf and have result page poll job id.
+                    jobId = roundup_util.lsfAndCacheDispatch(fullyQualifiedFuncName='orthquery.doOrthologyQuery', keywords=orthQuery, cacheKey=cacheKey, outputPath=resultPath)
+
+            if not jobId:
+                return django.shortcuts.redirect(django.core.urlresolvers.reverse(orth_result, kwargs={'result_id': resultId}))
+            else:
+                return django.shortcuts.redirect(django.core.urlresolvers.reverse(orth_wait, kwargs={'result_id': resultId, 'job_id': jobId}))
+            # generate key for query
+            # look for query in cache
+            # if not in cache
+            #   if big query, run async on lsf, getting jobid
+            #   if small query, run sync on localhost
+            # redirect to result page with query key
+            # submit sync or async orthology query
+    else:
+        form = BrowseForm() # An unbound form
+
+    example = "{'primary_genome': 'Apis_mellifera.aa', 'identifier': '110749629', 'identifier_type': 'seq_id_type', 'secondary_genomes': ['Homo_sapiens.aa', 'Mus_musculus.aa'], 'include_gene_name': 'true', 'include_go_term': 'true'}" # javascript
+    return django.shortcuts.render(request, 'browse.html',
+                                   {'form': form, 'nav_id': 'browse', 'form_doc_id': 'browse',
+                                    'form_action': django.core.urlresolvers.reverse(browse), 'form_example': example})
+
+###################
+# CLUSTER FUNCTIONS
+###################
+
+class ClusterForm(django.forms.Form):
+    genomes = django.forms.MultipleChoiceField(choices=GENOME_CHOICES, help_text='Select two or more')
+    divergence = django.forms.ChoiceField(choices=DIVERGENCE_CHOICES)
+    evalue = django.forms.ChoiceField(choices=EVALUE_CHOICES, label='BLAST E-value')
+    distance_lower_limit = django.forms.FloatField(help_text=DIST_LIMIT_HELP, required=False, max_value=19.0, min_value=0.0)
+    distance_upper_limit = django.forms.FloatField(help_text=DIST_LIMIT_HELP, required=False, max_value=19.0, min_value=0.0)
+    tc_only = django.forms.BooleanField(label='Only Show Transitively Closed Gene Clusters', required=False, initial=False)
+    include_gene_names = django.forms.BooleanField(required=False, initial=True)
+    include_go_terms = django.forms.BooleanField(required=False, initial=True)
+    
+    def clean_genomes(self):
+        data = self.cleaned_data.get('genomes')
+        logging.debug('clean_genomes(): data={}'.format(data))
+        if data is None or len(data) < 2:
+            raise django.forms.ValidationError('At least two Genomes must be selected.')
+        # Always return the cleaned data, whether you have changed it or not.
+        return data
+
+
+def cluster(request):
+    '''
+    GET: send user the form to make a cluster query
+    POST: validate cluster query and REDIRECT to results if it is good.
+    '''
+    if request.method == 'POST': # If the form has been submitted...
+        form = ClusterForm(request.POST) # A form bound to the POST data
+        if form.is_valid(): # All validation rules pass
+            logging.debug('form.cleaned_data={}'.format(form.cleaned_data))
+            orthQuery = makeOrthQueryFromClusterForm(form)
+            logging.debug('orthQuery={}'.format(orthQuery))
+            cacheKey = orthQueryHash(orthQuery)
+            logging.debug(dir(request))
+            jobId = None
+            if USE_CACHE and roundup_util.cacheHasKey(cacheKey):
+                resultPath = roundup_util.cacheGet(cacheKey)
+                resultId = orthresult.resultFilenameToId(resultPath)
+                logging.debug('cache hit.\n\tcacheKey: {}\n\tresultId: {}\n\tresultPath: {}'.format(cacheKey, resultId, resultPath))
+            else:
+                resultId = orthresult.makeResultId()
+                resultPath = orthresult.getResultFilename(resultId)
+                logging.debug('cache miss.\n\tcacheKey: {}\n\tresultId: {}\n\tresultPath: {}'.format(cacheKey, resultId, resultPath))
+                querySize = len(orthQuery['limit_genomes']) + len(orthQuery['genomes'])
+                if (querySize <= SYNC_QUERY_LIMIT):
+                    # wait for query to run and store query
+                    roundup_util.cacheDispatch(fullyQualifiedFuncName='orthquery.doOrthologyQuery', keywords=orthQuery, cacheKey=cacheKey, outputPath=resultPath)
+                else:
+                    # run on lsf and have result page poll job id.
+                    jobId = roundup_util.lsfAndCacheDispatch(fullyQualifiedFuncName='orthquery.doOrthologyQuery', keywords=orthQuery, cacheKey=cacheKey, outputPath=resultPath)
+
+            if not jobId:
+                return django.shortcuts.redirect(django.core.urlresolvers.reverse(orth_result, kwargs={'result_id': resultId}))
+            else:
+                return django.shortcuts.redirect(django.core.urlresolvers.reverse(orth_wait, kwargs={'result_id': resultId, 'job_id': jobId}))
+            # generate key for query
+            # look for query in cache
+            # if not in cache
+            #   if big query, run async on lsf, getting jobid
+            #   if small query, run sync on localhost
+            # redirect to result page with query key
+            # submit sync or async orthology query
+    else:
+        form = ClusterForm() # An unbound form
+
+    example = "{'genomes': ['Homo_sapiens.aa', 'Mus_musculus.aa', 'Arabidopsis_thaliana.aa'], 'include_gene_name': 'true', 'include_go_term': 'true'}" 
+    return django.shortcuts.render(request, 'cluster.html',
+                                   {'form': form, 'nav_id': 'cluster', 'form_doc_id': 'cluster',
+                                    'form_action': django.core.urlresolvers.reverse(cluster), 'form_example': example})
 
 
 ###########################
@@ -339,103 +562,12 @@ def makeOrthQueryFromClusterForm(form):
 def orthQueryHash(query):
     '''
     return: a hash of query, i.e. a string which represents query compactly and is unlikely to collide with any other query.
+    used as a cache key.
     unicode warning: uses ensure_ascii=False, so json.loads(json.dumps(obj)) == obj.
     '''
     return hashlib.sha1(json.dumps(query, ensure_ascii=False)).hexdigest()
 
 
-##################
-# BROWSE FUNCTIONS
-##################
-
-class BrowseForm(django.forms.Form):
-    primary_genome = django.forms.ChoiceField(choices=GENOME_CHOICES)
-    identifier_type = django.forms.ChoiceField(choices=IDENTIFIER_TYPE_CHOICES)
-    identifier = django.forms.CharField(required=False, max_length=100, widget=django.forms.TextInput(attrs={'size': '60'}))
-    secondary_genomes = django.forms.MultipleChoiceField(required=False, choices=GENOME_CHOICES)
-    divergence = django.forms.ChoiceField(choices=DIVERGENCE_CHOICES)
-    evalue = django.forms.ChoiceField(choices=EVALUE_CHOICES, label='BLAST E-value')
-    distance_lower_limit = django.forms.FloatField(help_text=DIST_LIMIT_HELP, required=False, max_value=19.0, min_value=0.0)
-    distance_upper_limit = django.forms.FloatField(help_text=DIST_LIMIT_HELP, required=False, max_value=19.0, min_value=0.0)
-    include_gene_names = django.forms.BooleanField(required=False, initial=True)
-    include_go_terms = django.forms.BooleanField(required=False, initial=True)
-
-    def clean(self):
-        primary_genome = self.cleaned_data.get('primary_genome')
-        secondary_genomes = self.cleaned_data.get('secondary_genomes')
-        logging.debug('clean(): secondary_genomes={}'.format(secondary_genomes))
-        if secondary_genomes and primary_genome in secondary_genomes:
-            raise django.forms.ValidationError('Primary genome must not be among the selected Secondary genomes.')
-        return self.cleaned_data
-
-
-def browse(request):
-    '''
-    GET: send user the form to make a browse query
-    POST: validate browse query and REDIRECT to results if it is good.
-    '''
-    if request.method == 'POST': # If the form has been submitted...
-        form = BrowseForm(request.POST) # A form bound to the POST data
-        if form.is_valid(): # All validation rules pass
-            logging.debug('form.cleaned_data={}'.format(form.cleaned_data))
-            orthQuery = makeOrthQueryFromBrowseForm(form)
-            logging.debug('orthQuery={}'.format(orthQuery))
-            cacheKey = orthQueryHash(orthQuery)
-            logging.debug(dir(request))
-            jobId = None
-            if USE_CACHE and roundup_util.cacheHasKey(cacheKey):
-                resultPath = roundup_util.cacheGet(cacheKey)
-                resultId = orthresult.resultFilenameToId(resultPath)
-                logging.debug('cache hit.\n\tcacheKey: {}\n\tresultId: {}\n\tresultPath: {}'.format(cacheKey, resultId, resultPath))
-            else:
-                resultId = orthresult.makeResultId()
-                resultPath = orthresult.getResultFilename(resultId)
-                logging.debug('cache miss.\n\tcacheKey: {}\n\tresultId: {}\n\tresultPath: {}'.format(cacheKey, resultId, resultPath))
-
-                # handle browse ids.  I would rather not have this complexity in here at all.  it seems like there must be a more generic and powerful search mechanism.
-                browseId = form.cleaned_data.get('identifier')
-                browseIdType = form.cleaned_data.get('identifier_type')
-                logging.debug('browseId={}, browseIdType={}'.format(browseId, browseIdType))
-                if browseId and browseIdType == 'gene_name_type':
-                    genome = form.cleaned_data['primary_genome']
-                    seqIds = roundup_db.getSeqIdsForGeneName(geneName=browseId, database=genome)
-                    if not seqIds: # no seq ids matching the gene name were found.  oh no!
-                        return django.shortcuts.redirect(django.core.urlresolvers.reverse(search_gene_names, kwargs={'kind': 'contains', 'query': browseId}))
-                    else:
-                        # remake orthQuery with seqIds
-                        form.cleaned_data['seq_ids'] = seqIds
-                        orthQuery = makeOrthQueryFromBrowseForm(form)
-                elif browseId and browseIdType == 'seq_id_type':
-                    # remake orthQuery with seqIds
-                    form.cleaned_data['seq_ids'] = browseId.split() # split on whitespace
-                    orthQuery = makeOrthQueryFromBrowseForm(form)
-
-                querySize = len(orthQuery['limit_genomes']) + len(orthQuery['genomes'])
-                if (querySize <= SYNC_QUERY_LIMIT):
-                    # wait for query to run and store query
-                    roundup_util.cacheDispatch(fullyQualifiedFuncName='orthquery.doOrthologyQuery', keywords=orthQuery, cacheKey=cacheKey, outputPath=resultPath)
-                else:
-                    # run on lsf and have result page poll job id.
-                    jobId = roundup_util.lsfAndCacheDispatch(fullyQualifiedFuncName='orthquery.doOrthologyQuery', keywords=orthQuery, cacheKey=cacheKey, outputPath=resultPath)
-
-            if not jobId:
-                return django.shortcuts.redirect(django.core.urlresolvers.reverse(orth_result, kwargs={'result_id': resultId}))
-            else:
-                return django.shortcuts.redirect(django.core.urlresolvers.reverse(orth_wait, kwargs={'result_id': resultId, 'job_id': jobId}))
-            # generate key for query
-            # look for query in cache
-            # if not in cache
-            #   if big query, run async on lsf, getting jobid
-            #   if small query, run sync on localhost
-            # redirect to result page with query key
-            # submit sync or async orthology query
-    else:
-        form = BrowseForm() # An unbound form
-
-    return django.shortcuts.render(request, 'browse.html',
-                                   {'form': form, 'nav_id': 'browse', 'form_doc_id': 'browse', 'form_action': django.core.urlresolvers.reverse(browse)})
-
-        
 def orth_result(request, result_id):
     '''
     GET: send user a waiting page that will display results when ready.
@@ -476,77 +608,6 @@ def job_ready(request):
     data = json.dumps({'ready': bool(not jobId or roundup_util.isEndedJob(jobId))})
     # data = json.dumps({'ready': True})
     return django.http.HttpResponse(data, content_type='application/json')
-
-
-###################
-# CLUSTER FUNCTIONS
-###################
-
-class ClusterForm(django.forms.Form):
-    genomes = django.forms.MultipleChoiceField(choices=GENOME_CHOICES, help_text='Select two or more')
-    divergence = django.forms.ChoiceField(choices=DIVERGENCE_CHOICES)
-    evalue = django.forms.ChoiceField(choices=EVALUE_CHOICES, label='BLAST E-value')
-    distance_lower_limit = django.forms.FloatField(help_text=DIST_LIMIT_HELP, required=False, max_value=19.0, min_value=0.0)
-    distance_upper_limit = django.forms.FloatField(help_text=DIST_LIMIT_HELP, required=False, max_value=19.0, min_value=0.0)
-    tc_only = django.forms.BooleanField(label='Only Show Transitively Closed Gene Clusters', required=False, initial=False)
-    include_gene_names = django.forms.BooleanField(required=False, initial=True)
-    include_go_terms = django.forms.BooleanField(required=False, initial=True)
-    
-    def clean_genomes(self):
-        data = self.cleaned_data.get('genomes')
-        logging.debug('clean_genomes(): data={}'.format(data))
-        if data is None or len(data) < 2:
-            raise django.forms.ValidationError('At least two Genomes must be selected.')
-        # Always return the cleaned data, whether you have changed it or not.
-        return data
-
-
-def cluster(request):
-    '''
-    GET: send user the form to make a cluster query
-    POST: validate cluster query and REDIRECT to results if it is good.
-    '''
-    if request.method == 'POST': # If the form has been submitted...
-        form = ClusterForm(request.POST) # A form bound to the POST data
-        if form.is_valid(): # All validation rules pass
-            logging.debug('form.cleaned_data={}'.format(form.cleaned_data))
-            orthQuery = makeOrthQueryFromClusterForm(form)
-            logging.debug('orthQuery={}'.format(orthQuery))
-            cacheKey = orthQueryHash(orthQuery)
-            logging.debug(dir(request))
-            jobId = None
-            if USE_CACHE and roundup_util.cacheHasKey(cacheKey):
-                resultPath = roundup_util.cacheGet(cacheKey)
-                resultId = orthresult.resultFilenameToId(resultPath)
-                logging.debug('cache hit.\n\tcacheKey: {}\n\tresultId: {}\n\tresultPath: {}'.format(cacheKey, resultId, resultPath))
-            else:
-                resultId = orthresult.makeResultId()
-                resultPath = orthresult.getResultFilename(resultId)
-                logging.debug('cache miss.\n\tcacheKey: {}\n\tresultId: {}\n\tresultPath: {}'.format(cacheKey, resultId, resultPath))
-                querySize = len(orthQuery['limit_genomes']) + len(orthQuery['genomes'])
-                if (querySize <= SYNC_QUERY_LIMIT):
-                    # wait for query to run and store query
-                    roundup_util.cacheDispatch(fullyQualifiedFuncName='orthquery.doOrthologyQuery', keywords=orthQuery, cacheKey=cacheKey, outputPath=resultPath)
-                else:
-                    # run on lsf and have result page poll job id.
-                    jobId = roundup_util.lsfAndCacheDispatch(fullyQualifiedFuncName='orthquery.doOrthologyQuery', keywords=orthQuery, cacheKey=cacheKey, outputPath=resultPath)
-
-            if not jobId:
-                return django.shortcuts.redirect(django.core.urlresolvers.reverse(orth_result, kwargs={'result_id': resultId}))
-            else:
-                return django.shortcuts.redirect(django.core.urlresolvers.reverse(orth_wait, kwargs={'result_id': resultId, 'job_id': jobId}))
-            # generate key for query
-            # look for query in cache
-            # if not in cache
-            #   if big query, run async on lsf, getting jobid
-            #   if small query, run sync on localhost
-            # redirect to result page with query key
-            # submit sync or async orthology query
-    else:
-        form = ClusterForm() # An unbound form
-
-    return django.shortcuts.render(request, 'cluster.html',
-                                   {'form': form, 'nav_id': 'cluster', 'form_doc_id': 'cluster', 'form_action': django.core.urlresolvers.reverse(cluster)})
 
 
 
