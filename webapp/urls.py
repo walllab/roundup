@@ -27,7 +27,9 @@ urlpatterns = patterns('',
                        url(r'^orth/wait/(?P<result_id>[^/]+)/(?P<job_id>[^/]+)/$', 'home.views.orth_wait', name='orth_wait'),
                        url(r'^api/job/ready/$', 'home.views.job_ready', name='job_ready'),
                        url(r'^sources/$', 'home.views.sources', name='sources'),
-                       url(r'^search_gene_names/(?P<kind>[^/]+)/(?P<query>[^/]+)/$', 'home.views.search_gene_names', name='search_gene_names'),
+                       url(r'^search_gene_names/$', 'home.views.search_gene_names', name='search_gene_names'),
+                       url(r'^search_gene_names/(?P<key>[^/]+)/$', 'home.views.search_gene_names', name='search_gene_names'),
+                       url(r'^search_gene_names/result/(?P<key>[^/]+)/$', 'home.views.search_gene_names_result', name='search_gene_names_result'),
                        # url(r'^webapp/', include('webapp.foo.urls')),
                        
                        # Uncomment the admin/doc line below to enable admin documentation:

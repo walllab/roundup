@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% load url from future %}
+{% comment %}
+{% endcomment %}
+
+{% block content %}
+<div id="mainpage"> 
+<h2>Search For Gene Names</h2> 
+{% if message %}
+<p class="roundup_message">{{ message }}</p>
+{% endif %}
+<p>Search the list of gene names and symbols used by the Roundup Orthology Database.</p>
+<p>
+</p> 
+{% include 'main_form.html' %}
+</div>
+{% endblock content %}
+

@@ -5,14 +5,7 @@
 
 {% block content %}
 <div id="mainpage"> 
-<script><!--
-var input_form_example_values = {'fasta': '>test\nMYSIVKEIIVDPYKRLKWGFIPVKRQVEDLPDDLNSTEIV\nTISNSIQSHETAENFITTTSEKDQLHFETSSYSEHKDNVN\nVTRSYEYRDEADRPWWRFFDEQEYRINEKERS\nHNKWYSWF\nKQGTSFKEKKLLIKLDVLLAFYSCIAYWVKYLD', 'genome': 'Saccharomyces_cerevisiae.aa'};
-// -->
-</script>
 <h2>Lookup a Sequence Id for a FASTA Sequence</h2> 
-<p>
-<a href="javascript:setFormValues(document.getElementById('{{ form_id|default:"input_form" }}'), input_form_example_values);">Example</a> 
-</p> 
 {% include 'main_form.html' %}
 </div>
 {% endblock content %}

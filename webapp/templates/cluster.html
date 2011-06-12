@@ -5,15 +5,8 @@
 
 {% block content %}
 <div id="mainpage"> 
-<script><!--
-var input_form_example_values = {'genomes': ['Homo_sapiens.aa', 'Mus_musculus.aa', 'Arabidopsis_thaliana.aa'], 'include_gene_name': 'true', 'include_go_term': 'true'};
-// -->
-</script> 
 <h2>Retrieve Phylogenetic Profiles in the Roundup Orthology Database</h2> 
-<p>
-<a href="javascript:setFormValues(document.getElementById('{{ form_id|default:"input_form" }}'), input_form_example_values);">Example</a> 
-</p> 
 {% include 'main_form.html' %}
 </div>
 {% endblock content %}
-
+ 
