@@ -27,7 +27,8 @@ import BioUtilities
 import roundup_db
 
 
-USE_CACHE = False
+USE_CACHE = True
+SYNC_QUERY_LIMIT = 2 # run an asynchronous query (on lsf) if more than this many genomes are in the query.
 GENOMES = sorted(roundup_common.getGenomes())
 GENOME_CHOICES = [(g, orthresult.genomeDisplayName(g)) for g in GENOMES] # pairs of genome id and display name
 DIVERGENCE_CHOICES = [(d, d) for d in roundup_common.DIVERGENCES]
@@ -45,7 +46,6 @@ DISPLAY_NAME_MAP = {'fasta': 'FASTA Sequence', 'genome': 'Genome',
                     'seq_ids': 'Sequence Identifiers',
                     'contains': 'Contain', 'equals': 'Equal', 'starts_with': 'Start With', 'ends_with': 'End With', 'substring': 'Text Substring'}
 DIST_LIMIT_HELP = 'from 0.0 to 19.0'
-SYNC_QUERY_LIMIT = 20 # run an asynchronous query (on lsf) if more than this many genomes are in the query.
 
 def displayName(key, nameMap=DISPLAY_NAME_MAP):
     return nameMap.get(key, key)
@@ -223,7 +223,7 @@ def lookup(request):
             genome, fasta = form.cleaned_data['genome'], form.cleaned_data['fasta'] 
             seqId = BioUtilities.findSeqIdWithFasta(fasta, genome)
             # store result in cache, so can do a redirect/get. 
-            key = orthresult.makeResultId()
+            key = makeUniqueId()
             roundup_util.cacheSet(key, {'genome': genome, 'fasta': fasta, 'seqId': seqId})
             # redirect the post to a get.  http://en.wikipedia.org/wiki/Post/Redirect/Get
             return django.shortcuts.redirect(django.core.urlresolvers.reverse(lookup_result, kwargs={'key': key}))
@@ -269,7 +269,7 @@ def search_gene_names(request, key=None):
             search_type, query_string = form.cleaned_data['search_type'], form.cleaned_data['query_string']
             pairs = roundup_db.findGeneNameGenomePairsLike(substring=query_string, searchType=search_type)
             # store result in cache, so can do a redirect/get. 
-            key = orthresult.makeResultId()
+            key = makeUniqueId()
             roundup_util.cacheSet(key, {'search_type': search_type, 'query_string': query_string, 'pairs': pairs})
             # redirect the post to a get.  http://en.wikipedia.org/wiki/Post/Redirect/Get
             return django.shortcuts.redirect(django.core.urlresolvers.reverse(search_gene_names_result, kwargs={'key': key}))
@@ -336,67 +336,42 @@ class BrowseForm(django.forms.Form):
 def browse(request):
     '''
     GET: send user the form to make a browse query
-    POST: validate browse query and REDIRECT to results if it is good.
+    POST: validate browse query and REDIRECT to result if it is good.
     '''
     if request.method == 'POST': # If the form has been submitted...
         form = BrowseForm(request.POST) # A form bound to the POST data
         if form.is_valid(): # All validation rules pass
             logging.debug('form.cleaned_data={}'.format(form.cleaned_data))
-            orthQuery = makeOrthQueryFromBrowseForm(form)
+            orthQuery = makeOrthQueryFromBrowseForm(form)            
             logging.debug('orthQuery={}'.format(orthQuery))
-            cacheKey = orthQueryHash(orthQuery)
-            logging.debug(dir(request))
-            jobId = None
-            if USE_CACHE and roundup_util.cacheHasKey(cacheKey):
-                resultPath = roundup_util.cacheGet(cacheKey)
-                resultId = orthresult.resultFilenameToId(resultPath)
-                logging.debug('cache hit.\n\tcacheKey: {}\n\tresultId: {}\n\tresultPath: {}'.format(cacheKey, resultId, resultPath))
-            else:
-                resultId = orthresult.makeResultId()
-                resultPath = orthresult.getResultFilename(resultId)
-                logging.debug('cache miss.\n\tcacheKey: {}\n\tresultId: {}\n\tresultPath: {}'.format(cacheKey, resultId, resultPath))
 
-                # handle browse ids.  I would rather not have this complexity in here at all.  it seems like there must be a more generic and powerful search mechanism.
-                browseId = form.cleaned_data.get('identifier')
-                browseIdType = form.cleaned_data.get('identifier_type')
-                logging.debug('browseId={}, browseIdType={}'.format(browseId, browseIdType))
-                if browseId and browseIdType == 'gene_name_type':
-                    genome = form.cleaned_data['primary_genome']
-                    seqIds = roundup_db.getSeqIdsForGeneName(geneName=browseId, database=genome)
-                    if not seqIds: # no seq ids matching the gene name were found.  oh no!
-                        message = 'In your Browse query, Roudnup did not find the gene named "{}" in the genome "{}".  Try searching for a gene name.'.format(browseId, genome)
-                        # store result in cache, so can do a redirect/get. 
-                        key = orthresult.makeResultId()
-                        roundup_util.cacheSet(key, {'message': message, 'search_type': 'contains', 'query_string': browseId})
-                        return django.shortcuts.redirect(django.core.urlresolvers.reverse(search_gene_names, kwargs={'key': key}))
-                    else:
-                        # remake orthQuery with seqIds
-                        form.cleaned_data['seq_ids'] = seqIds
-                        orthQuery = makeOrthQueryFromBrowseForm(form)
-                elif browseId and browseIdType == 'seq_id_type':
-                    # remake orthQuery with seqIds
-                    form.cleaned_data['seq_ids'] = browseId.split() # split on whitespace
-                    orthQuery = makeOrthQueryFromBrowseForm(form)
-
-                querySize = len(orthQuery['limit_genomes']) + len(orthQuery['genomes'])
-                if (querySize <= SYNC_QUERY_LIMIT):
-                    # wait for query to run and store query
-                    roundup_util.cacheDispatch(fullyQualifiedFuncName='orthquery.doOrthologyQuery', keywords=orthQuery, cacheKey=cacheKey, outputPath=resultPath)
+            # Process and add Browse Ids to the query
+            # I would rather not have this complexity in here at all.  There must be a simpler and more powerful way.
+            browseId = form.cleaned_data.get('identifier')
+            browseIdType = form.cleaned_data.get('identifier_type')
+            logging.debug('browseId={}, browseIdType={}'.format(browseId, browseIdType))
+            if browseId and browseIdType == 'gene_name_type':
+                genome = form.cleaned_data['primary_genome']
+                seqIds = roundup_db.getSeqIdsForGeneName(geneName=browseId, database=genome)
+                if not seqIds: # no seq ids matching the gene name were found.  oh no!
+                    message = 'In your Browse query, Roudnup did not find the gene named "{}" in the genome "{}".  Try searching for a gene name.'.format(browseId, genome)
+                    # store result in cache, so can do a redirect/get. 
+                    key = makeUniqueId()
+                    roundup_util.cacheSet(key, {'message': message, 'search_type': 'contains', 'query_string': browseId})
+                    return django.shortcuts.redirect(django.core.urlresolvers.reverse(search_gene_names, kwargs={'key': key}))
                 else:
-                    # run on lsf and have result page poll job id.
-                    jobId = roundup_util.lsfAndCacheDispatch(fullyQualifiedFuncName='orthquery.doOrthologyQuery', keywords=orthQuery, cacheKey=cacheKey, outputPath=resultPath)
+                    # remake orthQuery with seqIds
+                    form.cleaned_data['seq_ids'] = seqIds
+                    orthQuery = makeOrthQueryFromBrowseForm(form)
+            elif browseId and browseIdType == 'seq_id_type':
+                # remake orthQuery with seqIds
+                form.cleaned_data['seq_ids'] = browseId.split() # split on whitespace
+                orthQuery = makeOrthQueryFromBrowseForm(form)
 
-            if not jobId:
-                return django.shortcuts.redirect(django.core.urlresolvers.reverse(orth_result, kwargs={'result_id': resultId}))
-            else:
-                return django.shortcuts.redirect(django.core.urlresolvers.reverse(orth_wait, kwargs={'result_id': resultId, 'job_id': jobId}))
-            # generate key for query
-            # look for query in cache
-            # if not in cache
-            #   if big query, run async on lsf, getting jobid
-            #   if small query, run sync on localhost
-            # redirect to result page with query key
-            # submit sync or async orthology query
+            # cache the query and redirect to a page that will "get" the query result
+            queryId = orthQueryHash(orthQuery)
+            roundup_util.cacheSet(queryId, orthQuery)
+            return django.shortcuts.redirect(django.core.urlresolvers.reverse(orth_query, kwargs={'queryId': queryId}))
     else:
         form = BrowseForm() # An unbound form
 
@@ -404,6 +379,7 @@ def browse(request):
     return django.shortcuts.render(request, 'browse.html',
                                    {'form': form, 'nav_id': 'browse', 'form_doc_id': 'browse',
                                     'form_action': django.core.urlresolvers.reverse(browse), 'form_example': example})
+
 
 ###################
 # CLUSTER FUNCTIONS
@@ -421,7 +397,6 @@ class ClusterForm(django.forms.Form):
     
     def clean_genomes(self):
         data = self.cleaned_data.get('genomes')
-        logging.debug('clean_genomes(): data={}'.format(data))
         if data is None or len(data) < 2:
             raise django.forms.ValidationError('At least two Genomes must be selected.')
         # Always return the cleaned data, whether you have changed it or not.
@@ -431,7 +406,29 @@ class ClusterForm(django.forms.Form):
 def cluster(request):
     '''
     GET: send user the form to make a cluster query
-    POST: validate cluster query and REDIRECT to results if it is good.
+    POST: validate cluster query and REDIRECT to result if it is good.
+    '''
+    if request.method == 'POST': # If the form has been submitted...
+        form = ClusterForm(request.POST) # A form bound to the POST data
+        if form.is_valid(): # All validation rules pass
+            orthQuery = makeOrthQueryFromClusterForm(form)
+            queryId = orthQueryHash(orthQuery)
+            roundup_util.cacheSet(queryId, orthQuery)
+            # cache the query and redirect to a page that will run the query
+            return django.shortcuts.redirect(django.core.urlresolvers.reverse(orth_query, kwargs={'queryId': queryId}))
+    else:
+        form = ClusterForm() # An unbound form
+
+    example = "{'genomes': ['Homo_sapiens.aa', 'Mus_musculus.aa', 'Arabidopsis_thaliana.aa'], 'include_gene_name': 'true', 'include_go_term': 'true'}" 
+    return django.shortcuts.render(request, 'cluster.html',
+                                   {'form': form, 'nav_id': 'cluster', 'form_doc_id': 'cluster',
+                                    'form_action': django.core.urlresolvers.reverse(cluster), 'form_example': example})
+
+
+def clusterOld(request):
+    '''
+    GET: send user the form to make a cluster query
+    POST: validate cluster query and REDIRECT to result if it is good.
     '''
     if request.method == 'POST': # If the form has been submitted...
         form = ClusterForm(request.POST) # A form bound to the POST data
@@ -444,10 +441,10 @@ def cluster(request):
             jobId = None
             if USE_CACHE and roundup_util.cacheHasKey(cacheKey):
                 resultPath = roundup_util.cacheGet(cacheKey)
-                resultId = orthresult.resultFilenameToId(resultPath)
+                resultId = resultFilenameToId(resultPath)
                 logging.debug('cache hit.\n\tcacheKey: {}\n\tresultId: {}\n\tresultPath: {}'.format(cacheKey, resultId, resultPath))
             else:
-                resultId = orthresult.makeResultId()
+                resultId = makeUniqueId()
                 resultPath = orthresult.getResultFilename(resultId)
                 logging.debug('cache miss.\n\tcacheKey: {}\n\tresultId: {}\n\tresultPath: {}'.format(cacheKey, resultId, resultPath))
                 querySize = len(orthQuery['limit_genomes']) + len(orthQuery['genomes'])
@@ -459,9 +456,9 @@ def cluster(request):
                     jobId = roundup_util.lsfAndCacheDispatch(fullyQualifiedFuncName='orthquery.doOrthologyQuery', keywords=orthQuery, cacheKey=cacheKey, outputPath=resultPath)
 
             if not jobId:
-                return django.shortcuts.redirect(django.core.urlresolvers.reverse(orth_result, kwargs={'result_id': resultId}))
+                return django.shortcuts.redirect(django.core.urlresolvers.reverse(orth_result, kwargs={'resultId': resultId}))
             else:
-                return django.shortcuts.redirect(django.core.urlresolvers.reverse(orth_wait, kwargs={'result_id': resultId, 'job_id': jobId}))
+                return django.shortcuts.redirect(django.core.urlresolvers.reverse(orth_wait, kwargs={'resultId': resultId, 'job_id': jobId}))
             # generate key for query
             # look for query in cache
             # if not in cache
@@ -481,6 +478,21 @@ def cluster(request):
 ###########################
 # ORTHOLOGY QUERY FUNCTIONS
 ###########################
+
+def getResultId(queryId):
+    return '{}0'.format(queryId)
+
+
+def makeUniqueId():
+    '''
+    create a new unique result id, like 17e038a69d604fb79028c85367727472.
+    '''
+    return uuid.uuid4().hex
+
+
+def resultFilenameToId(filename):
+    return os.path.basename(filename)[len('roundup_web_result_'):]
+
 
 def makeDefaultOrthQuery():
     '''
@@ -568,47 +580,82 @@ def orthQueryHash(query):
     return hashlib.sha1(json.dumps(query, ensure_ascii=False)).hexdigest()
 
 
-def orth_result(request, result_id):
+def orth_result(request, resultId):
     '''
-    GET: send user a waiting page that will display results when ready.
+    GET: return an orthology result page
     '''
-    logging.debug('orth_result result_id={}'.format(result_id))
-    if orthresult.resultExists(result_id):
+    logging.debug('orth_result resultId={}'.format(resultId))
+    if orthresult.resultExists(resultId):
         resultType = request.GET.get('rt', orthresult.ORTH_RESULT)
         templateType = request.GET.get('tt', orthresult.WIDE_TEMPLATE)
         def urlFunc(resultId):
-            return django.core.urlresolvers.reverse(orth_result, kwargs={'result_id': resultId})
-        page = orthresult.renderResult(result_id, urlFunc, resultType=resultType, otherParams=request.GET)
-        # page = orthresult.resultToAllGenesView(result_id)
+            return django.core.urlresolvers.reverse(orth_result, kwargs={'resultId': resultId})
+        page = orthresult.renderResult(resultId, urlFunc, resultType=resultType, otherParams=request.GET)
+        # page = orthresult.resultToAllGenesView(resultId)
         if templateType == orthresult.WIDE_TEMPLATE:
             return django.shortcuts.render(request, 'wide.html', {'html': page, 'nav_id': 'browse'})
         elif templateType == orthresult.DOWNLOAD_TEMPLATE:
             response = django.http.HttpResponse(page, content_type='text/plain')
-            response['Content-Disposition'] = 'attachment; filename=roundup_{}_{}_result.txt'.format(resultType, result_id)
+            response['Content-Disposition'] = 'attachment; filename=roundup_result_{}_{}.txt'.format(resultType, resultId)
             return response
-    # else:
-    raise django.http.Http404
+    else:
+        raise django.http.Http404
     
 
-def orth_wait(request, result_id, job_id):
+def orth_query(request, queryId):
     '''
-    GET: send user a waiting page that will display results when ready.
+    run an orthology query to create a "result".
+    GET: return a page which will get the result of the query.  either gets result from the cache or runs the query and stores the result in the cache.
     '''
-    # url = django.core.urlresolvers.reverse(browse_wait, kwargs={'result_id': result_id, 'job_id': job_id})
-    # return django.shortcuts.render(request, 'wait.html', {'url': url, 'message': 'Processing your request.  This might take a few minutes.  Thank you for your patience.'})
-    url = django.core.urlresolvers.reverse(orth_result, kwargs={'result_id': result_id})
+    logging.debug('orth_query queryId={}'.format(queryId))
+
+    if not roundup_util.cacheHasKey(queryId):
+        raise django.http.Http404
+
+    orthQuery = roundup_util.cacheGet(queryId)
+    querySize = len(orthQuery['limit_genomes']) + len(orthQuery['genomes'])
+    resultId = getResultId(queryId)
+    resultPath = orthresult.getResultFilename(resultId)
+    logging.debug('orth_query():\northQuery={}\nresultId={}\nqueryId={}\nresultPath={}'.format(orthQuery, resultId, queryId, resultPath))
+    if USE_CACHE and roundup_util.cacheHasKey(resultId) and orthresult.resultExists(resultId):
+        logging.debug('cache hit.')
+        return django.shortcuts.redirect(django.core.urlresolvers.reverse(orth_result, kwargs={'resultId': resultId}))
+    elif roundup_util.isRunningJob(resultId):
+        logging.debug('cache miss. job is already running.  go to waiting page.')
+        return django.shortcuts.redirect(django.core.urlresolvers.reverse(orth_wait, kwargs={'resultId': resultId}))
+    elif querySize <= SYNC_QUERY_LIMIT:
+        logging.debug('cache miss. run job sync.')
+        # wait for query to run and store query
+        roundup_util.cacheDispatch(fullyQualifiedFuncName='orthquery.doOrthologyQuery', keywords=orthQuery, cacheKey=resultId, outputPath=resultPath)
+        return django.shortcuts.redirect(django.core.urlresolvers.reverse(orth_result, kwargs={'resultId': resultId}))
+    else:
+        logging.debug('cache miss. run job async.')
+        # run on lsf and have result page poll job id.
+        jobId = roundup_util.lsfAndCacheDispatch(fullyQualifiedFuncName='orthquery.doOrthologyQuery', keywords=orthQuery,
+                                                 cacheKey=resultId, outputPath=resultPath, jobName=resultId)
+        return django.shortcuts.redirect(django.core.urlresolvers.reverse(orth_wait, kwargs={'resultId': resultId}))
+
+
+def orth_wait(request, resultId):
+    '''
+    GET: return a page that waits until a result is ready and then displays it.
+    '''
+    url = django.core.urlresolvers.reverse(orth_result, kwargs={'resultId': resultId})
     message = 'Processing your request.  This might take a few minutes.  Thank you for your patience.'
-    return django.shortcuts.render(request, 'wait.html', {'job_id': job_id, 'url': url, 'message': message})
+    return django.shortcuts.render(request, 'wait.html', {'job': resultId, 'url': url, 'message': message})
 
 
 def job_ready(request):
+    '''
+    a job is ready if job corresponds to an ended job.
+    job parameter is a job name (it used to be a job id.)
+    '''
+    logging.debug('job_ready')
     # validate inputs to avoid malicious attacks
-    jobId = str(int(request.GET.get('jobid'))) 
-    logging.debug('job_ready: jobid={}'.format(jobId))
-    data = json.dumps({'ready': bool(not jobId or roundup_util.isEndedJob(jobId))})
+    job = request.GET.get('job')
+    logging.debug('\tjob={}'.format(job))
+    data = json.dumps({'ready': bool(not job or roundup_util.isEndedJob(job))})
+    logging.debug('\tdata={}'.format(data))
     # data = json.dumps({'ready': True})
     return django.http.HttpResponse(data, content_type='application/json')
-
-
-
 

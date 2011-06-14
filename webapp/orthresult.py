@@ -51,13 +51,6 @@ def genomeDisplayName(genome):
     else:
         return genome.replace('_', ' ')
 
-    
-def makeResultId():
-    '''
-    create a new unique result id, like 17e038a69d604fb79028c85367727472.
-    '''
-    return uuid.uuid4().hex
-
 
 def resultExists(resultId):
     '''
@@ -74,10 +67,6 @@ def getResult(resultId):
         return util.loadObject(getResultFilename(resultId))
     else:
         return None
-
-
-def resultFilenameToId(filename):
-    return os.path.basename(filename)[len('roundup_web_result_'):]
 
 
 def getResultFilename(resultId):

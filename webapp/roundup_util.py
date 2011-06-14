@@ -108,22 +108,53 @@ def getGenomeDescriptions(genomes):
     return descs
 
 
-
-def isEndedJob(jobId):
+def isRunningJob(job):
     '''
-    The job is ended if there is not status for it on LSF (i.e. bjobs returns nothing for it)
+    A job is running if it exists on LSF and is not ended.
+    '''
+    statuses = _getJobStatuses(job)
+    return bool(statuses and not LSF.isEndedStatus(statuses[0]))
+
+
+def isEndedJob(job):
+    '''
+    job: the name of a lsf job.
+    The job is ended if there is no status for it on LSF (i.e. bjobs returns nothing for it)
     or if its status is DONE, EXIT, or ZOMBIE.
     '''
-    infos = LSF.getJobInfos([jobId])
-    if not infos: # pause to let lsf catch up.
-        time.sleep(1);
-        infos = LSF.getJobInfos([jobId])
-    return bool(not infos or LSF.isEndedStatus(infos[0][LSF.STATUS]))
+    statuses = _getJobStatuses(job)
+    return bool(not statuses or LSF.isEndedStatus(statuses[0]))
+
+
+def _getJobStatuses(job):
+    infos = LSF.getJobInfosByJobName(job)
+    # infos = LSF.getJobInfos([jobId])
+    if not infos: # pause to let lsf catch up and try again
+        time.sleep(0.1);
+        logging.debug('_getJobStatuses(): sleeping.  is this really necessary?')
+        infos = LSF.getJobInfosByJobName(job)
+        # infos = LSF.getJobInfos([jobId])
+    return [info[LSF.STATUS] for info in infos]
 
 
 #########
 # CACHING
 #########
+
+
+def cacheHasKey(key):
+    return cacheutil.Cache(manager=util.ClosingFactoryCM(config.openDbConn), table=config.CACHE_TABLE).has_key(key)
+
+
+def cacheGet(key, default=None):
+    return cacheutil.Cache(manager=util.ClosingFactoryCM(config.openDbConn), table=config.CACHE_TABLE).get(key, default=default)
+
+
+def cacheSet(key, value):
+    '''
+    value: serialized in the cache as json, so only strings as dict keys.
+    '''
+    return cacheutil.Cache(manager=util.ClosingFactoryCM(config.openDbConn), table=config.CACHE_TABLE).set(key, value)
 
 
 def dropCreateCache():
@@ -146,39 +177,29 @@ def cacheDispatch(fullyQualifiedFuncName=None, keywords=None, cacheKey=None, out
     return dispatcher.dispatch(fullyQualifiedFuncName, keywords, cacheKey, outputPath)
 
 
-def lsfDispatch(fullyQualifiedFuncName=None, keywords=None):
+def lsfDispatch(fullyQualifiedFuncName=None, keywords=None, jobName=None):
     '''
     fullyQualifiedFuncName: required. function name including modules, etc., e.g. 'foo_package.gee_package.bar_module.baz_class.wiz_func'
     keywords: dict of keyword parameters passed to the function.  optional.  defaults to {}
     outputPath: required. function output is serialized and written to this file.
     cacheKey: required. outputPath is added to cache under this key.
+    jobName: optional.  submit the job to lsf with this name.
     returns: jobId of lsf job.
     '''
     lsfOptions = ['-N', '-q shared_2h']
+    if jobName:
+        lsfOptions.append('-J {}'.format(jobName))
     return lsfdispatch.dispatch(fullyQualifiedFuncName, keywords, lsfOptions)
 
 
-def lsfAndCacheDispatch(fullyQualifiedFuncName=None, keywords=None, cacheKey=None, outputPath=None):
+def lsfAndCacheDispatch(fullyQualifiedFuncName=None, keywords=None, cacheKey=None, outputPath=None, jobName=None):
     '''
     run fullyQualifiedFuncName on lsf and cache its output.
     returns: jobId of lsf job.
     '''
     newFunc = 'roundup_util.cacheDispatch'
     newKw = {'fullyQualifiedFuncName': fullyQualifiedFuncName, 'keywords': keywords, 'cacheKey': cacheKey, 'outputPath': outputPath}
-    return lsfDispatch(newFunc, newKw)
-
-
-def cacheHasKey(key):
-    return cacheutil.Cache(manager=util.ClosingFactoryCM(config.openDbConn), table=config.CACHE_TABLE).has_key(key)
-
-
-def cacheGet(key, default=None):
-    return cacheutil.Cache(manager=util.ClosingFactoryCM(config.openDbConn), table=config.CACHE_TABLE).get(key, default=default)
-
-
-def cacheSet(key, value):
-    return cacheutil.Cache(manager=util.ClosingFactoryCM(config.openDbConn), table=config.CACHE_TABLE).set(key, value)
-
+    return lsfDispatch(newFunc, newKw, jobName)
 
 
 #######################################
