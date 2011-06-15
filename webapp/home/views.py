@@ -28,8 +28,8 @@ import roundup_db
 
 
 USE_CACHE = True
-SYNC_QUERY_LIMIT = 2 # run an asynchronous query (on lsf) if more than this many genomes are in the query.
-GENOMES = sorted(roundup_common.getGenomes())
+SYNC_QUERY_LIMIT = 20 # run an asynchronous query (on lsf) if more than this many genomes are in the query.
+GENOMES = roundup_util.getGenomes()
 GENOME_CHOICES = [(g, orthresult.genomeDisplayName(g)) for g in GENOMES] # pairs of genome id and display name
 DIVERGENCE_CHOICES = [(d, d) for d in roundup_common.DIVERGENCES]
 EVALUE_CHOICES = [(d, d) for d in reversed(roundup_common.EVALUES)] # 1e-20 .. 1e-5

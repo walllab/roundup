@@ -9,6 +9,7 @@ import shutil
 import re
 import logging
 import time
+import json
 
 import config
 import cachedispatch
@@ -93,20 +94,41 @@ def getUpdateDescriptions():
     return updates
 
 
+def getGenomes():
+    with open(os.path.join(config.PROJ_DIR, 'genome_descs.json.txt')) as fh:
+        descs = json.load(fh)
+        return sorted(descs.keys())
+
+
 def getGenomeDescriptions(genomes):
     '''
     genomes: a list of genomes currently in roundup.
     returns: a list of genome descriptions for the current genomes in roundup.
     '''
-    descs = []
+    with open(os.path.join(config.PROJ_DIR, 'genome_descs.json.txt')) as fh:
+        descs = json.load(fh)
+        return [descs[g] for g in genomes if descs.has_key(g)]
+
+
+def cacheGenomeDescriptions(genomes=None):
+    '''
+    HACK:
+    cache the genome descriptions in a single file to improve performance.
+    Isilon performance is too slow to read >10 small files in a reasonable amount of time unless they are already in the isilon cache.
+    In the future, genome descriptions could be in the database.
+    '''
+    if genomes is None:
+        genomes = roundup_common.getGenomes()
+    descs = {}
     for genome in genomes:
         try:
-            descs.append(roundup_common.getGenomeDescription(genome))
+            descs[genome] = roundup_common.getGenomeDescription(genome)
         except IOError:
             # ignore missing description files to make the webpage more robust.
-            logging.error('getGenomeDescriptions(): failing to get description for genome={}'.format(genome))
-    return descs
-
+            logging.error('failing to get description for genome={}'.format(genome))
+    with open(os.path.join(config.PROJ_DIR, 'genome_descs.json.txt'), 'w') as fh:
+        json.dump(descs, fh)
+    
 
 def isRunningJob(job):
     '''
