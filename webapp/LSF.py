@@ -9,6 +9,7 @@ but can set up any user, I think.  Simply importing this module will configure t
 
 import re
 import os
+import subprocess
 
 import execute
 import logging
@@ -81,8 +82,8 @@ def getJobInfosByJobName(jobName):
     # td23@orchestra:~$ bjobs -J bar
     # Job <bar> is not found
     
-    cmd = 'bjobs -a -u all -w -J '+str(jobName)
-    return getJobInfosSub(cmd)
+    args = ['bjobs', '-a', '-u', 'all', '-w', '-J', str(jobName)]
+    return getJobInfosSub(args)
 
 
 def getJobInfos(jobIds=None):
@@ -94,12 +95,11 @@ def getJobInfos(jobIds=None):
     if jobIds == None:
         jobIds = ['0']
 
+    args = ['bjobs', '-a', '-u', 'all', '-w'] + [str(j) for j in jobIds]
+    return getJobInfosSub(args)
 
-    cmd = 'bjobs -a -u all -w '+(' '.join(jobIds))
-    return getJobInfosSub(cmd)
 
-
-def getJobInfosSub(cmd):
+def getJobInfosSub(args):
     # jobid, userid, status, queue, submission host, execution host, command/jobname, month, day, time
     # example lines of bjobs -wu all
     # 209991  at55    RUN   all_12h    orchestra.med.harvard.edu cello153.cl.med.harvard.edu /home/np29/biology/admix/release7/mcmc -p parc2 Feb  7 13:42
@@ -107,7 +107,7 @@ def getJobInfosSub(cmd):
     # captures: jobid, userid, status, queue, submission host, execution host, command/jobname, submission time
     bjobsRegex = '^(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(.*?)\s+(\S+\s+\S+\s+\S+)\s+$'
 
-    output = execute.run(cmd)
+    output = subprocess.check_output(args)
     jobs = output.splitlines(True) # keep line endings
 
     infos = []
