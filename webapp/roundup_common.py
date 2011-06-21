@@ -35,7 +35,8 @@ ROUNDUP_LOCAL = util.getBoolFromEnv('ROUNDUP_LOCAL', True)
 # LOCAL_DIR = '/scratch' # always use local disk for local dir.
 # only use local disk for local dir if ROUNDUP_LOCAL == true.
 if ROUNDUP_LOCAL:
-    LOCAL_DIR = '/scratch'
+    # LOCAL_DIR = '/scratch'
+    LOCAL_DIR = '/tmp'
 else:
     LOCAL_DIR = config.TMP_DIR
 

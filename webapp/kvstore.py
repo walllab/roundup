@@ -1,8 +1,8 @@
 '''
-Uses RDBMS (e.g. MySQL) to implement the distributed, persistent, atomic and concurrent experience.
+Uses RDBMS (e.g. MySQL) to implement the ultimate in distributed, persistent, atomic and concurrent experiences.
 Simple key value store.
 Keys are strings.
-Values are whatever.  (Stick to strings if you like yourself.)
+Values are serialized as json, which supports lists, dicts, strings, numbers, None, and booleans.  http://www.json.org/
 
 goal: no dependency on a specific RDBMS.  
 goal: atomic, process-level concurrency-safe.
@@ -12,8 +12,9 @@ future: replace with a real key-value store.
 usage:
 Wrap a connection or a factory function in a context manager like cmutil.Noop or cmutil.ClosingFactory.
 
-The following code illustrates creating a queue which gets a new connection for each operation by using the ClosingFactory context manager.
-The it demonstrates putting, getting, removing, and checking for the existence of values.
+The following code illustrates creating a queue which gets a new connection for each operation by using the ClosingFactoryCM context manager.
+It demonstrates putting, getting, removing, and checking for the existence of keys and values.
+Here config.openDbConn is a function that returns a python db api v2 connection.
 python -c'
 import kvstore, util, config;
 kv = kvstore.KVStore(util.ClosingFactoryCM(config.openDbConn), drop=True, create=True)
@@ -28,6 +29,8 @@ print kv.get("hi", "missing")
 print kv.remove("bye")
 '
 '''
+
+import json
 
 import dbutil
 
@@ -74,16 +77,18 @@ class KVStore(object):
             sql = 'SELECT value FROM ' + self.table + ' WHERE name = %s'
             results = dbutil.selectSQL(conn, sql, args=[key])
             if results:
-                return results[0][0]
+                value = json.loads(results[0][0])
             else:
-                return default
+                value = default
+            return value
 
 
     def put(self, key, value):
         with self.manager as conn:
             with dbutil.doTransaction(conn):
+                encodedValue = json.dumps(value)
                 sql = 'INSERT INTO ' + self.table + ' (name, value) VALUES (%s, %s) ON DUPLICATE KEY UPDATE value=%s'
-                return dbutil.insertSQL(conn, sql, args=[key, value, value])
+                return dbutil.insertSQL(conn, sql, args=[key, encodedValue, encodedValue])
 
 
     def exists(self, key):

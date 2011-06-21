@@ -23,10 +23,12 @@ import time
 import glob
 import argparse
 import shutil
+import cStringIO
 
 import nested
 import fasta
 import util
+import execute
 
 
 PAML_ERROR_MSG = 'paml_error'
@@ -34,7 +36,6 @@ FORWARD_DIRECTION = 0
 REVERSE_DIRECTION = 1
 # should correspond to $name_length in clustal2phylip.
 # roundup fasta seq name lines should not exceed this length, including the '>' at the beginning of the line, I think. [td23]
-ROUNDUP_SEQ_NAME_LENGTH = 22
 CLUSTAL_INPUT_FILENAME = 'clustal_fasta.faa'
 CLUSTAL_ALIGNMENT_FILENAME = 'clustal_fasta.aln'
 DASHLEN_RE = re.compile('^(-*)(.*?)(-*)$')
@@ -45,21 +46,26 @@ MAX_HITS = 3
 MATRIX_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'jones.dat')
 CODEML_CONTROL_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'codeml.ctl')
 
+USE_CLUSTALW = util.getBoolFromEnv('RSD_USE_CLUSTALW', False)
 
 
 #################
 # BLAST FUNCTIONS
 #################
+#
+# Used to compute blast hits between two genomes, parse the results, and save the best hits to a file
+#
 
 def formatForBlast(fastaPath):
     # os.chdir(os.path.dirname(fastaPath))
     # cmd = 'formatdb -p -o -i'+os.path.basename(fastaPath)
     # cmd = 'formatdb -p -o -i'+fastaPath
-    cmd = 'makeblastdb -in {} -dbtype prot -parse_seqids'.format(fastaPath)
+    # redirect stdout to /dev/null to make the command quiter.
+    cmd = 'makeblastdb -in {} -dbtype prot -parse_seqids >/dev/null'.format(fastaPath)
     subprocess.check_call(cmd, shell=True)
 
 
-def getHitName(hit):
+def getHitId(hit):
     return hit[0]
 
 
@@ -75,14 +81,14 @@ def loadBlastHits(path):
     return util.loadObject(path)
 
 
-def getBlastHits(queryFastaPath, subjectIndexPath, evalue, workingDir='.', limitHits=MAX_HITS, copyToWorking=False):
+def getBlastHits(queryFastaPath, subjectIndexPath, evalue, limitHits=MAX_HITS, workingDir='.', copyToWorking=False):
     '''
     queryFastaPath: location of fasta file of query sequences
     subjectIndexPath: location and name of blast-formatted indexes.
     evalue: a string or float representing the maximum evalue threshold of hits to get.
     workingDir: creates, uses, and removes a directory under workingDir.
     copyToWorking: if True, copy query fasta path and subject index files to within the working directory and use the copies to blast.
-      useful for performance if the working directory is local and the files are on a network.
+      can improve performance if the working directory is on local disk and the files are on a slow network.
     blasts every sequence in query agaist subject, adding hits that are better than evalue to a list stored in a dict keyed on the query id.
     '''
     # work in a nested tmp dir to avoid junking up the working dir.
@@ -107,7 +113,7 @@ def getBlastHits(queryFastaPath, subjectIndexPath, evalue, workingDir='.', limit
     return hitsMap
 
 
-def computeBlastHits(queryFastaPath, subjectIndexPath, outPath, evalue, workingDir='.', limitHits=MAX_HITS, copyToWorking=False):
+def computeBlastHits(queryFastaPath, subjectIndexPath, outPath, evalue, limitHits=MAX_HITS, workingDir='.', copyToWorking=False):
     '''
     queryFastaPath: location of fasta file of query sequences
     subjectIndexPath: location and name of blast-formatted indexes.
@@ -115,37 +121,39 @@ def computeBlastHits(queryFastaPath, subjectIndexPath, outPath, evalue, workingD
     outPath: location of file where blast hits are saved.
     workingDir: creates, uses, and removes a directory under workingDir.  
     copyToWorking: if True, copy query fasta path and subject index files to within the working directory and use the copies to blast.
-      useful for performance if the working directory is local and the files are on a network.
-    blasts every sequence in query agaist subject, adding hits that are better than evalue to a list stored in a dict keyed on the query id.
-    Persists hits dict to outPath.
+      can improve performance if the working directory is on local disk and the files are on a slow network.
+    Runs getBlastHits() and persists the hits to outPath.
     '''
-    hitsMap = getBlastHits(queryFastaPath, subjectIndexPath, evalue, workingDir, limitHits)
+    hitsMap = getBlastHits(queryFastaPath, subjectIndexPath, evalue, limitHits, workingDir, copyToWorking)
     util.dumpObject(hitsMap, outPath)
 
 
 def parseResults(blastResultsPath, limitHits=MAX_HITS):
+    '''
+    returns: a map from query seq id to a list of tuples of (subject seq id, evalue) for the top hits of the query sequence in the subject genome
+    '''
     # parse tabular results into hits.  thank you, ncbi, for creating results this easy to parse.
     hitsMap = {}
     hitsCountMap = {}
-    prevSeqName = None
-    prevHitName = None
+    prevSeqId = None
+    prevHitId = None
     fh = open(blastResultsPath)
     for line in fh:
         splits = line.split()
-        seqName = fasta.idFromName(splits[0]) # remove namespace prefix, e.g. 'gi|'
-        hitName = fasta.idFromName(splits[1])
+        seqId = fasta.idFromName(splits[0]) # remove namespace prefix, e.g. 'gi|'
+        hitId = fasta.idFromName(splits[1])
         hitEvalue = float(splits[10])
         # results table reports multiple "alignments" per "hit" in ascending order by evalue
         # we only store the top hits.
-        if prevSeqName != seqName or prevHitName != hitName:
-            prevSeqName = seqName
-            prevHitName = hitName
-            if seqName not in hitsCountMap:
-                hitsCountMap[seqName] = 0
-                hitsMap[seqName] = []
-            if not limitHits or hitsCountMap[seqName] < limitHits:
-                hitsCountMap[seqName] += 1                
-                hitsMap[seqName].append((hitName, hitEvalue))
+        if prevSeqId != seqId or prevHitId != hitId:
+            prevSeqId = seqId
+            prevHitId = hitId
+            if seqId not in hitsCountMap:
+                hitsCountMap[seqId] = 0
+                hitsMap[seqId] = []
+            if not limitHits or hitsCountMap[seqId] < limitHits:
+                hitsCountMap[seqId] += 1                
+                hitsMap[seqId].append((hitId, hitEvalue))
     fh.close()
     return hitsMap
     
@@ -184,62 +192,34 @@ def pamlGetDistance(path):
     return dist
 
 
-def clustalToPhylip(alignment):
+def alignFastaKalign(input):
     '''
-    optimized for roundup.  makes some assumptions about alignment to avoid using regular expressions.
-    replaces clustal2phylip perl script, to increase conversion speed by not executing an external process.
+    input: string containing fasta formatted sequences to be aligned.
+    runs alignment program kalign
+    Returns: fasta-formatted aligned sequences
     '''
-    # print 'alignment', alignment
-    START_STATE = 1
-    PARSE_STATE = 2
-    state = START_STATE
-    seqIds = []
-    seqIdToSeq = {}
-    for line in alignment.splitlines():
-        if state == START_STATE:
-            if line.find('CLUSTAL') != -1:
-                state = PARSE_STATE
-            else:
-                pass
-        else: # state == PARSE_STATE:
-            if line.find('Clustal Tree') != -1:
-                break
-            if not line or line[0] == ' ':
-                continue
-            splits = line.split()
-            if len(splits) == 2:
-                seqId = splits[0][:ROUNDUP_SEQ_NAME_LENGTH]
-                if seqId not in seqIdToSeq:
-                    seqIds.append(seqId)
-                    seqIdToSeq[seqId] = ''
-                seqIdToSeq[seqId] += splits[1]
-    phylip = ''
-    # all sequences must be the same length.
-    phylip += '%s %s\n'%(len(seqIds), len(seqIdToSeq[seqIds[0]]))
-    for seqId in seqIds:
-        padding = ' '*(ROUNDUP_SEQ_NAME_LENGTH - len(seqId))
-        phylip += '%s%s%s\n'%(seqId, padding, seqIdToSeq[seqId])
-    return phylip
+    alignedFasta = execute.run('kalign -f fasta', input) # output clustalw format
+    return alignedFasta.replace('\n\n', '\n')
+    
 
-
-def runClustal(fasta, path):
-	'''
-	fasta: fasta formatted sequences to be aligned.
-	path: working directory where fasta will be written and clustal will write output files.
-        runs clustalw, doing i/o using named pipes, which is why clustal process is started before writing out fasta.
-	Returns: alignment
-        '''
-	clustalFastaPath = os.path.join(path, CLUSTAL_INPUT_FILENAME)
-	clustalAlignmentPath = os.path.join(path, CLUSTAL_ALIGNMENT_FILENAME)
-	util.writeToFile(fasta, clustalFastaPath)
-        try:
-            subprocess.check_call('clustalw -infile=%s -outfile=%s 2>&1 >/dev/null'%(clustalFastaPath, clustalAlignmentPath), shell=True)
-        except Exception:
-            logging.exception('runClustal Error:  clustalFastaPath data = %s'%open(clustalFastaPath).read())
-            raise
-	alignment = util.readFromFile(clustalAlignmentPath)
-	return alignment
-
+def alignFastaClustalw(input, path):
+    '''
+    input: string containing fasta formatted sequences to be aligned.
+    path: working directory where fasta will be written and clustal will write output files.
+    runs alignment program clustalw
+    Returns: fasta-formatted aligned sequences
+    '''
+    clustalFastaPath = os.path.join(path, CLUSTAL_INPUT_FILENAME)
+    clustalAlignmentPath = os.path.join(path, CLUSTAL_ALIGNMENT_FILENAME)
+    util.writeToFile(input, clustalFastaPath)
+    try:
+        subprocess.check_call('clustalw -output=fasta -infile=%s -outfile=%s 2>&1 >/dev/null'%(clustalFastaPath, clustalAlignmentPath), shell=True)
+    except Exception:
+        logging.exception('runClustal Error:  clustalFastaPath data = %s'%open(clustalFastaPath).read())
+        raise
+    alignedFasta = util.readFromFile(clustalAlignmentPath)
+    return alignedFasta
+    
 
 def dashlen_check(seq):
     '''
@@ -275,7 +255,7 @@ def makeGetSeqForId(genomeFastaPath):
     # in memory dict performs much better than on-disk retrieval with xdget or fastacmd.
     # and genome fasta files do not take much space (on a modern computer).
     fastaMap = {}
-    for (seqNameline, seq) in fasta.readFasta(genomeFastaPath, ignoreParseError=True):
+    for (seqNameline, seq) in fasta.readFasta(genomeFastaPath):
         seqId = fasta.idFromName(seqNameline)
         fastaMap[seqId] = seq
     def getSeqForIdInMemory(seqId):
@@ -289,13 +269,13 @@ def makeGetHitsOnTheFly(genomeIndexPath, evalue, workingDir='.'):
     returns: a function that returns that takes as input a sequence id and sequence and returns the blast hits
     workingDir: a directory in which to create, use, and delete temporary files and dirs.
     '''
-    def getHitsOnTheFly(seqname, seq):
+    def getHitsOnTheFly(seqid, seq):
         with nested.NestedTempDir(dir=workingDir, nesting=0) as tmpDir:
             queryFastaPath = os.path.join(tmpDir, 'query.faa')
             # add 'lcl|' to make ncbi blast happy.
-            util.writeToFile('{0}\n{1}\n'.format('>lcl|'+seqname, seq), queryFastaPath)
-            hitsDb = getBlastHits(queryFastaPath, genomeIndexPath, evalue, workingDir)
-        return hitsDb.get(seqname)
+            util.writeToFile('{0}\n{1}\n'.format('>lcl|'+seqid, seq), queryFastaPath)
+            hitsDb = getBlastHits(queryFastaPath, genomeIndexPath, evalue, workingDir=workingDir)
+        return hitsDb.get(seqid)
     return getHitsOnTheFly
 
 
@@ -306,18 +286,18 @@ def makeGetSavedHits(filename):
     '''
     # in memory retrieval is faster than on-disk retrieval with bsddb, but this has a minor impact on overall roundup performance.
     hitsDb = loadBlastHits(filename)
-    def getHitsInMemory(seqname, seq):
-        return hitsDb.get(seqname)
+    def getHitsInMemory(seqid, seq):
+        return hitsDb.get(seqid)
     return getHitsInMemory
 
 
-def getGoodEvalueHits(seqName, seq, getHitsFunc, getSeqFunc, evalue):
+def getGoodEvalueHits(seqId, seq, getHitsFunc, getSeqFunc, evalue):
     '''
-    returns: a list of pairs of (seqname, sequence, evalue) that have an evalue below evalue
+    returns: a list of pairs of (seqid, sequence, evalue) that have an evalue below evalue
     '''
     goodhits = []
-    
-    hits = getHitsFunc(seqName, seq)
+
+    hits = getHitsFunc(seqId, seq)
     
     # check for 3 or fewer blast hits below evalue threshold
     if hits:
@@ -325,12 +305,12 @@ def getGoodEvalueHits(seqName, seq, getHitsFunc, getSeqFunc, evalue):
         for hit in hits:
             if hitCount >= MAX_HITS:
                 break
-            hitSeqName = getHitName(hit)
+            hitSeqId = getHitId(hit)
             hitEvalue = getHitEvalue(hit)
             if hitEvalue < evalue:
                 hitCount += 1
-                hitSeq = getSeqFunc(hitSeqName)
-                goodhits.append((hitSeqName, hitSeq, hitEvalue))
+                hitSeq = getSeqFunc(hitSeqId)
+                goodhits.append((hitSeqId, hitSeq, hitEvalue))
 
     if JIKE_DEBUG:
         for data in goodhits:
@@ -338,11 +318,11 @@ def getGoodEvalueHits(seqName, seq, getHitsFunc, getSeqFunc, evalue):
     return goodhits
 
 
-def getDistanceForAlignedSeqPair(seqName, alignedSeq, hitSeqName, alignedHitSeq, workPath):
+def getDistanceForAlignedSeqPair(seqId, alignedSeq, hitSeqId, alignedHitSeq, workPath):
 
     # paranoid check: aligned and trimmed seqs need to be the same length.
     # if len(alignedSeq) != len(alignedHitSeq):
-    #     raise Exception('getDistanceForAlignedSeqPairs: different lengths for seqs: '+str(((seqName, alignedSeq), (hitSeqName, alignedHitSeq))))
+    #     raise Exception('getDistanceForAlignedSeqPairs: different lengths for seqs: '+str(((seqId, alignedSeq), (hitSeqId, alignedHitSeq))))
 
     dataFileName = 'datafile.seq'
     treeFileName = 'treefile.seq'
@@ -353,7 +333,7 @@ def getDistanceForAlignedSeqPair(seqName, alignedSeq, hitSeqName, alignedHitSeq,
     
     # heading is number of seqs and length of each seq (which all need to be the same len).
     heading = '2 %s\n'%len(alignedSeq)
-    pamlData = heading + '%s\n%s\n'%(seqName, alignedSeq) + '%s\n%s\n'%(hitSeqName, alignedHitSeq)
+    pamlData = heading + '%s\n%s\n'%(seqId, alignedSeq) + '%s\n%s\n'%(hitSeqId, alignedHitSeq)
     # logging.debug('pamlData=%s'%pamlData)
     util.writeToFile(pamlData, dataFilePath)
     
@@ -362,11 +342,10 @@ def getDistanceForAlignedSeqPair(seqName, alignedSeq, hitSeqName, alignedHitSeq,
     # run the codeml 
     
     try:
-        # trying hardcoding codeml.ctl file to avoid writing it.
-        subprocess.check_call("cd %s/; echo '0' | codeml 2>&1 >/dev/null"%workPath, shell=True)
+        subprocess.check_call('codeml >/dev/null', cwd=workPath, shell=True) # /dev/null to silence extraneous codeml output
         distance = pamlGetDistance(workPath)
         if JIKE_DEBUG:
-            print 'dist\t{0}\t{1}'.format(hitSeqName, distance)
+            print 'dist\t{0}\t{1}'.format(hitSeqId, distance)
         return distance
     finally:
         for filePath in [dataFilePath, treeFilePath, outFilePath]:
@@ -374,48 +353,46 @@ def getDistanceForAlignedSeqPair(seqName, alignedSeq, hitSeqName, alignedHitSeq,
                 os.remove(filePath)
             
 
-def getGoodDivergenceAlignedTrimmedSeqPair(seqName, seq, hitSeqName, hitSeq, workPath):
+def getGoodDivergenceAlignedTrimmedSeqPair(seqId, seq, hitSeqId, hitSeq, workPath):
     '''
     aligns seq to hit.  trims aligned seq and hit seq.
-    returns: pairs of pairs of name and aligned trimmed sequences for sequences in hits,
+    returns: pairs of pairs of id and aligned trimmed sequences for sequences in hits,
     and a predicate function that, given a divergence threshold, says if the divergence of the sequences exceeds the threshold.
-    e.g. ((seqName, alignedTrimmedSeq), (hitSeqName, alignedTrimmedHitSeq), divergencePredicateFunc)
+    e.g. ((seqId, alignedTrimmedSeq), (hitSeqId, alignedTrimmedHitSeq), divergencePredicateFunc)
     '''
     # ALIGN SEQ and HIT
     # need to align the sequences so we'z can study the rate of evolution per site
-    fasta = '>%s\n%s\n'%(seqName,seq)
-    fasta += '>%s\n%s\n'%(hitSeqName,hitSeq)
-    alignment = runClustal(fasta, workPath)
-    
-    # need to convert clustalw file format into a phylip readable format using this really fancy perl script.
-    # this code is specific to phylip formatted matrix files
-    # where the first line =  #taxa #characters
-    # subsequent line = seqname seq
-    output = clustalToPhylip(alignment)
-    outputLines = output.split('\n')
-    alignHeader = outputLines[0]
-    (alignedNameAndSeq, alignedHitNameAndSeq) = [line.split() for line in outputLines[1:] if line]
+    inputFasta = '>%s\n%s\n>%s\n%s\n'%(seqId, seq, hitSeqId, hitSeq)
+    if USE_CLUSTALW:
+        alignedFasta = alignFastaClustalw(inputFasta, workPath)
+    else:
+        alignedFasta = alignFastaKalign(inputFasta)
+    try:
+        (alignedIdAndSeq, alignedHitIdAndSeq) = ((fasta.idFromName(seqNameline), seq) for seqNameline, seq in fasta.readFasta(cStringIO.StringIO(alignedFasta)))
+    except Exception as e:
+        e.args += (inputFasta, alignedFasta)
+        raise
     
     # CHECK FOR EXCESSIVE DIVERGENCE AND TRIMMING
     # find most diverged sequence
     # sort sequences by dash count.  why?
-    divNameSeqs = []
-    for name, seq in (alignedNameAndSeq, alignedHitNameAndSeq):
+    divIdSeqs = []
+    for id, seq in (alignedIdAndSeq, alignedHitIdAndSeq):
         dashCount = seq.count('-')
         div = dashCount / float(len(seq))
-        g = (dashCount, div, name, seq)
-        divNameSeqs.append(g)
-    divNameSeqs.sort()
+        g = (dashCount, div, id, seq)
+        divIdSeqs.append(g)
+    divIdSeqs.sort()
 
     if JIKE_DEBUG:
-        for data in divNameSeqs:
-            if data[2] != seqName:
+        for data in divIdSeqs:
+            if data[2] != seqId:
                 print 'div\t{}\t{}'.format(data[2], data[1])
         
     # check for excessive divergence
-    leastDivergedDashCount, leastDivergedDiv, leastDivergedName, leastDivergedSeq = divNameSeqs[0]
+    leastDivergedDashCount, leastDivergedDiv, leastDivergedId, leastDivergedSeq = divIdSeqs[0]
     # check for excessive divergence and generate dashtrim.
-    mostDivergedDashCount, mostDivergedDiv, mostDivergedName, mostDivergedSeq = divNameSeqs[1]
+    mostDivergedDashCount, mostDivergedDiv, mostDivergedId, mostDivergedSeq = divIdSeqs[1]
     # dashtrim = dashlen_check(mostDivergedSeq, divergence)
     startTrim, endTrim, trimDivergence = dashlen_check(mostDivergedSeq)
     # logging.debug('dashtrim='+str(dashtrim))
@@ -428,8 +405,8 @@ def getGoodDivergenceAlignedTrimmedSeqPair(seqName, seq, hitSeqName, hitSeq, wor
             return True
         return False
             
-    alignedTrimmedNameAndSeq, alignedTrimmedHitNameAndSeq = [(name, seq[startTrim:(len(seq)-endTrim)]) for name, seq in (alignedNameAndSeq, alignedHitNameAndSeq)]
-    return alignedTrimmedNameAndSeq, alignedTrimmedHitNameAndSeq, divergencePredicate
+    alignedTrimmedIdAndSeq, alignedTrimmedHitIdAndSeq = [(id, seq[startTrim:(len(seq)-endTrim)]) for id, seq in (alignedIdAndSeq, alignedHitIdAndSeq)]
+    return alignedTrimmedIdAndSeq, alignedTrimmedHitIdAndSeq, divergencePredicate
 
 
 def minimumDicts(dicts, key):
@@ -523,8 +500,8 @@ def _computeOrthologsSub(querySeqIds, getQuerySeqFunc, getSubjectSeqFunc, divEva
         querySeq = getQuerySeqFunc(queryId)
         # get forward hits, evalues, alignments, divergences, and distances that meet the loosest standards of all the divs and evalues.
         # get forward hits and evalues, filtered by max evalue
-        nameSeqEvalueOfForwardHits = getGoodEvalueHits(queryId, querySeq, getForwardHits, getSubjectSeqFunc, maxEvalue)
-        hitDataList = [{'hitId': hitId, 'hitSeq': hitSeq, 'hitEvalue': hitEvalue} for hitId, hitSeq, hitEvalue in nameSeqEvalueOfForwardHits]
+        idSeqEvalueOfForwardHits = getGoodEvalueHits(queryId, querySeq, getForwardHits, getSubjectSeqFunc, maxEvalue)
+        hitDataList = [{'hitId': hitId, 'hitSeq': hitSeq, 'hitEvalue': hitEvalue} for hitId, hitSeq, hitEvalue in idSeqEvalueOfForwardHits]
         # get alignments and divergences
         for hitData in hitDataList:
             (queryId, alignedQuerySeq), (hitId, alignedHitSeq), tooDivergedPred = getGoodDivergenceAlignedTrimmedSeqPair(queryId, querySeq, hitData['hitId'], hitData['hitSeq'], workingDir)
@@ -574,8 +551,8 @@ def _computeOrthologsSub(querySeqIds, getQuerySeqFunc, getSubjectSeqFunc, divEva
             maxHitEvalue = max(float(evalue) for div, evalue in minimumHitIdToDivEvalues[hitId])
             maxHitDiv = max(float(div) for div, evalue in minimumHitIdToDivEvalues[hitId])
             # get reverse hits and evalues, filtered by max evalue
-            nameSeqEvalueOfReverseHits = getGoodEvalueHits(hitId, hitSeq, getReverseHits, getQuerySeqFunc, maxHitEvalue)
-            revHitDataList = [{'revHitId': revHitId, 'revHitSeq': revHitSeq, 'revHitEvalue': revHitEvalue} for revHitId, revHitSeq, revHitEvalue in nameSeqEvalueOfReverseHits]
+            idSeqEvalueOfReverseHits = getGoodEvalueHits(hitId, hitSeq, getReverseHits, getQuerySeqFunc, maxHitEvalue)
+            revHitDataList = [{'revHitId': revHitId, 'revHitSeq': revHitSeq, 'revHitEvalue': revHitEvalue} for revHitId, revHitSeq, revHitEvalue in idSeqEvalueOfReverseHits]
             # if the query is not in the reverese hits, there is no way we can find an ortholog
             if queryId not in [revHitData['revHitId'] for revHitData in revHitDataList]:
                 continue
@@ -747,8 +724,8 @@ if __name__ == '__main__':
                 print 'precomuting blast hits'
             forwardHitsPath = os.path.join(tmpDir, 'query_subject.blast.hits.pickle')
             reverseHitsPath = os.path.join(tmpDir, 'subject_query.blast.hits.pickle')
-            computeBlastHits(queryFastaPath, subjectFastaPath, forwardHitsPath, evalue, tmpDir)
-            computeBlastHits(subjectFastaPath, queryFastaPath, reverseHitsPath, evalue, tmpDir)
+            computeBlastHits(queryFastaPath, subjectFastaPath, forwardHitsPath, evalue, workingDir=tmpDir)
+            computeBlastHits(subjectFastaPath, queryFastaPath, reverseHitsPath, evalue, workingDir=tmpDir)
             if args.verbose:
                 print 'computing orthologs'
             divEvalueToOrthologs = computeOrthologsUsingSavedHits(queryFastaPath, subjectFastaPath, divEvalues, forwardHitsPath, reverseHitsPath, ids, tmpDir)

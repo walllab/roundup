@@ -425,56 +425,6 @@ def cluster(request):
                                     'form_action': django.core.urlresolvers.reverse(cluster), 'form_example': example})
 
 
-def clusterOld(request):
-    '''
-    GET: send user the form to make a cluster query
-    POST: validate cluster query and REDIRECT to result if it is good.
-    '''
-    if request.method == 'POST': # If the form has been submitted...
-        form = ClusterForm(request.POST) # A form bound to the POST data
-        if form.is_valid(): # All validation rules pass
-            logging.debug('form.cleaned_data={}'.format(form.cleaned_data))
-            orthQuery = makeOrthQueryFromClusterForm(form)
-            logging.debug('orthQuery={}'.format(orthQuery))
-            cacheKey = orthQueryHash(orthQuery)
-            logging.debug(dir(request))
-            jobId = None
-            if USE_CACHE and roundup_util.cacheHasKey(cacheKey):
-                resultPath = roundup_util.cacheGet(cacheKey)
-                resultId = resultFilenameToId(resultPath)
-                logging.debug('cache hit.\n\tcacheKey: {}\n\tresultId: {}\n\tresultPath: {}'.format(cacheKey, resultId, resultPath))
-            else:
-                resultId = makeUniqueId()
-                resultPath = orthresult.getResultFilename(resultId)
-                logging.debug('cache miss.\n\tcacheKey: {}\n\tresultId: {}\n\tresultPath: {}'.format(cacheKey, resultId, resultPath))
-                querySize = len(orthQuery['limit_genomes']) + len(orthQuery['genomes'])
-                if (querySize <= SYNC_QUERY_LIMIT):
-                    # wait for query to run and store query
-                    roundup_util.cacheDispatch(fullyQualifiedFuncName='orthquery.doOrthologyQuery', keywords=orthQuery, cacheKey=cacheKey, outputPath=resultPath)
-                else:
-                    # run on lsf and have result page poll job id.
-                    jobId = roundup_util.lsfAndCacheDispatch(fullyQualifiedFuncName='orthquery.doOrthologyQuery', keywords=orthQuery, cacheKey=cacheKey, outputPath=resultPath)
-
-            if not jobId:
-                return django.shortcuts.redirect(django.core.urlresolvers.reverse(orth_result, kwargs={'resultId': resultId}))
-            else:
-                return django.shortcuts.redirect(django.core.urlresolvers.reverse(orth_wait, kwargs={'resultId': resultId, 'job_id': jobId}))
-            # generate key for query
-            # look for query in cache
-            # if not in cache
-            #   if big query, run async on lsf, getting jobid
-            #   if small query, run sync on localhost
-            # redirect to result page with query key
-            # submit sync or async orthology query
-    else:
-        form = ClusterForm() # An unbound form
-
-    example = "{'genomes': ['Homo_sapiens.aa', 'Mus_musculus.aa', 'Arabidopsis_thaliana.aa'], 'include_gene_name': 'true', 'include_go_term': 'true'}" 
-    return django.shortcuts.render(request, 'cluster.html',
-                                   {'form': form, 'nav_id': 'cluster', 'form_doc_id': 'cluster',
-                                    'form_action': django.core.urlresolvers.reverse(cluster), 'form_example': example})
-
-
 ###########################
 # ORTHOLOGY QUERY FUNCTIONS
 ###########################
@@ -620,10 +570,10 @@ def orth_query(request, queryId):
     if USE_CACHE and roundup_util.cacheHasKey(resultId) and orthresult.resultExists(resultId):
         logging.debug('cache hit.')
         return django.shortcuts.redirect(django.core.urlresolvers.reverse(orth_result, kwargs={'resultId': resultId}))
-    elif roundup_util.isRunningJob(resultId):
+    elif not config.NO_LSF and roundup_util.isRunningJob(resultId):
         logging.debug('cache miss. job is already running.  go to waiting page.')
         return django.shortcuts.redirect(django.core.urlresolvers.reverse(orth_wait, kwargs={'resultId': resultId}))
-    elif querySize <= SYNC_QUERY_LIMIT:
+    elif config.NO_LSF or querySize <= SYNC_QUERY_LIMIT:
         logging.debug('cache miss. run job sync.')
         # wait for query to run and store query
         roundup_util.cacheDispatch(fullyQualifiedFuncName='orthquery.doOrthologyQuery', keywords=orthQuery, cacheKey=resultId, outputPath=resultPath)
