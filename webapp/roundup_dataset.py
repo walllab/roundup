@@ -699,8 +699,8 @@ def computeJobs(ds):
             continue
         funcName = 'roundup_dataset.computeJob'
         keywords = {'ds': ds, 'job': job}
-        # request that /scratch has at least ~10GB free space to avoid nodes where someone, not naming any names, has been a bad neighbor.
-        lsfOptions = ['-R "scratch > 10000"', '-q '+LSF.LSF_LONG_QUEUE, roundup_common.ROUNDUP_LSF_OUTPUT_OPTION, '-J '+getComputeJobName(ds, job)]
+        # reserve 500MB in /tmp for duration of job to avoid nodes where someone, not naming any names, has used too much space.
+        lsfOptions = ['-R "rusage[tmp=500]"', '-q '+LSF.LSF_LONG_QUEUE, roundup_common.ROUNDUP_LSF_OUTPUT_OPTION, '-J '+getComputeJobName(ds, job)]
         jobid = lsfdispatch.dispatch(funcName, keywords=keywords, lsfOptions=lsfOptions)
         msg = 'computeJobs(): starting job on grid.  lsfjobid={}, ds={}, job={}'.format(jobid, ds, job)
         print msg

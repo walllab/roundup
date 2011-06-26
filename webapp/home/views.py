@@ -66,7 +66,8 @@ def project_overview(request):
 
 
 def about(request):
-    return django.shortcuts.render(request, 'about.html', {'nav_id': 'about'})
+    stats = roundup_util.getRoundupDataStats() # keys: numGenomes, numGenomePairs, numOrthologs
+    return django.shortcuts.render(request, 'about.html', dict([('nav_id', 'about')] + stats.items()))
     
 
 def genomes(request):

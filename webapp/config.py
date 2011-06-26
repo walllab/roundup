@@ -3,6 +3,7 @@ import os
 import sys
 import getpass
 import ConfigParser
+import platform
 
 
 import logging.config
@@ -90,7 +91,7 @@ LOGGING_CONFIG = {
     'disable_existing_loggers': False,
     'formatters': {
         'default': {
-            'format': '[%(asctime)s %(name)s %(levelname)s %(filename)s line %(lineno)d] %(message)s',
+            'format': '[' + platform.node() + ' %(asctime)s %(name)s %(levelname)s %(filename)s %(funcName)s line %(lineno)d] %(message)s',
             },
         },
     'handlers': {

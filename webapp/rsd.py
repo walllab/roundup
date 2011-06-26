@@ -140,9 +140,12 @@ def parseResults(blastResultsPath, limitHits=MAX_HITS):
     fh = open(blastResultsPath)
     for line in fh:
         splits = line.split()
-        seqId = fasta.idFromName(splits[0]) # remove namespace prefix, e.g. 'gi|'
-        hitId = fasta.idFromName(splits[1])
-        hitEvalue = float(splits[10])
+        try:
+            seqId = fasta.idFromName(splits[0]) # remove namespace prefix, e.g. 'gi|'
+            hitId = fasta.idFromName(splits[1])
+            hitEvalue = float(splits[10])
+        except Exception as e:
+            logging.exception('parseResults(): prevSeqId: {}, prevHitId: {}, line: {}'.format(prevSeqId, prevHitId, line))
         # results table reports multiple "alignments" per "hit" in ascending order by evalue
         # we only store the top hits.
         if prevSeqId != seqId or prevHitId != hitId:

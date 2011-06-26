@@ -1,7 +1,10 @@
-{% extends "fluid.html" %}
+{% extends "base.html" %}
 {% load url from future %}
 {% comment %}
 {% endcomment %}
+
+{% block fluid %}fluid{% endblock fluid %}
+
 
 {% block content %}
 {{ html|safe }}
