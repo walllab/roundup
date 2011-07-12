@@ -330,6 +330,9 @@ def getIdForDivergence(divergence, conn=None, insertMissing=False):
 ##########################
 # ORTHOLOG CODEC FUNCTIONS
 ##########################
+#
+# used to compress and decompress orthologs so they take up less space in the database.
+#
 
 def encodeOrthologs(orthologs):
     return zlib.compress(cPickle.dumps(orthologs))
@@ -343,6 +346,7 @@ def decodeOrthologs(encodedOrthologs):
 ####################
 # LOAD RESULTS FILES
 ####################
+
 
 def loadGenome(genome, ids):
     '''

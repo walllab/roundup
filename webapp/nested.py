@@ -9,7 +9,7 @@ import hashlib # sha
 import uuid
 import shutil
 
-
+# SET THE DEFAULT TMP DIR ROOT.
 if os.environ.has_key('NESTED_TMP_DIR'):
     DEFAULT_TMP_DIR = os.environ['NESTED_TMP_DIR']
 elif os.environ.has_key('TMPDIR'):
@@ -20,7 +20,7 @@ elif os.environ.has_key('TMP'):
     DEFAULT_TMP_DIR = os.environ['TMP']
 else:
     DEFAULT_TMP_DIR = os.getcwd()
-DEFAULT_NESTED_LEVELS = 2
+DEFAULT_NESTED_LEVELS = int(os.environ.get('NESTED_LEVELS', 0)) # should be >= 0
 DEFAULT_TMP_PREFIX = 'tmp'
 DEFAULT_DIRS_MODE = 0777
 

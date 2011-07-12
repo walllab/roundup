@@ -46,7 +46,7 @@ SHARED_SHORT_QUEUE = 'shared_15m'
 LSF_SHORT_QUEUE = 'shared_15m'
 if os.environ.has_key('LSF_SHORT_QUEUE'):
     LSF_SHORT_QUEUE = os.environ['LSF_SHORT_QUEUE']
-LSF_LONG_QUEUE = 'all_unlimited'
+LSF_LONG_QUEUE = 'shared_unlimited'
 if os.environ.has_key('LSF_LONG_QUEUE'):
     LSF_LONG_QUEUE = os.environ['LSF_LONG_QUEUE']
 

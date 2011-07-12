@@ -1,0 +1,104 @@
+{% load url from future %}
+{% comment %}
+fluid width layout for roundup pages that have wide content.
+{% endcomment %}
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" class="js">
+
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>frontpage | roundup</title>
+<meta name="robots" content="index,follow">
+<meta name="DC.title" content="roundup | a repository of orthologs">
+<style type="text/css" media="all">
+div.panel-flexible div.panel-row-1 div.panel-col-1 { width: 98%; }
+div.panel-flexible div.panel-row-2 div.panel-col-1 { width: 49%; }
+div.panel-flexible div.panel-row-2 div.panel-col-2 { width: 49%; }
+div.panel-flexible div.panel-row-3 div.panel-col-1 { width: 98%; }
+</style>
+
+<link rel="shortcut icon" href="/static/images/bluebird_favicon.ico" type="image/x-icon">
+<link type="text/css" rel="stylesheet" media="all" href="/static/css/aggregator.css">
+<link type="text/css" rel="stylesheet" media="all" href="/static/css/node.css">
+<link type="text/css" rel="stylesheet" media="all" href="/static/css/defaults.css">
+<link type="text/css" rel="stylesheet" media="all" href="/static/css/system.css">
+<link type="text/css" rel="stylesheet" media="all" href="/static/css/system-menus.css">
+<link type="text/css" rel="stylesheet" media="all" href="/static/css/user.css">
+<link type="text/css" rel="stylesheet" media="all" href="/static/css/content-module.css">
+<link type="text/css" rel="stylesheet" media="all" href="/static/css/panels.css">
+<link type="text/css" rel="stylesheet" media="all" href="/static/css/flexible.css">
+<!--crucial styling bit for the results page only -->
+<link type="text/css" rel="stylesheet" media="all" href="/static/css/style.css">
+<!--
+<link type="text/css" rel="stylesheet" media="all" href="/static/css/results-style.css">
+-->
+<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.6.1/jquery.min.js"></script>
+<script type="text/javascript" src="/static/js/sortable.js"></script> 
+<!--
+<script type="text/javascript" src="/static/js/roundup.js"></script>
+<script type="text/javascript" src="/static/js/drupal.js"></script>
+<script type="text/javascript" src="/static/js/panels.js"></script>
+-->
+<script type="text/javascript">
+var countdownAction = function(count, interval, mainAction, intervalAction) {
+  // inspired by http://www.tripwiremagazine.com/2011/04/9-cool-jquery-countdown-scripts.html
+  // wait count intervals and then run mainAction().
+  // in between intervals, run intervalAction(remaining), where remaining is the number of intervals that will be waited before mainAction()
+  // e.g. if count == 3, then wait...intervalAction...wait...intervalAction...wait...mainAction.
+  // e.g. if count == 1, then wait...mainAction.
+  // e.g. if count == 0, then mainAction.
+  // interval: in milliseconds.  
+  // count: an integer >= 0. number of intervals before executing main action.
+  if (count <= 0) {
+    mainAction();
+  } else {
+    var countdown = setInterval(function() {
+      count--;
+      if (count <= 0) {
+        clearInterval(countdown);
+        mainAction()
+      } else {
+        intervalAction(count);
+      }
+    }, interval);
+  }
+};
+
+var download = function(url){
+  // inspiration: http://stackoverflow.com/questions/445774/correct-way-to-trigger-a-file-download-in-php
+  // Useful for getting the browser to download the url as a file.  
+  // the response from url should return appropriate headers to encourage browser to download. 
+  // e.g. Content-Disposition: attachment; filename=data.txt
+  // iframe used b/c that encourages browsers to download the file, i.e. create a download dialog box.
+  var elemIF = document.createElement("iframe"); 
+  elemIF.src = url; 
+  elemIF.style.display = "none"; 
+  document.body.appendChild(elemIF); 
+};
+</script>
+    <!--[if lt IE 7]>
+    <style type="text/css" media="all">@import "/site/sites/all/themes/bluebird/fix-ie.css";</style>
+    <![endif]-->
+</head>
+
+<body class="fluid">
+
+{% include 'header.html' %}
+
+<!-- content -->
+{% if site_maintenance %}
+<p class="maintenance">Roundup is currently undergoing routine maintenance.  Thank you for your patience while the site is unavailable.</p>
+{% else %}
+<div id="results-box">
+{% block content %}Under construction.{% endblock %}
+</div>
+{% endif %}
+<!-- end content -->
+
+</div> <!-- wrap -->
+
+{% include 'footer.html' %}
+
+</body>
+</html>

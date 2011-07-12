@@ -11,6 +11,9 @@ Once credentials are obtained, an application will typically use them to get a c
 import contextlib
 import MySQLdb
 import os
+import time
+import logging
+
 
 DEFAULT_CREDS_FILE = '.my.cnf' # in HOME dir.  
 
@@ -96,8 +99,18 @@ def connCM(host, db, user, password):
         conn.close()
         
 
-def openConn(host, db, user, password):
-    return MySQLdb.connect(host=host, user=user, passwd=password, db=db)
+def openConn(host, db, user, password, retries=0, sleep=0.5):
+    '''
+    retries: if an exception when getting the connection, try again at most this many times.
+    sleep: pause between retries for this many seconds.  a float >= 0.
+    '''
+    try:
+        return MySQLdb.connect(host=host, user=user, passwd=password, db=db)
+    except Exception:
+        logging.exception('openConn(): exception trying to open connection.  will try again {} times.'.format(retries))
+        if retries > 0:
+            time.sleep(sleep)
+            return openConn(host, db, user, password, retries - 1, sleep)
 
 
 # last line

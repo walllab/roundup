@@ -21,9 +21,9 @@ a:hover {color:#9dcbef;}
 #subnavlist li{padding:0 18px;}
 
 /* header area */
-#header{height:100px; position:relative; padding-top:0px;}
+#header{height:75px; position:relative; padding-top:0px;}
 #logocontainer{float:left;}
-#logocontainer img {width:375px; height:75px; margin-top:15px;margin-left:20px;}
+#logocontainer img {width:375px; height:75px; margin-left:20px;}
 /**************************************/
 /*             NAVIGATION             */
 /**************************************/

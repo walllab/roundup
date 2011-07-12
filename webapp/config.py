@@ -3,6 +3,7 @@ import os
 import sys
 import getpass
 import ConfigParser
+import platform
 
 
 import logging.config
@@ -20,12 +21,14 @@ os.environ['ROUNDUP_DEPLOY_ENV'] = DEPLOY_ENV # put deployment env in the enviro
 WEBAPP_PATH = os.path.dirname(os.path.abspath(__file__))
 
 if DEPLOY_ENV == 'orch_prod':
-    PROJ_DIR = '/groups/rodeo/roundup'
+    PROJ_DIR = '/groups/cbi/roundup'
     MAIL_METHOD = 'qmail'
     HTTP_HOST = 'roundup.hms.harvard.edu'
     SITE_URL_ROOT = 'http://{}'.format(HTTP_HOST)
     PYTHON_EXE = '/home/td23/bin/python2.7'
     BLAST_BIN_DIR = '/opt/blast-2.2.24/bin'
+    PROJ_BIN_DIR = '/home/td23/bin' # location of kalign
+    NO_LSF = False
 elif DEPLOY_ENV == 'orch_dev': 
     PROJ_DIR = '/groups/cbi/dev.roundup'
     MAIL_METHOD = 'qmail'
@@ -33,6 +36,8 @@ elif DEPLOY_ENV == 'orch_dev':
     SITE_URL_ROOT = 'http://{}'.format(HTTP_HOST)
     PYTHON_EXE = '/home/td23/bin/python2.7'
     BLAST_BIN_DIR = '/opt/blast-2.2.24/bin'
+    PROJ_BIN_DIR = '/home/td23/bin' # location of kalign
+    NO_LSF = False
 elif DEPLOY_ENV == 'local': 
     PROJ_DIR = os.path.expanduser('~/local.roundup')
     MAIL_METHOD = '' # not sure how to get postfix working.
@@ -40,6 +45,8 @@ elif DEPLOY_ENV == 'local':
     SITE_URL_ROOT = 'http://{}:8000'.format(HTTP_HOST)
     PYTHON_EXE = '/Library/Frameworks/Python.framework/Versions/2.7/bin/python2.7'
     BLAST_BIN_DIR = '/usr/local/ncbi/blast/bin'
+    PROJ_BIN_DIR = '/Users/td23/bin' # location of kalign
+    NO_LSF = True
     
 LOG_FILE = os.path.join(PROJ_DIR, 'log/app.log')
 CONFIG_DIR = os.path.join(PROJ_DIR, 'config') # contains roundup_genomes.xml genome download xml config, and codeml.ctl and jones.dat used by RoundUp.py
@@ -52,7 +59,7 @@ COMPUTE_DIR = os.path.join(PROJ_DIR, 'compute')
 RT_EMAIL = 'submit-cbi@rt.med.harvard.edu'
 
 # Configure environment to run python and blastp
-pathDirs = [BLAST_BIN_DIR, os.path.dirname(PYTHON_EXE)]
+pathDirs = [BLAST_BIN_DIR, os.path.dirname(PYTHON_EXE), PROJ_BIN_DIR]
 os.environ['PATH'] = ':'.join(pathDirs + [os.environ.get('PATH', '')]) if os.environ.has_key('PATH') else pathDirs
 
 
@@ -84,7 +91,7 @@ LOGGING_CONFIG = {
     'disable_existing_loggers': False,
     'formatters': {
         'default': {
-            'format': '[%(asctime)s %(name)s %(levelname)s %(filename)s line %(lineno)d] %(message)s',
+            'format': '[' + platform.node() + ' %(asctime)s %(name)s %(levelname)s %(filename)s %(funcName)s line %(lineno)d] %(message)s',
             },
         },
     'handlers': {
@@ -140,7 +147,7 @@ def openDbConn(host=MYSQL_HOST, db=MYSQL_DB, user=MYSQL_USER, password=MYSQL_PAS
     '''
     returns: an open python DB API connection to the mysql host and db.  caller is responsible for closing the connection.
     '''
-    return orchmysql.openConn(host, db, user, password)
+    return orchmysql.openConn(host, db, user, password, retries=1, sleep=1)
 
 @contextlib.contextmanager
 def dbConnCM(host=MYSQL_HOST, db=MYSQL_DB, user=MYSQL_USER, password=MYSQL_PASSWORD):

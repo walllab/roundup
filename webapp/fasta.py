@@ -1,33 +1,117 @@
 #!/usr/bin/env python
 
+'''
+What is a FASTA format file/string?
+This module follows the NCBI conventions: http://blast.ncbi.nlm.nih.gov/blastcgihelp.shtml
+'''
 
 import cStringIO
 import re
 import math
 import subprocess
 
+TEST_FASTA = {'GOOD_TEST': '''>ns|id|a long description
+CTGACTGACTGACTGACTGACTGACTGACTGACTGACTGACTGACTGACTGA
+CTGACTGACTGACTGACTGACTGACTGACTGACTGACTGACTGACTGACTGA
+''',
+              'LONG_TEST': '''>ns|id|a long description
+CTGACTGACTGACTGACTGACTGACTGACTGACTGACTGACTGACTGACTGA
+CTGACTGACTGACTGACTGACTGACTGACTGACTGACTGACTGACTGACTGA
+>ns|id2|a long description
+CTGACTGACTGACTGACTGACTGACTGACTGACTGACTGACTGACTGACTGA
+CTGACTGACTGACTGACTGACTGACTGACTGACTGACTGACTGACTGACTGA
+''',
+              'BLANK_IN_TEST': '''>ns|id|a long description
+CTGACTGACTGACTGACTGACTGACTGACTGACTGACTGACTGACTGACTGA
+  
+CTGACTGACTGACTGACTGACTGACTGACTGACTGACTGACTGACTGACTGA
+''',
+              'BLANK_START_TEST': '''  
+>ns|id|a long description
+CTGACTGACTGACTGACTGACTGACTGACTGACTGACTGACTGACTGACTGA
+CTGACTGACTGACTGACTGACTGACTGACTGACTGACTGACTGACTGACTGA
+''',
+              'DATA_START_TEST': '''CTGACTGACTGACTGACTGACTGACTGACTGACTGACTGACTGACTGACTGA
+>ns|id|a long description
+CTGACTGACTGACTGACTGACTGACTGACTGACTGACTGACTGACTGACTGA
+CTGACTGACTGACTGACTGACTGACTGACTGACTGACTGACTGACTGACTGA
+''',
+              'TWO_NAMELINES_TEST': '''>ns|id|a long description
+>ns|id2|a long description
+CTGACTGACTGACTGACTGACTGACTGACTGACTGACTGACTGACTGACTGA
+CTGACTGACTGACTGACTGACTGACTGACTGACTGACTGACTGACTGACTGA
+''',
+              'TRAILING_NAMELINE_TEST': '''>ns|id|a long description
+CTGACTGACTGACTGACTGACTGACTGACTGACTGACTGACTGACTGACTGA
+CTGACTGACTGACTGACTGACTGACTGACTGACTGACTGACTGACTGACTGA
+>ns|id2|a long description
+'''}
 
-reId = re.compile("[^|]*[|]([^|]+)")
+def test():
+    import traceback, StringIO
+    for name, testFasta in TEST_FASTA.items():
+        try:
+            print
+            print name
+            print 'non-strict'
+            for lines in readFastaLines(StringIO.StringIO(testFasta), strict=False):
+                print lines
+            print 'non-strict, all'
+            for lines in readFastaLines(StringIO.StringIO(testFasta), strict=False, goodOnly=False):
+                print lines
+            print 'strict'
+            for lines in readFastaLines(StringIO.StringIO(testFasta)):
+                print lines
+            print 'readFasta'
+            for lines in readFasta(StringIO.StringIO(testFasta)):
+                print lines
+        except Exception:
+            traceback.print_exc()
+
+
 def idFromName(line):
     '''
+    line: a fasta nameline
+    returns: an id parsed from the fasta nameline.  The id is the first whitespace separated token after an optional namespace, etc.  See the examples below.
+    This covers a lot of cases that a sane person would put on a nameline.  So needless to say it covers very few cases.
+    Examples in the form nameline => return value:
     id => id
+    id desc => id
     >id => id
+    >id desc => id
     >ns|id => id
+    >ns|id desc => id
     >ns|id| => id
     >ns|id|desc => id
     ns|id => id
+    ns|id desc => id
     ns|id| => id
     ns|id|desc => id
+    ns|id blah|desc => id
+    Example namelines not covered:
+    JGI-PSF GENOMES ftp://ftp.jgi-psf.org/pub/JGI_data/Nematostella_vectensis/v1.0/annotation/proteins.Nemve1FilteredModels1.fasta.gz
+    >jgi|Nemve1|18|gw.48.1.1
+    >jgi|Nemve1|248885|estExt_fgenesh1_pg.C_76820001
     '''
-    m = reId.search(line)
-    if m:
-        return m.group(1).strip()
-    else:
-        if line.startswith('>'):
-            return line[1:].strip()
-        else:
-            return line.strip()
-        
+    # This could probably be done with one regex, but I am too stupid and this way I can read it.
+
+    # remove the leading '>' if there is one.
+    if line.startswith('>'):
+        line = line[1:]
+
+    # keep only everything after the first pipe.  will keep everything if there is no first pipe.
+    pipe = line.find('|')
+    if pipe > -1:
+        line = line[line.find('|')+1:]
+
+    # keep everything before the second pipe.  will keep everything if there is no second pipe.
+    pipe = line.find('|')
+    if pipe > -1:
+        line = line[:pipe]
+
+    # return the first token as the id.
+    return line.split()[0]
+
 
 def prettySeq(seq, n=60):
     '''
@@ -49,41 +133,53 @@ def numSeqsInFastaDb(path):
     return int(subprocess.check_output('grep  ">" %s | wc -l'%path, shell=True))
 
 
-def readIds(fastaFile, ignoreParseError=False):
+def readIds(fastaFile, strict=True):
     '''
     fastaFile: a file-like object or a path to a fasta file
     yields: id in each nameline.
     '''
-    for nameline in readNamelines(fastaFile, ignoreParseError):
+    for nameline in readNamelines(fastaFile, strict):
         yield idFromName(nameline)
 
 
-def readNamelines(fastaFile, ignoreParseError=False):
+def readNamelines(fastaFile, strict=True):
     '''
     fastaFile: a file-like object or a path to a fasta file
     yields: each nameline
     '''
-    for nameline, seq in readFasta(fastaFile, ignoreParseError):
+    for nameline, seq in readFasta(fastaFile, strict):
         yield nameline
         
 
-def readFasta(fastaFile, ignoreParseError=False):
+def readFasta(fastaFile, strict=True):
     '''
     fastaFile: a file-like object or a path to a fasta file
     yields: a tuple of (nameline, sequence) for each sequence in the fasta file.
     '''
+    for lines in readFastaLines(fastaFile, strict):
+        nameline = lines[0].strip()
+        seq = ''.join((l.strip() for l in lines[1:]))
+        yield nameline, seq
+
+
+def readFastaLines(fastaFile, strict=True, goodOnly=True):
+    '''
+    fastaFile: a file-like object or a path to a fasta file
+    yields: the lines of the fasta sequence (nameline and sequence data lines) for each sequence in the fasta file.
+    lines include newlines.
+    '''
     if isinstance(fastaFile, basestring):
         with open(fastaFile) as fh:
-            for seq in fastaSeqIter(fh, ignoreParseError):
-                yield splitSeq(seq)
+            for lines in _fastaSeqIter(fh, strict, goodOnly):
+                yield lines
     else:
-        for seq in fastaSeqIter(fastaFile, ignoreParseError):
-            yield splitSeq(seq)
+        for lines in _fastaSeqIter(fastaFile, strict, goodOnly):
+            yield lines
 
-        
+    
 def splitSeq(seq):
     '''
-    seq: string containing a single nameline, including '>' and sequence lines, and no other lines.
+    seq: a well-formed fasta sequence string containing a single nameline, including '>' and sequence data lines.
     returns: tuple of nameline, including '>', without a newline, and concatenated sequence lines, without newlines
     e.g. ['>blahname', 'AFADFDSAFAFAFAFFAFAF']
     '''
@@ -93,72 +189,146 @@ def splitSeq(seq):
     return [name, chars]
     
 
-def fastaSeqIterStrict(filehandle, ignoreParseError=False):
+def _fastaSeqIter(filehandle, strict=True, goodOnly=True):
     '''
-    Older function which treats blank lines as a potential source of fasta parsing errors.  Correct fasta format, according to this function,
-    can only have blank lines between the end of a sequence and the start of a new nameline. (Not within sequence character lines
-    or between a nameline and sequence character lines.)
     filehandle: file object containing fasta-formatted sequences.
-    ignoreParseError: if True, parsing more flexibly handles whitespace and other deviations from the fasta "standard".  Any line which would have
-    raised a parse exception now is ignored and parsing begins looking for a new fasta sequence with the next line (or current line if it is a name line.)
-    Generator function yielding a string representing a single fasta sequence (name line including '>' and sequence lines)
-    for each fasta sequence in filehandle.
-    returns: a generator object.
+    strict: if True, raise an exception when a malformed fasta sequence is encountered.
+      A malformed sequence is a sequence with a blank line, a sequence line not preceded by a nameline, or a nameline not followed by a sequence line.
+      E.g. a nameline directly after a nameline, like '>foo\n>bar\nCTAGCTAGGGCA\n'
+    goodOnly: if True, only yield well-formed fasta sequences, ones with a nameline and one or more sequence datalines and no blank lines.
+      if False and strict is False, all sequences, malformed or otherwise, will be yielded.  there will always be at least one (possibly blank) line.
+    Parses the filehandle, yielding one fasta sequence at a time.
+    yields: a seq of fasta sequence lines.  the first line is the nameline.  the other lines are the sequence data lines.  
     '''
-    state = 'nameline'
-    fasta = ''
+    for lines in _splitOnNamelines(filehandle):
+        if not lines[0] or lines[0][:1] != '>':
+            if strict:
+                raise Exception('FASTA error: sequence must start with a nameline.', lines)
+            elif not goodOnly:
+                yield lines
+        elif len(lines) < 2:
+            if strict:
+                raise Exception('FASTA error: sequence must contain at least one sequence data line.', lines)
+            elif not goodOnly:
+                yield lines
+        elif '' in (line.strip() for line in lines): # contains a blank line
+            if strict:
+                raise Exception('FASTA error: blank lines not allowed')
+            elif not goodOnly:
+                yield lines
+        else: # a good sequence
+            yield lines
+
+
+def _splitOnNamelines(filehandle):
+    '''
+    split the lines in filehandle on namelines.
+    yields: seq of lines, where the first line is a nameline (except if filehandle starts with a non-nameline) the other lines are lines until the next nameline
+    or the end of the file.  lines include newlines.  length of yielded seq always contains at least one line.
+    Said another way, the seq of lines will always contain at least one line.  only the first line will ever be a nameline.
+    '''
+    lines = []
     for line in filehandle:
-        blankline = not bool(line.strip())
-        if state == 'nameline' and blankline:
+        if line and line[:1] == '>': # a nameline
+            if lines:
+                yield lines # yield last sequence
+            lines = [line] # start new sequence
+        else: 
+            lines.append(line)
+    if lines:
+        yield lines
+
+
+def isNameLine(line):
+    return line.startswith('>')
+
+
+def _tern(comp, trueVal, falseVal):
+    ''' a tawdry ternary operator '''
+    if comp:
+        return trueVal
+    return falseVal
+
+
+def head(query, n):
+    '''returns the first n sequences in query.'''
+    count = 0
+    headstr = ''
+    for line in query.splitlines(keepends=1):
+        if line.startswith('>'):
+            count += 1
+            if count > n: break
+        headstr += line
+    return headstr
+
+
+def dbSize(query):
+    '''returns the number of sequence characters'''
+    size = 0
+    for line in query.splitlines():
+        if isNameLine(line):
             continue
-        elif state == 'nameline' and line.startswith('>'):
-            state = 'seqline'
-            fasta = line
-        elif state == 'nameline':
-            if ignoreParseError:
-                state = 'nameline'
-            else:
-                raise Exception('FASTA parse error.  Looking for name line and found line which is neither blank nor nameline.  line=%s'%line)
-        elif state == 'seqline' and blankline:
-            if ignoreParseError:
-                state = 'nameline'
-            else:
-                raise Exception('FASTA parse error.  Looking for sequence line and found blank line.  line=%s'%line)
-        elif state == 'seqline' and line.startswith('>'):
-            if ignoreParseError:
-                state = 'seqline'
-                fasta = line
-            else:
-                raise Exception('FASTA parse error.  Looking for sequence line and found name line.  line=%s'%line)
-        elif state == 'seqline':
-            state = 'in_seq'
-            fasta += line
-        elif state == 'in_seq' and blankline:
-            yield fasta
-            state = 'nameline'
-            fasta = ''
-        elif state == 'in_seq' and line.startswith('>'):
-            yield fasta
-            state = 'seqline'
-            fasta = line
-        elif state == 'in_seq':
-            fasta += line
-        else:
-            raise Exception('FASTA parse error.  Unrecognized state.  state=%s, line=%s'%(state, line))
-
-    if state == 'seqline':
-        raise Exception('FASTA parse error.  Looking for sequence line and found end of file.')
-    elif state == 'in_seq':
-        yield fasta
-    elif state == 'nameline' and fasta:
-        yield fasta
-    elif state == 'nameline':
-        pass
-    else:
-        raise Exception('FASTA parse error.  Unrecognized state found at end of file.  state=%s'%state)
+        size += len(line.strip())
+    return size
 
 
-def fastaSeqIter(filehandle, ignoreParseError=False):
+def numChars(query):
+    '''
+    synonym for dbSize().  returns the number of character (e.g. bases or residues for nucleotide or protein sequences).
+    '''
+    return dbSize(query)
+    
+
+def numSeqs(query):
+    '''
+    synonym for size(), whose name is a little more specific as to what is being measured: the number of sequences.
+    '''
+    return size(query)
+
+
+def size(query):
+    '''
+    query: string containing fasta formatted seqeunces
+    returns: the number of sequences
+    '''
+    fh = cStringIO.StringIO(query)
+    size = numSeqsInFile(fh)
+    fh.close()
+    return size
+
+
+def numSeqsInFile(file):
+    '''
+    file: file like object containing fasta formatted sequences
+    '''
+    return sum([1 for line in file if isNameLine(line.strip())])
+
+
+def numSeqsInPath(path):
+    '''
+    path: path to fasta formatted db
+    returns: number of sequences in fasta db
+    '''
+    fh = open(path)
+    size = numSeqsInFile(fh)
+    fh.close()
+    return size
+
+
+def main():
+    pass
+
+        
+if __name__ == '__main__':
+    main()
+                        
+
+##################
+# DECPRECATED CODE
+##################
+
+
+def fastaSeqIterOld(filehandle, strict=True):
     '''
     filehandle: file object containing fasta-formatted sequences.
     ignoreParseError: if True, parsing ignores namelines that do not have sequence character lines.  For example, '>foo\n>bar\nABCD\n'
@@ -221,103 +391,7 @@ def fastaSeqIter(filehandle, ignoreParseError=False):
         raise Exception('FASTA parse error.  Unrecognized state found at end of file.  state=%s'%state)
 
 
-def isNameLine(line):
-    return line.startswith('>')
 
-
-def _tern(comp, trueVal, falseVal):
-    ''' a tawdry ternary operator '''
-    if comp:
-        return trueVal
-    return falseVal
-
-
-def head(query, n):
-    '''returns the first n sequences in query.'''
-    count = 0
-    headstr = ''
-    for line in query.splitlines(keepends=1):
-        if line.startswith('>'):
-            count += 1
-            if count > n: break
-        headstr += line
-    return headstr
-
-
-def dbSize(query):
-    '''returns the number of sequence characters'''
-    size = 0
-    for line in query.splitlines():
-        if isNameLine(line):
-            continue
-        size += len(line.strip())
-    return size
-
-
-def numChars(query):
-    '''
-    synonym for dbSize().  returns the number of character (e.g. bases or residues for nucleotide or protein sequences).
-    '''
-    return dbSize(query)
-    
-
-def numSeqs(query):
-    '''
-    synonym for size(), whose name is a little more specific as to what is being measured: the number of sequences.
-    '''
-    return size(query)
-
-
-def size(query):
-    '''
-    query: string containing fasta formatted seqeunces
-    returns: the number of sequences
-    '''
-    fh = cStringIO.StringIO(query)
-    size = numSeqsInFile(fh)
-    fh.close()
-    return size
-    # return sum([1 for line in query.splitlines() if isNameLine(line.strip())])
-
-
-def numSeqsInFile(file):
-    '''
-    file: file like object containing fasta formatted sequences
-    '''
-    return sum([1 for line in file if isNameLine(line.strip())])
-
-
-def numSeqsInPath(path):
-    '''
-    path: path to fasta formatted db
-    returns: number of sequences in fasta db
-    '''
-    fh = open(path)
-    size = numSeqsInFile(fh)
-    fh.close()
-    return size
-
-
-def main():
-    pass
-
-        
-if __name__ == '__main__':
-    main()
-                        
-
-##################
-# DECPRECATED CODE
-##################
-
-def deprecated_readFastaIter(filehandle, ignoreParseError=False):
-    '''
-    This is meant as a drop-in replacement for roundup/ReadFasta.ReadFasta class
-    yields: tuple of nameline, including '>', without a newline, and concatenated sequence lines, without newlines
-    '''
-    iterator = fastaSeqIter(filehandle, ignoreParseError)
-    for seq in iterator:
-        yield splitSeq(seq)
 
 
 

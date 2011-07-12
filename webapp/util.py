@@ -100,7 +100,9 @@ def getBoolFromEnv(key, default=True):
 
 class ClosingFactoryCM(object):
     '''
-    context manager for creating a new obj from a factory function and closing the obj when done.  e.g. creating and closing a db connection each time.
+    context manager for creating a new obj from a factory function when entering a context an closing the obj when exiting a context.
+    useful, for example, for creating and closing a db connection each time.
+    Calls obj.close() when the context manager exits.
     '''
     def __init__(self, factory):
         self.factory = factory
@@ -284,7 +286,37 @@ def groupsOfN(iterable, n):
     except StopIteration:
         if seq:
             yield seq
+
+
+def splitIntoN(input, n, exact=False):
+    '''
+    input: a sequence
+    n: the number of evenly-sized groups to split input into.  must be an integer > 0.
+    exact: if True, returns exactly n sequences, even if some of them must be empty.
+      if False, will not return empty sequences, so will return < n sequences when n > len(input).
+    split input into n evenly sized sequences.  some sequences might have one less element than other sequences.
+    first sequences returned have more elements than later sequences.
     
+    e.g. if input had 11 elements, [1,2,3,4,5,6,7,8,9,10,11] and n=3, input would be split into these sequences: [1,2,3,4],[5,6,7,8],[9,10,11]
+    e.g. if input had 2 elements, [1,2] and n=3, input would be split into these sequences: [1], [2], []
+    e.g. if input had 0 elements, [] and n=3, input would be split into these sequences: [], [], []
+    e.g. if exact=False and input had 2 elements, [1,2] and n=3, input would be split into these sequences: [1], [2]
+    e.g. if exact=False and input had 0 elements, [] and n=3, input would be split into no sequences.  I.e. no sequences would be yielded.
+    yields: n evenly sized sequences, or if exact=False, up to n evenly sized, non-empty sequences.
+    '''
+    size = len(input) // n
+    numExtra = len(input) % n
+    start = 0
+    end = size
+    for i in range(n):
+        if i < numExtra:
+            end += 1
+        if not exact and start == end: # only empty sequences left, so exit early.
+            break
+        yield input[start:end]
+        start = end
+        end = end + size
+
 
 def isInteger(num):
     '''

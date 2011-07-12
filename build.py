@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 
 # usage: python build.py
 # usage: python build.py [--deployenv=ec2_dev] [deploy]

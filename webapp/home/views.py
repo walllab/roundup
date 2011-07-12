@@ -66,7 +66,8 @@ def project_overview(request):
 
 
 def about(request):
-    return django.shortcuts.render(request, 'about.html', {'nav_id': 'about'})
+    stats = roundup_util.getRoundupDataStats() # keys: numGenomes, numGenomePairs, numOrthologs
+    return django.shortcuts.render(request, 'about.html', dict([('nav_id', 'about')] + stats.items()))
     
 
 def genomes(request):
@@ -321,8 +322,8 @@ class BrowseForm(django.forms.Form):
     evalue = django.forms.ChoiceField(choices=EVALUE_CHOICES, label='BLAST E-value')
     distance_lower_limit = django.forms.FloatField(help_text=DIST_LIMIT_HELP, required=False, max_value=19.0, min_value=0.0)
     distance_upper_limit = django.forms.FloatField(help_text=DIST_LIMIT_HELP, required=False, max_value=19.0, min_value=0.0)
-    include_gene_names = django.forms.BooleanField(required=False, initial=True)
-    include_go_terms = django.forms.BooleanField(required=False, initial=True)
+    # include_gene_names = django.forms.BooleanField(required=False, initial=True)
+    # include_go_terms = django.forms.BooleanField(required=False, initial=True)
 
     def clean(self):
         primary_genome = self.cleaned_data.get('primary_genome')
@@ -375,7 +376,8 @@ def browse(request):
     else:
         form = BrowseForm() # An unbound form
 
-    example = "{'primary_genome': 'Apis_mellifera.aa', 'identifier': '110749629', 'identifier_type': 'seq_id_type', 'secondary_genomes': ['Homo_sapiens.aa', 'Mus_musculus.aa'], 'include_gene_name': 'true', 'include_go_term': 'true'}" # javascript
+    example = "{'primary_genome': 'Apis_mellifera.aa', 'identifier': '110749629', 'identifier_type': 'seq_id_type', 'secondary_genomes': ['Homo_sapiens.aa', 'Mus_musculus.aa']}" # javascript
+    # , 'include_gene_name': 'true', 'include_go_term': 'true'}" # javascript
     return django.shortcuts.render(request, 'browse.html',
                                    {'form': form, 'nav_id': 'browse', 'form_doc_id': 'browse',
                                     'form_action': django.core.urlresolvers.reverse(browse), 'form_example': example})
@@ -392,8 +394,8 @@ class ClusterForm(django.forms.Form):
     distance_lower_limit = django.forms.FloatField(help_text=DIST_LIMIT_HELP, required=False, max_value=19.0, min_value=0.0)
     distance_upper_limit = django.forms.FloatField(help_text=DIST_LIMIT_HELP, required=False, max_value=19.0, min_value=0.0)
     tc_only = django.forms.BooleanField(label='Only Show Transitively Closed Gene Clusters', required=False, initial=False)
-    include_gene_names = django.forms.BooleanField(required=False, initial=True)
-    include_go_terms = django.forms.BooleanField(required=False, initial=True)
+    # include_gene_names = django.forms.BooleanField(required=False, initial=True)
+    # include_go_terms = django.forms.BooleanField(required=False, initial=True)
     
     def clean_genomes(self):
         data = self.cleaned_data.get('genomes')
@@ -419,57 +421,7 @@ def cluster(request):
     else:
         form = ClusterForm() # An unbound form
 
-    example = "{'genomes': ['Homo_sapiens.aa', 'Mus_musculus.aa', 'Arabidopsis_thaliana.aa'], 'include_gene_name': 'true', 'include_go_term': 'true'}" 
-    return django.shortcuts.render(request, 'cluster.html',
-                                   {'form': form, 'nav_id': 'cluster', 'form_doc_id': 'cluster',
-                                    'form_action': django.core.urlresolvers.reverse(cluster), 'form_example': example})
-
-
-def clusterOld(request):
-    '''
-    GET: send user the form to make a cluster query
-    POST: validate cluster query and REDIRECT to result if it is good.
-    '''
-    if request.method == 'POST': # If the form has been submitted...
-        form = ClusterForm(request.POST) # A form bound to the POST data
-        if form.is_valid(): # All validation rules pass
-            logging.debug('form.cleaned_data={}'.format(form.cleaned_data))
-            orthQuery = makeOrthQueryFromClusterForm(form)
-            logging.debug('orthQuery={}'.format(orthQuery))
-            cacheKey = orthQueryHash(orthQuery)
-            logging.debug(dir(request))
-            jobId = None
-            if USE_CACHE and roundup_util.cacheHasKey(cacheKey):
-                resultPath = roundup_util.cacheGet(cacheKey)
-                resultId = resultFilenameToId(resultPath)
-                logging.debug('cache hit.\n\tcacheKey: {}\n\tresultId: {}\n\tresultPath: {}'.format(cacheKey, resultId, resultPath))
-            else:
-                resultId = makeUniqueId()
-                resultPath = orthresult.getResultFilename(resultId)
-                logging.debug('cache miss.\n\tcacheKey: {}\n\tresultId: {}\n\tresultPath: {}'.format(cacheKey, resultId, resultPath))
-                querySize = len(orthQuery['limit_genomes']) + len(orthQuery['genomes'])
-                if (querySize <= SYNC_QUERY_LIMIT):
-                    # wait for query to run and store query
-                    roundup_util.cacheDispatch(fullyQualifiedFuncName='orthquery.doOrthologyQuery', keywords=orthQuery, cacheKey=cacheKey, outputPath=resultPath)
-                else:
-                    # run on lsf and have result page poll job id.
-                    jobId = roundup_util.lsfAndCacheDispatch(fullyQualifiedFuncName='orthquery.doOrthologyQuery', keywords=orthQuery, cacheKey=cacheKey, outputPath=resultPath)
-
-            if not jobId:
-                return django.shortcuts.redirect(django.core.urlresolvers.reverse(orth_result, kwargs={'resultId': resultId}))
-            else:
-                return django.shortcuts.redirect(django.core.urlresolvers.reverse(orth_wait, kwargs={'resultId': resultId, 'job_id': jobId}))
-            # generate key for query
-            # look for query in cache
-            # if not in cache
-            #   if big query, run async on lsf, getting jobid
-            #   if small query, run sync on localhost
-            # redirect to result page with query key
-            # submit sync or async orthology query
-    else:
-        form = ClusterForm() # An unbound form
-
-    example = "{'genomes': ['Homo_sapiens.aa', 'Mus_musculus.aa', 'Arabidopsis_thaliana.aa'], 'include_gene_name': 'true', 'include_go_term': 'true'}" 
+    example = "{'genomes': ['Homo_sapiens.aa', 'Mus_musculus.aa', 'Arabidopsis_thaliana.aa']}" #, 'include_gene_name': 'true', 'include_go_term': 'true'}" 
     return django.shortcuts.render(request, 'cluster.html',
                                    {'form': form, 'nav_id': 'cluster', 'form_doc_id': 'cluster',
                                     'form_action': django.core.urlresolvers.reverse(cluster), 'form_example': example})
@@ -507,8 +459,8 @@ def makeDefaultOrthQuery():
     orthQuery['divergence'] = '0.2'
     orthQuery['evalue'] = '1e-20'
     orthQuery['tc_only'] = False
-    orthQuery['gene_name'] = False
-    orthQuery['go_term'] = False
+    orthQuery['gene_name'] = True
+    orthQuery['go_term'] = True
     orthQuery['distance_lower_limit'] = None
     orthQuery['distance_upper_limit'] = None
     return orthQuery
@@ -519,8 +471,8 @@ def makeOrthQueryFromBrowseForm(form):
     orthQuery['seq_ids'] = form.cleaned_data.get('seq_ids', [])
     orthQuery['genome'] = form.cleaned_data.get('primary_genome')
     orthQuery['limit_genomes'] = form.cleaned_data.get('secondary_genomes', [])
-    orthQuery['gene_name'] = form.cleaned_data.get('include_gene_names')
-    orthQuery['go_term'] = form.cleaned_data.get('include_go_terms')
+#     orthQuery['gene_name'] = form.cleaned_data.get('include_gene_names')
+#     orthQuery['go_term'] = form.cleaned_data.get('include_go_terms')
     orthQuery['divergence'] = form.cleaned_data.get('divergence')
     orthQuery['evalue'] = form.cleaned_data.get('evalue')
     orthQuery['distance_lower_limit'] = form.cleaned_data.get('distance_lower_limit')
@@ -539,8 +491,8 @@ def makeOrthQueryFromBrowseForm(form):
     queryDesc += '\t{}={}\n'.format(displayName('evalue'), orthQuery['evalue'])
     queryDesc += '\t{}={}\n'.format(displayName('distance_lower_limit'), orthQuery['distance_lower_limit'])
     queryDesc += '\t{}={}\n'.format(displayName('distance_upper_limit'), orthQuery['distance_upper_limit'])
-    queryDesc += '\t{}={}\n'.format(displayName('gene_name'), orthQuery['gene_name'])
-    queryDesc += '\t{}={}\n'.format(displayName('go_term'), orthQuery['go_term'])
+#     queryDesc += '\t{}={}\n'.format(displayName('gene_name'), orthQuery['gene_name'])
+#     queryDesc += '\t{}={}\n'.format(displayName('go_term'), orthQuery['go_term'])
     orthQuery['query_desc'] = queryDesc
 
     return orthQuery
@@ -550,8 +502,8 @@ def makeOrthQueryFromClusterForm(form):
     orthQuery = makeDefaultOrthQuery()
     orthQuery['genomes'] = form.cleaned_data.get('genomes', [])
     orthQuery['tc_only'] = form.cleaned_data.get('tc_only')
-    orthQuery['gene_name'] = form.cleaned_data.get('include_gene_names')
-    orthQuery['go_term'] = form.cleaned_data.get('include_go_terms')
+#     orthQuery['gene_name'] = form.cleaned_data.get('include_gene_names')
+#     orthQuery['go_term'] = form.cleaned_data.get('include_go_terms')
     orthQuery['divergence'] = form.cleaned_data.get('divergence')
     orthQuery['evalue'] = form.cleaned_data.get('evalue')
     orthQuery['distance_lower_limit'] = form.cleaned_data.get('distance_lower_limit')
@@ -564,8 +516,8 @@ def makeOrthQueryFromClusterForm(form):
     queryDesc += '\t{}={}\n'.format(displayName('distance_lower_limit'), orthQuery['distance_lower_limit'])
     queryDesc += '\t{}={}\n'.format(displayName('distance_upper_limit'), orthQuery['distance_upper_limit'])
     queryDesc += '\t{}={}\n'.format(displayName('tc_only'), orthQuery['tc_only'])
-    queryDesc += '\t{}={}\n'.format(displayName('gene_name'), orthQuery['gene_name'])
-    queryDesc += '\t{}={}\n'.format(displayName('go_term'), orthQuery['go_term'])
+#     queryDesc += '\t{}={}\n'.format(displayName('gene_name'), orthQuery['gene_name'])
+#     queryDesc += '\t{}={}\n'.format(displayName('go_term'), orthQuery['go_term'])
     orthQuery['query_desc'] = queryDesc
 
     return orthQuery
@@ -620,10 +572,10 @@ def orth_query(request, queryId):
     if USE_CACHE and roundup_util.cacheHasKey(resultId) and orthresult.resultExists(resultId):
         logging.debug('cache hit.')
         return django.shortcuts.redirect(django.core.urlresolvers.reverse(orth_result, kwargs={'resultId': resultId}))
-    elif roundup_util.isRunningJob(resultId):
+    elif not config.NO_LSF and roundup_util.isRunningJob(resultId):
         logging.debug('cache miss. job is already running.  go to waiting page.')
         return django.shortcuts.redirect(django.core.urlresolvers.reverse(orth_wait, kwargs={'resultId': resultId}))
-    elif querySize <= SYNC_QUERY_LIMIT:
+    elif config.NO_LSF or querySize <= SYNC_QUERY_LIMIT:
         logging.debug('cache miss. run job sync.')
         # wait for query to run and store query
         roundup_util.cacheDispatch(fullyQualifiedFuncName='orthquery.doOrthologyQuery', keywords=orthQuery, cacheKey=resultId, outputPath=resultPath)

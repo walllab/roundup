@@ -2,9 +2,8 @@
 {% comment %}
 basic fixed width layout for roundup pages.
 {% endcomment %}
-
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml" class="js">
+<html xmlns="http://www.w3.org/1999/xhtml">
 
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
@@ -18,18 +17,25 @@ div.panel-flexible div.panel-row-2 div.panel-col-2 { width: 49%; }
 div.panel-flexible div.panel-row-3 div.panel-col-1 { width: 98%; }
 </style>
 
+<link rel="shortcut icon" href="/static/images/favicon.ico" type="image/x-icon">
+<!--
 <link rel="shortcut icon" href="/static/images/bluebird_favicon.ico" type="image/x-icon">
+-->
+<link type="text/css" rel="stylesheet" media="all" href="/static/css/style.css">
+
+<!--
+<link type="text/css" rel="stylesheet" media="all" href="/static/css/defaults.css">
 <link type="text/css" rel="stylesheet" media="all" href="/static/css/aggregator.css">
 <link type="text/css" rel="stylesheet" media="all" href="/static/css/node.css">
-<link type="text/css" rel="stylesheet" media="all" href="/static/css/defaults.css">
 <link type="text/css" rel="stylesheet" media="all" href="/static/css/system.css">
 <link type="text/css" rel="stylesheet" media="all" href="/static/css/system-menus.css">
 <link type="text/css" rel="stylesheet" media="all" href="/static/css/user.css">
 <link type="text/css" rel="stylesheet" media="all" href="/static/css/content-module.css">
 <link type="text/css" rel="stylesheet" media="all" href="/static/css/panels.css">
 <link type="text/css" rel="stylesheet" media="all" href="/static/css/flexible.css">
-<link type="text/css" rel="stylesheet" media="all" href="/static/css/style.css">
 <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.6.1/jquery.min.js"></script>
+-->
+<script type="text/javascript" src="/static/js/jquery.1.6.1.min.js"></script>
 <script type="text/javascript" src="/static/js/sortable.js"></script> 
 <!--
 <script type="text/javascript" src="/static/js/roundup.js"></script>
@@ -154,27 +160,85 @@ function inArray(obj, arr) {
 
 </head>
 
-<body class="sidebar-right">
+<body class="{% block fluid %}fixed{% endblock %}">
+<div id="wrap">
 
-{% include 'header.html' %}
+<!-- global nav -->
+<div id="globalnav" class="nav">
+<ul>
+<li>Affiliated Sites:</li>
+<li><a href="http://autworks.hms.harvard.edu/" title="">autworks</a></li>
+<li><a href="http://cbmi.med.harvard.edu/" title="">CBMI</a></li>
+<li><a href="http://lpm.hms.harvard.edu/" title="">LPM</a></li>
+<li><a href="http://lpm.hms.harvard.edu/palaver/" title="">palaver</a></li>
+<li><a href="http://genotator.hms.harvard.edu/" title="">Genotator</a></li>
+<li><a href="http://wall.hms.harvard.edu/" title="">Wall Lab</a></li>
+</ul>
+</div>
+<!-- end global nav -->
+
+<!-- banner -->
+<div id="header">
+<div class="logo">
+<a href="{% url 'home.views.home' %}" title="Home"><img src="/static/images/logo.png" alt="Home"></a>
+</div>
+</div>
+<!-- end banner -->
+
+<!--  site nav -->
+<div id="sitenav" class="nav">
+<ul>
+<li><a href="{% url 'home.views.home' %}"{% if nav_id == 'home' %} class="thisPage"{% endif %}>Home</a></li>
+<li><a href="{% url 'home.views.browse' %}"{% if nav_id == 'browse' %} class="thisPage"{% endif %}>Browse</a></li>
+<li><a href="{% url 'home.views.cluster' %}"{% if nav_id == 'cluster' %} class="thisPage"{% endif %}>Retrieve</a></li>
+<li><a href="{% url 'home.views.raw' %}"{% if nav_id == 'raw' %} class="thisPage"{% endif %}>Download</a></li>
+<li><a href="{% url 'home.views.genomes' %}"{% if nav_id == 'genomes' %} class="thisPage"{% endif %}>Genomes</a></li>
+<li><a href="{% url 'home.views.sources' %}"{% if nav_id == 'sources' %} class="thisPage"{% endif %}>Sources</a></li>
+<li><a href="{% url 'home.views.about' %}"{% if nav_id == 'about' %} class="thisPage"{% endif %}>About</a></li>
+<li><a href="{% url 'home.views.documentation' %}"{% if nav_id == 'documentation' %} class="thisPage"{% endif %}>Documentation</a></li>
+<li><a href="{% url 'home.views.contact' %}"{% if nav_id == 'contact' %} class="thisPage"{% endif %}>Contact</a></li>
+</ul>
+</div>
+<!--  end site nav -->
 
 <!-- content -->
+<div id="container">
+<div id="container2">
 {% if site_maintenance %}
 <p class="maintenance">Roundup is currently undergoing routine maintenance.  Thank you for your patience while the site is unavailable.</p>
 {% else %}
-<div class="outer_content">
-<div class="content">
 {% block content %}Under construction.{% endblock %}
-</div>
-</div>
 {% endif %}
+</div>
+</div>
 <!-- end content -->
 
-</div> <!-- wrap -->
-{% include 'footer.html' %}
 
-</div> <!-- container2 -->
-</div> <!-- container -->
+<!-- footer -->
+<div id="footer">
+<div class="content">
+<p>This material is based upon work supported by the National Science Foundation under Grant Nos. 0543480 and 0640809 and the National Institutes of Health under Grant No. LM009261. Any opinions, findings, and conclusions or recommendations expressed in this material are those of the author(s) and do not necessarily reflect the views of the National Science Foundation or National Institutes of Health.</p>
+<p class="copy">Copyright (©) 2004-2009 President and Fellows of Harvard College. All Rights Reserved</p>
+</div>
+</div>
+<!-- end footer -->
 
+<!-- gooogle analytics -->
+<script type="text/javascript">
+ var _gaq = _gaq || [];
+ _gaq.push(['_setAccount', 'UA-24495001-1']);
+ _gaq.push(['_trackPageview']);
+
+ (function() {
+   var ga = document.createElement('script'); ga.type =
+'text/javascript'; ga.async = true;
+   ga.src = ('https:' == document.location.protocol ? 'https://ssl' :
+'http://www') + '.google-analytics.com/ga.js';
+   var s = document.getElementsByTagName('script')[0];
+s.parentNode.insertBefore(ga, s);
+ })();
+</script>
+
+</div> <!-- end wrap -->
 </body>
 </html>
