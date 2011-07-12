@@ -34,10 +34,6 @@ th {
   border-bottom: 3px solid #ccc;
 }
 
-a:link, a:visited{color:#13aeef;} 
-a:hover{color:#04637F; text-decoration:none;}
-
-
 h1, h2, h3, h4	{ color : #000; font-weight : normal; padding-top:6px; }
 h2 { font-size : 114%; }
 h2 a:link, h2 a:visited, h2 a:active { border : 0; }
@@ -54,10 +50,17 @@ strong { font-weight : bold; }
 em { font-style: italic; }
 
 
+
+/* LINKS */
+a:link, a:visited { color:#13aeef; } 
+a:hover { color:#04637F; text-decoration:none; }
+
+
+
 /* BODY */
 
 body{ 
-background:#f7f7f7;
+background:#fff;
 font-family: Helvetica, Arial, sans-serif; 
 font-size : 77%; 
 color : #404040; 
@@ -65,9 +68,21 @@ color : #404040;
 
 
 /* TWO COLUMN LAYOUT ON HOME PAGE */
+/*
+http://www.alistapart.com/articles/css-floats-101/
+http://www.456bereastreet.com/lab/developing_with_web_standards/csslayout/2-col/
+http://www.positioniseverything.net/easyclearing.html
+*/
 
 #twocol {
 background:#fff;
+}
+#twocol:after {
+  content: ".";
+  display: block;
+  height: 0;
+  clear: both;
+  visibility: hidden;
 }
 
 #leftcol {
@@ -157,35 +172,45 @@ margin-left:15px;
 }
 
 
-/*NAVIGATION*/
+/* NAVIGATION */
 
 #globalnav {
-background:#467593;
+background:#051c27; 
+color:#555;
+}
+#globalnav a {
+color:#555;
 }
 #sitenav {
-background:#051c27; 
+background:#f7f7f7;
+}
+#sitenav a {
+color:#555;
 }
 .nav {
 height:23px; 
 color:#fff;
 font-family:arial;
 }
-.nav ul{ 
+.nav ul { 
 list-style-type: none;
 padding:2px 0 0 0;
 margin:0 auto;
 width:878px; 
 }
-.nav li{
+.nav li {
 padding:0 0 0 20px;
 display:inline;
 font-weight:bold;
 }
-.nav a{color:#fff; font-size:11px; text-transform:uppercase;font-weight:bold;}
-.nav a:hover{
-/*color:#04637F; */
-color:#888; 
-font-size:11px; text-transform:uppercase;}
+.nav a {
+font-size:11px; 
+text-transform:uppercase;
+font-weight:bold;
+}
+.nav a:hover { 
+text-decoration: underline; 
+}
 
 
 /*CONTAINER*/
@@ -245,11 +270,6 @@ font-size:12px;
 
 
 
-
-
-table.system-status-report th {
-  border-color: #f3f1ed;
-}
 
 #autocomplete li.selected, tr.selected td, tr.selected td.active {
   background: #027ac6;
@@ -329,7 +349,7 @@ img, a img {
 }
 
 table {
-  margin: 1em 0;
+/*  margin: 1em 0; */
   width: 100%;
 }
 

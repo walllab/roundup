@@ -147,7 +147,7 @@ def openDbConn(host=MYSQL_HOST, db=MYSQL_DB, user=MYSQL_USER, password=MYSQL_PAS
     '''
     returns: an open python DB API connection to the mysql host and db.  caller is responsible for closing the connection.
     '''
-    return orchmysql.openConn(host, db, user, password)
+    return orchmysql.openConn(host, db, user, password, retries=1, sleep=1)
 
 @contextlib.contextmanager
 def dbConnCM(host=MYSQL_HOST, db=MYSQL_DB, user=MYSQL_USER, password=MYSQL_PASSWORD):
