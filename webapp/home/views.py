@@ -29,8 +29,9 @@ import roundup_db
 
 USE_CACHE = True
 SYNC_QUERY_LIMIT = 20 # run an asynchronous query (on lsf) if more than this many genomes are in the query.
-GENOMES = roundup_util.getGenomes()
-GENOME_CHOICES = [(g, orthresult.genomeDisplayName(g)) for g in GENOMES] # pairs of genome id and display name
+GENOMES_AND_NAMES = roundup_util.getGenomesAndNames()
+GENOMES = [genome for genome, name in GENOMES_AND_NAMES]
+GENOME_CHOICES = sorted([(g, '{}: {}'.format(g, n)) for g, n in GENOMES_AND_NAMES], key=lambda gn: gn[1]) # sorted by display name
 DIVERGENCE_CHOICES = [(d, d) for d in roundup_common.DIVERGENCES]
 EVALUE_CHOICES = [(d, d) for d in reversed(roundup_common.EVALUES)] # 1e-20 .. 1e-5
 IDENTIFIER_TYPE_CHOICES = [('gene_name_type', 'Gene Name'), ('seq_id_type', 'Sequence Id')]
@@ -353,7 +354,7 @@ def browse(request):
             logging.debug('browseId={}, browseIdType={}'.format(browseId, browseIdType))
             if browseId and browseIdType == 'gene_name_type':
                 genome = form.cleaned_data['primary_genome']
-                seqIds = roundup_db.getSeqIdsForGeneName(geneName=browseId, database=genome)
+                seqIds = roundup_db.getSeqIdsForGeneName(geneName=browseId, genome=genome)
                 if not seqIds: # no seq ids matching the gene name were found.  oh no!
                     message = 'In your Browse query, Roudnup did not find the gene named "{}" in the genome "{}".  Try searching for a gene name.'.format(browseId, genome)
                     # store result in cache, so can do a redirect/get. 

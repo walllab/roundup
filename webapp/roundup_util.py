@@ -19,6 +19,7 @@ import execute
 import orthresult
 import roundup_common
 import roundup_db
+import roundup_dataset
 import util
 import LSF
 
@@ -74,30 +75,16 @@ def getRoundupDataStats():
     return util.loadObject(roundup_common.STATS_PATH)
 
 
-def getUpdateDescriptions():
-    '''
-    returns history.txt log as a web-readable list of updates.
-    '''
-    reGenome = re.compile('genome=([^ ]+)')
-    updates = []
-    history = roundup_common.getHistory()
-    # show the most recent updates first.
-    history.sort(reverse=True)
-    for dt, msg in history:
-        if msg.startswith('compute'):
-            if msg.find('replace_existing_genome') != -1:
-                genome = reGenome.search(msg).group(1)
-                updates.append(dt.strftime('%Y/%m/%d')+ ': Updated existing genome '+orthresult.roundupGenomeDisplayName(genome)+'\n')
-            if msg.find('add_new_genome') != -1:
-                genome = reGenome.search(msg).group(1)
-                updates.append(dt.strftime('%Y/%m/%d')+ ': Added new genome '+orthresult.roundupGenomeDisplayName(genome)+'\n')
-    return updates
+# def getGenomes():
+#     return roundup_dataset.getGenomes(config.CURRENT_DATASET) # the genomes used to generate pairs for the dataset.
+#     return roundup_db.getGenomes() # all the genomes in the genomes dir
 
 
-def getGenomes():
-    with open(os.path.join(config.PROJ_DIR, 'genome_descs.json.txt')) as fh:
-        descs = json.load(fh)
-        return sorted(descs.keys())
+def getGenomesAndNames():
+    '''
+    return: list of pairs of genome and name.  used by website for dropdowns.  
+    '''
+    return roundup_db.getGenomesAndNames()
 
 
 def getGenomeDescriptions(genomes):
@@ -224,11 +211,29 @@ def lsfAndCacheDispatch(fullyQualifiedFuncName=None, keywords=None, cacheKey=Non
     return lsfDispatch(newFunc, newKw, jobName)
 
 
-#######################################
-# GENOME AND RESULTS DELETION FUNCTIONS
-# these function remove results files with this genome, loaded results from the mysql db, the current and any updated genome database
-# the objective is to completely remove the db/genome from roundup, leaving no trace.
-#######################################
+#################
+# DEPRECATED CODE
+#################
+
+def getUpdateDescriptions():
+    '''
+    returns history.txt log as a web-readable list of updates.
+    '''
+    reGenome = re.compile('genome=([^ ]+)')
+    updates = []
+    history = roundup_common.getHistory()
+    # show the most recent updates first.
+    history.sort(reverse=True)
+    for dt, msg in history:
+        if msg.startswith('compute'):
+            if msg.find('replace_existing_genome') != -1:
+                genome = reGenome.search(msg).group(1)
+                updates.append(dt.strftime('%Y/%m/%d')+ ': Updated existing genome '+orthresult.roundupGenomeDisplayName(genome)+'\n')
+            if msg.find('add_new_genome') != -1:
+                genome = reGenome.search(msg).group(1)
+                updates.append(dt.strftime('%Y/%m/%d')+ ': Added new genome '+orthresult.roundupGenomeDisplayName(genome)+'\n')
+    return updates
+
 
 def deleteGenomeById(dbId):
     '''
@@ -264,7 +269,6 @@ def deleteGenomeById(dbId):
     print 'deleting results from mysql db...'
     # this is slow b/c of the size of the table and indexing scheme used
     roundup_db.deleteGenomeByName(dbId)
-
 
 
 

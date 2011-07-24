@@ -47,7 +47,9 @@ elif DEPLOY_ENV == 'local':
     BLAST_BIN_DIR = '/usr/local/ncbi/blast/bin'
     PROJ_BIN_DIR = '/Users/td23/bin' # location of kalign
     NO_LSF = True
-    
+
+CURRENT_DB_VERSION = 'test_dataset'
+CURRENT_DATASET = '/groups/cbi/td23/test_dataset'
 LOG_FILE = os.path.join(PROJ_DIR, 'log/app.log')
 CONFIG_DIR = os.path.join(PROJ_DIR, 'config') # contains roundup_genomes.xml genome download xml config, and codeml.ctl and jones.dat used by RoundUp.py
 RESULTS_DIR = os.path.join(PROJ_DIR, 'results')

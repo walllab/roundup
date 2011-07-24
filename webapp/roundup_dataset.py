@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 '''
-# CONCEPTS TO LEARN
+## CONCEPTS TO LEARN
 * Dataset: ds, the id of a dataset.  also happens to be a directory path, but that is an implementation detail. 
 * Sources: a dir containing all the files needed to create the genomes and the metadata about those genomes: gene names, go terms, gene descriptions, genome names, etc.
 * Genomes: A dir containing dirs named after each genome and containing a fasta file and blast indexes named after the genome.
@@ -24,11 +24,6 @@
 # A list of all species ids abbreviations, their kingdom, taxon id, and official names, common names, and synonyms.  Cool!
 # http://www.expasy.org/cgi-bin/speclist
 
-# test getGenomes()
-# test splitting source files
-# test preparing computation.  are the jobs and pair files created?
-#   are the new_pairs.txt and old_pairs.txt created?
-# test rsd copyToWorking functionality
 
 '''
 # Fiddling with completes and dataset state to get completed stuff to run again.
@@ -43,25 +38,28 @@ emacs /groups/cbi/td23/roundup_uniprot/test_dataset/steps.complete.txt
 '''
 
 # standard library modules
-import sys
-import os
-import datetime
-import shutil
-import time
-import uuid
-import logging
-import urlparse
-import subprocess
-import random
+import collections
+import glob
 import gzip
 import json
-import collections
+import datetime
+import itertools
+import logging
+import os
+import random
+import shutil
+import subprocess
+import sys
+import time
+import urlparse
+import uuid
 
 # 3rd party modules
 import Bio.SeqIO
 
 # our modules
 import config
+import dbutil
 import fasta
 import LSF
 import nested
@@ -75,6 +73,27 @@ import rsd
 
 MIN_GENOME_SIZE = 200 # ignore genomes with fewer sequences
 DIR_MODE = 0775 # directories in this dataset are world readable and group writable.
+
+# short keys, to save RAM space, used for the geneToData dicts.  also used for termToData.
+NAME = 'n'
+DESC = 'd'
+GENOME = 'g'
+GO_TERMS = 't'
+GENE_IDS = 'i'
+TYPE = 'y'
+
+# METADATA STORES, keys for getData()
+DATASET = 'dataset'
+GENES = 'genes' 
+GENE_TO_GENOME = 'gene_to_genome'
+GENE_TO_NAME = 'gene_to_name'
+GENE_TO_DESC = 'gene_to_desc'
+GENE_TO_GO_TERMS = 'gene_to_go_terms'
+GENE_TO_GENE_IDS = 'gene_to_gene_ids'
+TERM_TO_DATA = 'term_to_data'
+GENOME_TO_GENES = 'genome_to_genes'
+NEW_PAIRS = 'new_pairs'
+OLD_PAIRS = 'old_pairs'
 
 
 def main(ds):
@@ -107,9 +126,10 @@ def prepareDataset(ds):
     '''
     resetCompletes(ds)
     resetStats(ds)
-    for path in (ds, getGenomesDir(ds), getOrthologsDir(ds), getJobsDir(ds), getSourcesDir(ds)):
+    for path in (ds, getGenomesDir(ds), getOrthologsDir(ds), getJobsDir(ds), getSourcesDir(ds), getLoadDir(ds)):
         if not os.path.exists(path):
             os.makedirs(path, DIR_MODE)
+    setMetadata(ds, {}) # initialize a blank metadata for the dataset
 
 def downloadCurrentUniprot(ds):
     '''
@@ -213,10 +233,12 @@ def splitUniprotIntoGenomes(ds, writing=True, skipDirs=False, cleanDirs=False, b
     create separate fasta files for each complete genome in the uniprot (sprot and trembl) data.
     do not create files for genomes that are too small.
     also save maps from genome to ncbi taxon id, and genome to size (# of sequences).
+    iterates once through the dat files to find out which sequences/entries belong to complete proteomes (and to get taxons and sequence counts.)
+    then iterates once through fasta files to write the fasta sequences for each genome.  
     '''
     seqToGenome = {} # track which sequences belong to which genome.  store sequences of all complete genomes
-    genomeToTaxon = {}
-    genomeToCount = collections.defaultdict(int)
+    genomeToTaxon = {} # maps each genome to an ncbi taxon id
+    genomeToCount = collections.defaultdict(int) # maps each genome to the number of sequences (in the dat files) for that genome.  should == num seqs in fasta files.
     
     # the dats have all the info needed to make fasta files, but the namelines in the uniprot fasta files are nice and hard to reconstruct from the dats.
     dats = [os.path.join(getSourcesDir(ds), 'knowledgebase/complete/uniprot_sprot.dat'), os.path.join(getSourcesDir(ds), 'knowledgebase/complete/uniprot_trembl.dat')]
@@ -227,6 +249,7 @@ def splitUniprotIntoGenomes(ds, writing=True, skipDirs=False, cleanDirs=False, b
     # fastas = ['/groups/cbi/td23/roundup_uniprot/uniprot_sprot_test.fasta']
 
     # gather which sequences belong to complete genomes, by parsing uniprot dat files.
+    # also get the ncbi taxon ids and a count of the sequences per genome.
     print datetime.datetime.now()
     for path in dats:
         print 'gathering ids in {}...'.format(path), datetime.datetime.now()
@@ -262,11 +285,11 @@ def splitUniprotIntoGenomes(ds, writing=True, skipDirs=False, cleanDirs=False, b
                     complete = False
 
     # filter out genomes that are too small, and their respective sequences.
-    genomeToCount = dict((genome, count) for genome, count in genomeToCount.items() if count >= MIN_GENOME_SIZE)
-    seqToGenome = dict((seqId, genome) for seqId, genome in seqToGenome.items() if genome in genomeToCount)
+    genomes = [genome for genome, count in genomeToCount.items() if count >= MIN_GENOME_SIZE]
+    seqToGenome = dict((seqId, genome) for seqId, genome in seqToGenome.items() if genome in genomes)
             
     # print a sorted list of genomes and number of sequences
-    for genome, count in sorted(genomeToCount.items(), key=lambda x: (x[1], x[0])):
+    for genome, count in sorted([(genome, genomeToCount[genome]) for genome in genomes], key=lambda x: (x[1], x[0])):
         print genome, count
         pass
 
@@ -298,17 +321,18 @@ def splitUniprotIntoGenomes(ds, writing=True, skipDirs=False, cleanDirs=False, b
                 for line in data:
                     outfh.write(line)
 
+    # remove any pre-existing genomes.
     if cleanDirs:
         print 'cleaning genomes directory...', datetime.datetime.now()
         cleanGenomes(ds)
 
     # make a directory for each genome in which to put the fasta file.
     print datetime.datetime.now()
-    genomes = set(seqToGenome.values())
     print 'initializing {} genome directories...'.format(len(genomes))
     for genome in genomes:
         makeGenomeDir(genome)
-        
+
+    # write the fasta sequences to the fasta files.  lots of caching here b/c filessystem is slow to open and close files.
     print datetime.datetime.now()
     for path in fastas:
         # iterate through every line in the fasta file.
@@ -338,7 +362,7 @@ def splitUniprotIntoGenomes(ds, writing=True, skipDirs=False, cleanDirs=False, b
                 
     print 'getting genomes and updating metadata...', datetime.datetime.now()
     
-    getGenomes(ds, refresh=True)
+    setGenomes(ds)
     updateMetadata(ds, {'genomeToTaxon': genomeToTaxon, 'genomeToCount': genomeToCount})
     print 'all done.', datetime.datetime.now()
     
@@ -348,62 +372,12 @@ def formatGenomes(ds):
     format genomes for blast.
     '''
     print 'formatting genomes. {}'.format(ds)
-    genomes = getGenomes(ds, refresh=True)
+    genomes = getGenomes(ds)
     for genome in genomes:
         fastaPath = getGenomeFastaPath(ds, genome)
         print 'format {}'.format(genome)
         rsd.formatForBlast(fastaPath)
     print 'done formatting genomes'
-
-
-def extractGeneIdsAndGoTerms(ds):
-    '''
-    From ftp://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/idmapping/README:
-    2) idmapping_selected.tab
-    We also provide this tab-delimited table which includes
-    the following mappings delimited by tab:
-
-        1. UniProtKB-AC
-        2. UniProtKB-ID
-        3. GeneID (EntrezGene)
-        4. RefSeq
-        5. GI
-        6. PDB
-        7. GO
-        8. IPI
-        9. UniRef100
-        10. UniRef90
-        11. UniRef50
-        12. UniParc
-        13. PIR
-        14. NCBI-taxon
-        15. MIM
-        16. UniGene
-        17. PubMed
-        18. EMBL
-        19. EMBL-CDS
-        20. Ensembl
-        21. Ensembl_TRS
-        22. Ensembl_PRO
-        23. Additional PubMed
-    Writes two dicts to files, one mapping gene to go terms, the other mapping gene to ncbi gene id.
-    '''
-    geneToGoTerms = {}
-    geneToGeneId = {}
-    with open(os.path.join(getSourcesDir(ds), 'knowledgebase/idmapping/idmapping_selected.tab')) as fh:
-        for i, line in enumerate(fh):
-            if i % 100000 == 0: print i
-            seqId, b, geneId, d, e, f, goTermsStr, etc = line.split('\t', 7)
-            goTerms = goTermsStr.split('; ') if goTermsStr else []
-            # print line
-            # print (seqId, b, geneId, d, e, f, goTerms)
-            geneToGoTerms[seqId] = goTerms
-            geneToGeneId[seqId] = geneId
-    with open(os.path.join(ds, 'gene_to_geneid.json'), 'w') as fh:
-        json.dump(geneToGeneId, fh, indent=2)
-    with open(os.path.join(ds, 'gene_to_go_terms.json'), 'w') as fh:
-        json.dump(geneToGoTerms, fh, indent=2)
-            
 
 
 def parseUniprotNameline(nameline):
@@ -438,7 +412,7 @@ def parseUniprotNameline(nameline):
     return {'acc': acc, 'geneDesc': geneDesc, 'geneName': geneName, 'orgName': orgName, 'orgId': orgId}
 
 
-def extractGenomeAndGeneNames(ds):
+def extractFromFasta(ds):
     '''
     parse from the namelines the uniprot fasta files the gene name, genome/organism name
     The organism name The gene name is optional.
@@ -447,9 +421,13 @@ def extractGenomeAndGeneNames(ds):
     example nameline: >sp|P38398|BRCA1_HUMAN Breast cancer type 1 susceptibility protein OS=Homo sapiens GN=BRCA1 PE=1 SV=2
     gene name (GN): BRCA1, organism abbr: HUMAN, organism (OS): Homo sapiens
     '''
-    genomeToName = {}
+    # geneToData = {} # map each gene to data about the gene: name, ncbi gene ids, go terms, description, genome.
+    genes = []
     geneToName = {}
     geneToDesc = {}
+    geneToGenome = {}
+    genomeToGenes = {}
+    genomeToName = {}
     
     # EXCEPTIONS to the exactly one name for a genome rule, found in UniProtKB release 2011_04.
     # taxonid | 2nd name found | 1st name found
@@ -462,45 +440,136 @@ def extractGenomeAndGeneNames(ds):
     # since the sprot/trembl data has genomes that have different names in sprot and trembl (see exceptions listed above),
     # ignore these bad genomes.
     # badGenomes = set(['246196', '321332', '771870', '290318', '710128', '375286'])
+    # FIXED in 2011_06 release
     badGenomes = set()
     
-    for i, genome in enumerate(getGenomes(ds, refresh=True)):
+    for i, genome in enumerate(getGenomes(ds)):
+        if i % 20 == 0: print i
         path = getGenomeFastaPath(ds, genome)
-        print '{}: extracting from {}'.format(i, path)
+        if genome not in genomeToGenes:
+            genomeToGenes[genome] = []
+        # print '{}: extracting from {}'.format(i, path)
         for nameline, seq in fasta.readFasta(path):
             try:
                 data = parseUniprotNameline(nameline)
             except:
                 print (i, genome, path, nameline)
                 raise
-            seqId, geneDesc, geneName, genomeName  = data['acc'], data['geneDesc'], data['geneName'], data['orgName']
-            
+            gene, geneDesc, geneName, genomeName  = data['acc'], data['geneDesc'], data['geneName'], data['orgName']
+
             # a sequence must be encountered only once.
-            if geneToName.has_key(seqId):
-                raise Exception('Sequence encountered more than one time!', seqId, geneName, geneDesc, nameline, genome, path, i)
+            # if geneToData.has_key(gene):
+            if geneToName.has_key(gene):
+                raise Exception('Sequence encountered more than one time!', gene, geneName, geneDesc, nameline, genome, path, i)
             else:
                 # gene name and description are optional
-                geneToName[seqId] = geneName
-                geneToDesc[seqId] = geneDesc
-
+                genes.append(gene)
+                # geneToData[gene] = {NAME: geneName, DESC: geneDesc, GENOME: genome}
+                geneToName[gene] = geneName
+                geneToDesc[gene] = geneDesc
+                geneToGenome[gene] = genome
+                genomeToGenes[genome].append(gene)
+                
             # assert exactly one name for genome.  b/c some genomes have a different name in sprot and trembl, make case-by-case exceptions.
             if not genomeToName.has_key(genome):
                 genomeToName[genome] = genomeName
             elif genomeToName[genome] != genomeName and genome not in badGenomes:
                 with open(os.path.join(ds, 'errors.extract_uniprot.txt'), 'a') as fh:
                     msg = '{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\n'
-                    msg = msg.format(datetime.datetime.now().isoformat(), 'genome_has_two_names', seqId, genome, genomeToName[genome], genomeName, os.path.basename(path))
+                    msg = msg.format(datetime.datetime.now().isoformat(), 'genome_has_two_names', gene, genome, genomeToName[genome], genomeName, os.path.basename(path))
                     fh.write(msg)
                     # print msg
-            
-    with open(os.path.join(ds, 'genome_to_name.json'), 'w') as fh:
-        json.dump(genomeToName, fh, indent=2)
-    with open(os.path.join(ds, 'gene_to_name.json'), 'w') as fh:
-        json.dump(geneToName, fh, indent=2)
-    with open(os.path.join(ds, 'gene_to_desc.json'), 'w') as fh:
-        json.dump(geneToDesc, fh, indent=2)
+
+    setData(ds, GENES, genes)
+    setData(ds, GENE_TO_NAME, geneToName)
+    setData(ds, GENE_TO_DESC, geneToDesc)
+    setData(ds, GENE_TO_GENOME, geneToGenome)
+    setData(ds, GENOME_TO_GENES, genomeToGenes)
+    updateMetadata(ds, {'genomeToName': genomeToName})
+
+    # setGenes(ds, genes)
+    # setGeneToData(ds, geneToData)
+    # setGeneToName(ds, geneToName)
+    # setGeneToDesc(ds, geneToDesc)
+    # setGeneToGenome(ds, geneToGenome)
+    # with open(os.path.join(ds, 'genome_to_name.json'), 'w') as fh:
+    #     json.dump(genomeToName, fh, indent=2)
         
+
+def extractFromIdMapping(ds):
+    '''
+    From ftp://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/idmapping/README:
+    2) idmapping_selected.tab
+    We also provide this tab-delimited table which includes
+    the following mappings delimited by tab:
+
+        1. UniProtKB-AC
+        2. UniProtKB-ID
+        3. GeneID (EntrezGene)
+        4. RefSeq
+        5. GI
+        6. PDB
+        7. GO
+        8. IPI
+        9. UniRef100
+        10. UniRef90
+        11. UniRef50
+        12. UniParc
+        13. PIR
+        14. NCBI-taxon
+        15. MIM
+        16. UniGene
+        17. PubMed
+        18. EMBL
+        19. EMBL-CDS
+        20. Ensembl
+        21. Ensembl_TRS
+        22. Ensembl_PRO
+        23. Additional PubMed
+    Writes two dicts to files, one mapping gene to go terms, the other mapping gene to ncbi gene id.
+    '''
+
+    geneSet = set(getData(ds, GENES)) # a set to improve lookup performance.  all the seq ids from the genome fasta files.
+    # geneToData = getGeneToData(ds)
+    geneToGoTerms = {}
+    geneToGeneIds = {}
+    with open(os.path.join(getSourcesDir(ds), 'knowledgebase/idmapping/idmapping_selected.tab')) as fh:
+        for i, line in enumerate(fh):
+            if i % 500000 == 0: print i
+            seqId, b, geneIdsStr, d, e, f, goTermsStr, etc = line.split('\t', 7)
+            if seqId in geneSet: # ignore sequences not in our set of genes (i.e. from genomes we ignore)
+                goTerms = goTermsStr.split('; ') if goTermsStr else []
+                geneIds = geneIdsStr.split('; ') if geneIdsStr else []
+                # print line
+                # print (seqId, b, geneIds, d, e, f, goTerms)
+                # geneToData[seqId][GO_TERMS] = goTerms
+                # geneToData[seqId][GENE_IDS] = geneIds
+                geneToGoTerms[seqId] = goTerms
+                geneToGeneIds[seqId] = geneIds
+
+    setData(ds, GENE_TO_GO_TERMS, geneToGoTerms)
+    setData(ds, GENE_TO_GENE_IDS, geneToGeneIds)
+    # setGeneToData(ds, geneToData)
+    # setGeneToGoTerms(ds, geneToGoTerms)
+    # setGeneToGeneIds(ds, geneToGeneIds)
+
+
+def extractGoTermData(ds):
+    '''
+    note: this works, b/c the go database on dev.mysql and mysql is the same.
+    creates a lookup for go term accessions to name and term_type.  e.g. 'GO:2000779' => 'regulation of double-strand break repair', 'biological_process'
+    '''
+
+    termToData = {}
+    sql = "select acc, name, term_type from go.term where is_obsolete = 0 and term_type = 'biological_process'"
+    with config.dbConnCM() as conn:
+        results = dbutil.selectSQL(sql=sql, conn=conn)
+        for row in results:
+            termToData[row[0]] = {NAME: row[1], TYPE: row[2]}
+    setData(ds, TERM_TO_DATA, termToData)
+
             
+
 def prepareComputation(ds, oldDs=None, numJobs=4000, pairs=None):
     '''
     ds: dataset to ready for computation
@@ -526,8 +595,10 @@ def prepareComputation(ds, oldDs=None, numJobs=4000, pairs=None):
         
     # save the pairs to be computed and the pairs whose orthologs need to be moved.
     print 'saving new and old pairs'
-    setNewPairs(ds, newPairs)
-    setOldPairs(ds, oldPairs)
+    # setNewPairs(ds, newPairs)
+    # setOldPairs(ds, oldPairs)
+    setData(ds, NEW_PAIRS, newPairs)
+    setData(ds, OLD_PAIRS, oldPairs)
     print 'new pair count:', len(newPairs)
     print 'old pair count:', len(oldPairs)
 
@@ -608,7 +679,7 @@ def splitOrthologsIntoOldResultsFiles(ds, here='.'):
 # DATASET STUFF
 ###############
 
-def _getDatasetId(ds):
+def getDatasetId(ds):
     return os.path.basename(ds)
 
 
@@ -626,6 +697,13 @@ def getOrthologsDir(ds):
     
 def getSourcesDir(ds):
     return os.path.join(ds, 'sources')
+
+
+def getLoadDir(ds):
+    '''
+    used to load the database
+    '''
+    return os.path.join(ds, 'load')
 
 
 ###################
@@ -670,14 +748,14 @@ def cleanGenomes(ds):
     '''
     remove all the genomes in the genomes dir
     '''
-    genomes = getGenomes(ds, refresh=True)
+    genomes = getGenomes(ds)
     for genome in genomes:
         path = getGenomePath(ds, genome)
         if os.path.exists(path):
             print 'removing {}'.format(path)
             # shutil.rmtree(path)
     # reset genomes cache
-    getGenomes(ds, refresh=True)
+    setGenomes(ds)
 
 
 #################
@@ -734,8 +812,8 @@ def computeJob(ds, job):
         removeJobOrthologs(ds, job) # remove any pre-existing stuff.  could happen if a job fails while writing orthologs to the file.
         for pair in pairs:
             orthologsPath = os.path.join(jobDir, '{}_{}.pair.orthologs.txt'.format(*pair))
-            orthologs = readOrthologsFile(orthologsPath)
-            addJobOrthologs(ds, job, orthologs)
+            paramsAndOrthologs = readOrthologsFile(orthologsPath)
+            addJobOrthologs(ds, job, paramsAndOrthologs)
         markComplete(ds, 'job_ologs_merge', job)
         
     # delete the individual pair olog files
@@ -788,12 +866,14 @@ def computePair(ds, pair, workingDir, orthologsPath):
         if not isComplete(ds, 'roundup', pair):
             startTime = time.time()
             divEvalueToOrthologs =  rsd.computeOrthologsUsingSavedHits(queryFastaPath, subjectFastaPath, divEvalues, forwardHitsPath, reverseHitsPath, workingDir=tmpDir)
+            paramsAndOrthologs = [((queryGenome, subjectGenome, div, evalue), orthologs) for (div, evalue), orthologs in divEvalueToOrthologs.items()]
+            writeOrthologsFile(paramsAndOrthologs, orthologsPath)
             # convert orthologs from a map to a table.
-            orthologs = []
-            for (div, evalue), partialOrthologs in divEvalueToOrthologs.items():
-                for query, subject, distance in partialOrthologs:
-                    orthologs.append((queryGenome, subjectGenome, div, evalue, query, subject, distance))
-            writeOrthologsFile(orthologs, orthologsPath)
+            # orthologs = []
+            # for (div, evalue), partialOrthologs in divEvalueToOrthologs.items():
+            #     for query, subject, distance in partialOrthologs:
+            #         orthologs.append((queryGenome, subjectGenome, div, evalue, query, subject, distance))
+            # writeOrthologsFile(orthologs, orthologsPath)
             putRsdStats(ds, queryGenome, subjectGenome, divEvalues, startTime=startTime, endTime=time.time())
             markComplete(ds, 'roundup', pair)
     # clean up files
@@ -810,16 +890,176 @@ def computePair(ds, pair, workingDir, orthologsPath):
 # LOADING DATASET INTO DATABASE
 #################################
 
-def loadDatabase(ds):
-    # parse results files, getting a list of sequences.
-    # get gene name from fasta lines.
-    # get go ids from idmapping file.
-    # get go name from ...
+
+def loadDatabase(ds, dropCreate=True, clean=True, makeIds=True, writeLookups=True, writeResults=True, writeSeqs=True, readSeqsMetadata=True, loadTables=True, loadResults=True):
+    '''
+    Drop and Create database tables for this dataset.
+    Write files for each table that can be loaded with LOAD DATA INFILE.
+    Why use LOAD DATA INFILE?  Because it is very fast relative to insert.  a discussion of insertion speed: http://dev.mysql.com/doc/refman/5.1/en/insert-speed.html
+    Load the files into the tables.
+    '''
     
-    # drop and create tables for dataset.
-    pass
+    dsId = getDatasetId(ds)
+    loadDir = getLoadDir(ds)
+
+    if dropCreate:
+        print 'dropping and creating tables'
+        roundup_db.dropVersion(dsId)
+        roundup_db.createVersion(dsId)
+
+    if clean:
+        print 'cleaning load dir'
+        for path in glob.glob(os.path.join(loadDir, '*')):
+            if os.path.isdir(path):
+                shutil.rmtree(path)
+            else:
+                os.remove(path)
+
+    if makeIds:
+        print 'creating unique ids for genes, genomes, divs, and evalues'
+        genomes = getGenomes(ds)
+        genomeToId = dict([(genome, i) for i, genome in enumerate(genomes, 1)])
+        print '...genomeToGenes'
+        genomeToGenes = getData(ds, GENOME_TO_GENES)
+        print '...genes'
+        # only use genes from genomes used by dataset, not all genomes.  sometimes a dataset does not compute orthologs for all genomes in uniprot.
+        genes = list(itertools.chain.from_iterable([genomeToGenes[genome] for genome in genomes])) 
+        # genes = getData(ds, GENES)
+        geneToId = dict([(gene, i) for i, gene in enumerate(genes, 1)])
+        divs = roundup_common.DIVERGENCES
+        divToId = dict([(div, i) for i, div in enumerate(divs, 1)])
+        evalues = roundup_common.EVALUES
+        evalueToId = dict([(evalue, i) for i, evalue in enumerate(evalues, 1)])
+
+    genomesFile = os.path.join(loadDir, 'genomes.txt')
+    divsFile = os.path.join(loadDir, 'divs.txt')
+    evaluesFile = os.path.join(loadDir, 'evalues.txt')
+    seqsFile = os.path.join(loadDir, 'seqs.txt')
+    seqToGoTermsFile = os.path.join(loadDir, 'seqToGoTerms.txt')
+    resultsFile = os.path.join(loadDir, 'results.txt') # wow this is going to be a big file!
+
+    if writeLookups:
+        print 'writing lookup tables'
+        genomeToName = getMetadata(ds)['genomeToName']
+        writeGenomesTable(genomes, genomeToId, genomeToName, genomesFile)
+        writeLookupTable(divs, divToId, divsFile)
+        writeLookupTable(evalues, evalueToId, evaluesFile)
+
+    if writeResults:
+        print 'writing results table'
+        orthologsFiles = getOrthologsFiles(ds)
+        writeResultsTable(genomeToId, divToId, evalueToId, geneToId, orthologsFiles, resultsFile)
+
+    if loadResults:
+        print 'loading results'
+        roundup_db.loadVersionResults(dsId, genomeToId, divToId, evalueToId, geneToId, getParamsAndOrthologs(ds))
+
+    if readSeqsMetadata:
+        print 'reading in metadata about genomes, terms, and genes'
+        # geneToData = getGeneToData(ds)
+        print '...genomeToGenes'
+        genomeToGenes = getData(ds, GENOME_TO_GENES)
+        print '...geneToName'
+        geneToName = getData(ds, GENE_TO_NAME)
+        print '...geneToGenome'
+        geneToGenome = getData(ds, GENE_TO_GENOME)
+        print '...geneToGoTerms'
+        geneToGoTerms = getData(ds, GENE_TO_GO_TERMS)
+        print '...geneToGeneIds'
+        geneToGeneIds = getData(ds, GENE_TO_GENE_IDS)
+        print '...termToData'
+        termToData = getData(ds, TERM_TO_DATA)
+
+    if writeSeqs:
+        print 'writing seqToGoTerms table'
+        writeSeqToGoTermsTable(genes, geneToId, geneToGoTerms, termToData, seqToGoTermsFile)
+        print 'writing seqs table'
+        writeSeqsTable(genes, geneToId, geneToName, geneToGeneIds, geneToGenome, genomeToId, seqsFile)
+
+    if loadTables:
+        print 'loading tables'
+        roundup_db.loadVersion(dsId, genomesFile, divsFile, evaluesFile, seqsFile, seqToGoTermsFile)
 
 
+def writeResultsTable(genomeToId, divToId, evalueToId, geneToId, orthologsFiles, resultsFile):
+    '''
+    `id` int(10) unsigned NOT NULL auto_increment,
+    `query_db` smallint(5) unsigned NOT NULL,
+    `subject_db` smallint(5) unsigned NOT NULL,
+    `divergence` tinyint(3) unsigned NOT NULL,
+    `evalue` tinyint(3) unsigned NOT NULL,
+    `filename` text,
+    `mod_time` datetime default NULL,
+    `orthologs` longblob,
+    `num_orthologs` int(10) unsigned NOT NULL,
+    '''
+    with open(resultsFile, 'w') as fh:
+        resultId = 0 # unique row id. 
+        for path in orthologsFiles:
+            for (qdb, sdb, div, evalue), orthologs in orthologsFileGen(path):
+                # convert various items into the form the database table wants.  Change strings into database ids.  Encode orthologs, etc.
+                qdbId = genomeToId[qdb]
+                sdbId = genomeToId[sdb]
+                divId = divToId[div]
+                evalueId = evalueToId[evalue]
+                fixedOrthologs = [(geneToId[qid], geneToId[sid], float(dist)) for qid, sid, dist in orthologs]
+                resultId += 1
+                numOrthologs = len(fixedOrthologs)
+                jsonOrthologs = json.dumps(fixedOrthologs)
+                fh.write('{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n'.format(resultId, qdbId, sdbId, divId, evalueId, 'NA', '\\N', jsonOrthologs, numOrthologs))
+
+
+def writeSeqToGoTermsTable(genes, geneToId, geneToGoTerms, termToData, seqToGoTermsFile):
+    '''
+    `id` int(10) unsigned NOT NULL auto_increment,
+    `sequence_id` int(10) unsigned NOT NULL,
+    `go_term_acc` varchar(255) NOT NULL,
+    `go_term_name` varchar(255) NOT NULL,
+    `go_term_type` varchar(55) NOT NULL,
+    '''
+    with open(seqToGoTermsFile, 'w') as fh:
+        i = 0 # unique row id
+        for gene in genes:
+            for term in geneToGoTerms[gene]:
+                if term in termToData: # terms can be missing b/c term to data only contains biological_process, not molecular_function terms.
+                    i += 1
+                    fh.write('{}\t{}\t{}\t{}\t{}\n'.format(i, geneToId[gene], term, termToData[term][NAME], termToData[term][TYPE]))
+
+
+def writeSeqsTable(genes, geneToId, geneToName, geneToGeneIds, geneToGenome, genomeToId, seqsFile):
+    '''
+    `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+    `external_sequence_id` varchar(100) NOT NULL,
+    `genome_id` smallint(5) unsigned NOT NULL,
+    `gene_name` varchar(20) DEFAULT NULL,
+    `gene_id` int(11) DEFAULT NULL,      
+    '''
+    with open(seqsFile, 'w') as fh:
+        for gene in genes:
+            genomeId = genomeToId[geneToGenome[gene]]
+            geneName = geneToName[gene]
+            geneIds = geneToGeneIds[gene]
+            geneId = geneIds[0] if geneIds else '\\N' # only use the first ncbi gene id if there are several. if no ids, use the mysql NULL character.
+            fh.write('{}\t{}\t{}\t{}\t{}\n'.format(geneToId[gene], gene, genomeId, geneName, geneId))
+                 
+
+def writeGenomesTable(genomes, genomeToId, genomeToName, genomesFile):
+    '''
+    '''
+    with open(genomesFile, 'w') as fh:
+        for genome in genomes:
+            fh.write('{}\t{}\t{}\n'.format(genomeToId[genome], genome, genomeToName[genome]))
+    
+            
+def writeLookupTable(items, itemToId, itemsFile):
+    '''
+    write a file appropriate for loading into mysql.  each line contains a tab-separated id and item.
+    '''
+    with open(itemsFile, 'w') as fh:
+        for item in items:
+            fh.write('{}\t{}\n'.format(itemToId[item], item))
+    
+            
 ######
 # JOBS
 ######
@@ -833,18 +1073,22 @@ def getJobs(ds, refresh=False):
     if refresh:
         return updateMetadata(ds, {'jobs': os.listdir(getJobsDir(ds))})['jobs']
     else:
-        jobs = loadMetadata(ds).get('jobs')
+        jobs = getMetadata(ds).get('jobs')
         if not jobs:
             return updateMetadata(ds, {'jobs': os.listdir(getJobsDir(ds))})['jobs']
         else:
             return jobs
 
+
 def getJobPairs(ds, job):
-    return readPairsFile(os.path.join(getJobDir(ds, job), 'job_pairs.txt'))
+    with open(os.path.join(getJobDir(ds, job), 'job_pairs.json')) as fh:
+        return json.load(fh)
 
 
 def setJobPairs(ds, job, pairs):
-    writePairsFile(pairs, os.path.join(getJobDir(ds, job), 'job_pairs.txt'))
+    with open(os.path.join(getJobDir(ds, job), 'job_pairs.json'), 'w') as fh:
+        json.dump(pairs, fh, indent=0)
+    
 
 
 def getJobDir(ds, job):
@@ -863,12 +1107,12 @@ def removeJobOrthologs(ds, job):
     writeOrthologsFile([], getJobOrthologsPath(ds, job))
 
 
-def addJobOrthologs(ds, job, orthologs):
-    writeOrthologsFile(orthologs, getJobOrthologsPath(ds, job), mode='a')
+def addJobOrthologs(ds, job, paramsAndOrthologs):
+    writeOrthologsFile(paramsAndOrthologs, getJobOrthologsPath(ds, job), mode='a')
 
 
 def getComputeJobName(ds, job):
-    return _getDatasetId(ds) + '_' + job
+    return getDatasetId(ds) + '_' + job
 
 
 def isJobRunning(ds, job):
@@ -892,20 +1136,23 @@ def isJobRunning(ds, job):
 # GENOMES
 #########
 
-def getGenomes(ds, refresh=False):
+def getGenomes(ds):
     '''
-    caches genomes in the dataset metadata if they have not already been
-    cached, b/c the isilon is wicked slow at listing dirs.
+    gets genomes cached in the metadata.
     returns: list of genomes in the dataset.
     '''
-    if refresh:
-        return updateMetadata(ds, {'genomes': os.listdir(getGenomesDir(ds))})['genomes']
-    else:
-        genomes = loadMetadata(ds).get('genomes')
-        if not genomes:
-            return updateMetadata(ds, {'genomes': os.listdir(getGenomesDir(ds))})['genomes']
-        else:
-            return genomes
+    return getMetadata(ds)['genomes']
+
+
+def setGenomes(ds, genomes=None):
+    '''
+    genomes: a list of genomes to cache.  If None, will get the list from the genomes directory.
+    caches genomes in the dataset metadata, b/c the isilon is wicked slow at listing dirs.
+    also useful for testing.  can make a small dataset.
+    '''
+    if genomes is None:
+        genomes = os.listdir(getGenomesDir(ds))
+    return updateMetadata(ds, {'genomes': genomes})['genomes']
 
     
 def getGenomesAndPaths(ds):
@@ -946,26 +1193,63 @@ def getGenomeIndexPath(ds, genome):
 # ORTHOLOGS
 ###########
 
-def orthologFileGen(path):
+
+def getParamsAndOrthologs(ds):
+    '''
+    yields: a tuple pair of a tuple of params and a list of orthologs for every group of orthologs in the dataset.
+    '''
+    for path in getOrthologsFiles(ds):
+        for params, orthologs in orthologsFileGen(path):
+            yield params, orthologs
+            
+    
+def orthologsFileGen(path):
     '''
     useful for iterating through the orthologs in a large file
+    yields: a tuple pair of a tuple of params and a list of orthologs for every group of orthologs in path.
     '''
     if os.path.exists(path):
         with open(path) as fh:
             for line in fh:
-                line = line.strip()
-                if line and not line.startswith('#'):
-                    yield line.split('\t')
-    
+                if line.startswith('PA'):
+                    lineType, qdb, sdb, div, evalue = line.strip().split('\t')
+                    orthologs = []
+                elif line.startswith('OR'):
+                    lineType, qid, sid, dist = line.strip().split('\t')                        
+                    orthologs.append((qid, sid, dist))
+                elif line.startswith('//'):
+                    yield ((qdb, sdb, div, evalue), orthologs)
+
 
 def readOrthologsFile(path):
-    return list(orthologFileGen(path))
+    '''
+    returns: a list of pairs of params and their associated orthologs for every group of orthologs in path
+    '''
+    return list(orthologsFileGen(path))
 
 
-def writeOrthologsFile(orthologs, path, mode='w'):
+def writeOrthologsFile(paramsAndOrthologs, path, mode='w'):
+    '''
+    Inspired by the Uniprot dat files, a set of orthologs starts with a params row, then has 0 or more ortholog rows, then has an end row.
+    Easy to parse.  Can represent a set of parameters with no orthologs.
+    Format example:
+    PA\tLACJO\tYEAS7\t0.2\t1e-15
+    OR\tQ74IU0\tA6ZM40\t1.7016
+    OR\tQ74K17\tA6ZKK5\t0.8215
+    //
+    PA      MYCGE   MYCHP   0.2     1e-15
+    //
+    '''
     with open(path, mode) as fh:
-        for ortholog in orthologs:
-            fh.write('{}\n'.format('\t'.join([str(f) for f in ortholog])))
+        for (qdb, sdb, div, evalue), orthologs in paramsAndOrthologs:
+            fh.write('PA\t{}\t{}\t{}\t{}\n'.format(qdb, sdb, div, evalue))
+            for ortholog in orthologs:
+                fh.write('OR\t{}\t{}\t{}\n'.format(*ortholog))
+            fh.write('//\n')
+
+
+def getOrthologsFiles(ds):
+    return glob.glob(os.path.join(getOrthologsDir(ds), '*.orthologs.txt'))
 
 
 #######
@@ -979,35 +1263,6 @@ def getPairs(ds, genomes=None):
     if genomes is None:
         genomes = getGenomes(ds)
     return sorted(set([tuple(sorted((g1, g2))) for g1 in genomes for g2 in genomes if g1 != g2]))
-
-
-def getNewPairs(ds):
-    return readPairsFile(os.path.join(ds, 'new_pairs.txt'))
-
-
-def setNewPairs(ds, pairs):
-    writePairsFile(pairs, os.path.join(ds, 'new_pairs.txt'))
-
-
-def getOldPairs(ds):
-    return readPairsFile(os.path.join(ds, 'old_pairs.txt'))
-
-
-def setOldPairs(ds, pairs):
-    writePairsFile(pairs, os.path.join(ds, 'old_pairs.txt'))
-
-
-def writePairsFile(pairs, path):
-    with open(path, 'w') as fh:
-        json.dump(pairs, fh, indent=2)
-            
-
-def readPairsFile(path):
-    pairs = []
-    if os.path.exists(path):
-        with open(path) as fh:
-            pairs = json.load(fh)
-    return pairs
 
 
 ###########
@@ -1074,7 +1329,7 @@ def getKVStore(ds, ns='main'):
     '''
     if ds in KEY_VALUE_CACHE and ns in KEY_VALUE_CACHE[ds]:
         return KEY_VALUE_CACHE[ds][ns]
-    dsId = _getDatasetId(ds)
+    dsId = getDatasetId(ds)
     kv = kvstore.KVStore(util.ClosingFactoryCM(config.openDbConn), table='roundup_kvstore_{}_{}'.format(dsId, ns))
     KEY_VALUE_CACHE.setdefault(ds, {})[ns] = kv
     return kv
@@ -1086,7 +1341,7 @@ def resetKVStore(ds, ns='main'):
     ns: a namespace for the keys.  a string.  useful for separating key-values into groups that can be reset separately.
     drop and create the table for ns, thereby clearing all the keys and values in it.
     '''
-    dsId = _getDatasetId(ds)
+    dsId = getDatasetId(ds)
     if ds in KEY_VALUE_CACHE and ns in KEY_VALUE_CACHE[ds]:
         del KEY_VALUE_CACHE.setdefault(ds, {})[ns]
     kv = kvstore.KVStore(util.ClosingFactoryCM(config.openDbConn), table='roundup_kvstore_{}_{}'.format(dsId, ns), drop=True, create=True)
@@ -1096,7 +1351,7 @@ def deleteKVStore(ds, ns='main'):
     '''
     used when deleting a dataset.
     '''
-    dsId = _getDatasetId(ds)
+    dsId = getDatasetId(ds)
     if ds in KEY_VALUE_CACHE and ns in KEY_VALUE_CACHE[ds]:
         del KEY_VALUE_CACHE.setdefault(ds, {})[ns]
     kv = kvstore.KVStore(util.ClosingFactoryCM(config.openDbConn), table='roundup_kvstore_{}_{}'.format(dsId, ns), drop=True, create=False)
@@ -1130,27 +1385,39 @@ def updateMetadata(ds, metadata):
     update existing dataset metadata with the values in metadata.
     returns: the updated dataset metadata.
     '''
-    md = loadMetadata(ds)
+    md = getMetadata(ds)
     md.update(metadata)
-    return dumpMetadata(ds, md)
+    return setMetadata(ds, md)
 
     
-def loadMetadata(ds):
+def getMetadata(ds):
     '''
     returns: a dict, the existing persisted dataset metadata.
     '''
-    path = os.path.join(ds, 'dataset.metadata.json')
-    if os.path.exists(path):
-        with open(os.path.join(ds, 'dataset.metadata.json')) as fh:
-            return json.load(fh)
-    else:
-        return {}
+    return getData(ds, DATASET)
     
 
-def dumpMetadata(ds, metadata):
-    with open(os.path.join(ds, 'dataset.metadata.json'), 'w') as fh:
-        json.dump(metadata, fh, indent=2)
-    return metadata
+def setMetadata(ds, metadata):
+    return setData(ds, DATASET, metadata)
+
+
+def getData(ds, key):
+    '''
+    used for storing big chunks of metadata, like geneToDesc.
+    '''
+    path = os.path.join(ds, 'metadata.{}.json'.format(key))
+    with open(path) as fh:
+        return json.load(fh)
+
+
+def setData(ds, key, data):
+    '''
+    used for storing big chunks of metadata, like geneToDesc.
+    '''
+    path = os.path.join(ds, 'metadata.{}.json'.format(key))
+    with open(path, 'w') as fh:
+        json.dump(data, fh, indent=0)
+    return data
 
 
 #################
@@ -1209,7 +1476,7 @@ def putPairStats(ds, qdb, sdb, startTime, endTime):
     sdbFastaPath = getGenomeFastaPath(ds, sdb)
     qdbBytes = os.path.getsize(qdbFastaPath)
     sdbBytes = os.path.getsize(sdbFastaPath)
-    genomeToCount = loadMetadata(ds)['genomeToCount']
+    genomeToCount = getMetadata(ds)['genomeToCount']
     qdbSeqs = genomeToCount[qdb]
     sdbSeqs = genomeToCount[sdb]
     stats = {'type': 'pair', 'qdb': qdb, 'sdb': sdb, 'startTime': startTime, 'endTime': endTime,
@@ -1228,6 +1495,225 @@ def getPairStats(ds, qdb, sdb):
 ########################
 # DEPRECATED / UNUSED
 ########################
+
+
+def getGenes(ds):
+    '''
+    return: a list of every seq id in the genome fasta files.  the seq ids are all unique in the list.
+    '''
+    return getMetadataSub(ds, 'genes.json', [])
+
+    
+def setGenes(ds, genes):
+    return setMetadataSub(ds, 'genes.json', genes)
+
+
+def getGeneToData(ds):
+    return getMetadataSub(ds, 'gene_to_data.json', [])
+
+
+def setGeneToData(ds, geneToData):
+    return setMetadataSub(ds, 'gene_to_data.json', geneToData)
+
+
+def getGeneToGenome(ds):
+    return getMetadataSub(ds, 'gene_to_genome.json', [])
+
+
+def setGeneToGenome(ds, geneToGenome):
+    return setMetadataSub(ds, 'gene_to_genome.json', geneToGenome)
+
+
+def getGeneToName(ds):
+    return getMetadataSub(ds, 'gene_to_name.json', [])
+
+
+def setGeneToName(ds, geneToName):
+    return setMetadataSub(ds, 'gene_to_name.json', geneToName)
+
+
+def getGeneToDesc(ds):
+    return getMetadataSub(ds, 'gene_to_desc.json', [])
+
+
+def setGeneToDesc(ds, geneToDesc):
+    return setMetadataSub(ds, 'gene_to_desc.json', geneToDesc)
+
+
+def getGeneToGeneIds(ds):
+    return getMetadataSub(ds, 'gene_to_geneids.json', [])
+
+
+def setGeneToGeneIds(ds, geneToGeneIds):
+    return setMetadataSub(ds, 'gene_to_geneids.json', geneToGeneIds)
+
+
+def getGeneToGoTerms(ds):
+    return getMetadataSub(ds, 'gene_to_go_terms.json', [])
+
+
+def setGeneToGoTerms(ds, geneToGoterms):
+    return setMetadataSub(ds, 'gene_to_go_terms.json', geneToGoTerms)
+
+
+def getMetadataSubOld(ds, filename, default):
+    path = os.path.join(ds, filename)
+    if os.path.exists(path):
+        with open(path) as fh:
+            return json.load(fh)
+    else:
+        return default
+    
+
+def writeResultsTableOld(genomeToId, divToId, evalueToId, geneToId, orthologsFiles, resultsFile):
+    '''
+    `id` int(10) unsigned NOT NULL auto_increment,
+    `query_db` smallint(5) unsigned NOT NULL,
+    `subject_db` smallint(5) unsigned NOT NULL,
+    `divergence` tinyint(3) unsigned NOT NULL,
+    `evalue` tinyint(3) unsigned NOT NULL,
+    `filename` text,
+    `mod_time` datetime default NULL,
+    `orthologs` longblob,
+    `num_orthologs` int(10) unsigned NOT NULL,
+    '''
+    with open(resultsFile, 'w') as fh:
+        resultId = 0
+        for path in orthologsFiles:
+            with open(path) as fh2:
+                qdbId = sdbId = divId = evalueId = None
+                orthologs = []
+                for line in fh2:
+                    # example line: LACJO   YEAS7   0.2     1e-15   Q74IU0  A6ZM40  1.7016
+                    qdb, sdb, div, evalue, qid, sid, dist = line.split('\t')
+                    newQdbId = genomeToId[qdb]
+                    newSdbId = genomeToId[sdb]
+                    newDivId = divToId[div]
+                    newEvalueId = evalueToId[evalue]
+                    if (qdbId != newQdbId or sdbId != newSdbId or divId != newDivId or evalueId != newEvalueId):
+                        if orthologs:
+                            resultId += 1
+                            numOrthologs = len(orthologs)
+                            encodedOrthologs = roundup_db.encodeOrthologs(orthologs)
+                            fh.write('{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n'.format(resultId, qdbId, sdbId, divId, evalueId, 'NA', '\\N', encodedOrthologs, numOrthologs))
+                        qdbId = newQdbId
+                        sdbId = newSdbId
+                        divId = newDivId
+                        evalueId = newEvalueId
+                        orthologs = []
+                    dist = float(dist)
+                    orthologs.append((geneToId[qid], geneToId[sid], dist))
+                if orthologs:
+                    resultId += 1
+                    numOrthologs = len(orthologs)
+                    encodedOrthologs = json.dumps(orthologs) # roundup_db.encodeOrthologs(orthologs)
+                    fh.write('{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n'.format(resultId, qdbId, sdbId, divId, evalueId, 'NA', '\\N', encodedOrthologs, numOrthologs))
+                    
+                    
+
+def getNewPairs(ds):
+    return readPairsFile(os.path.join(ds, 'new_pairs.txt'))
+
+
+def setNewPairs(ds, pairs):
+    writePairsFile(pairs, os.path.join(ds, 'new_pairs.txt'))
+
+
+def getOldPairs(ds):
+    return readPairsFile(os.path.join(ds, 'old_pairs.txt'))
+
+
+def setOldPairs(ds, pairs):
+    writePairsFile(pairs, os.path.join(ds, 'old_pairs.txt'))
+
+
+def writePairsFile(pairs, path):
+    with open(path, 'w') as fh:
+        json.dump(pairs, fh, indent=2)
+            
+
+def readPairsFile(path):
+    pairs = []
+    if os.path.exists(path):
+        with open(path) as fh:
+            pairs = json.load(fh)
+    return pairs
+
+
+
+# CONVERSION OF ORTHOLOGS.TXT FILES FROM OLD TO NEW FORMAT
+# old format: tab-separated qdb, sdb, div, evalue, qid, sid, and dist.
+# example line: LACJO   YEAS7   0.2     1e-15   Q74IU0  A6ZM40  1.7016
+# all lines are the same.
+# pros: very simple.  each line describes all the params.
+# cons: bigger files.  can not represent a pair of genomes (and div, evalue) that has no orthologs.  also, a bit of a pain to parse into groups of orthologs
+
+# new format:
+# a set of orthologs starts with a params row, then has 0 or more ortholog rows, then has an end row.
+# Like this:
+# PA\tLACJO\tYEAS7\t0.2\t1e-15
+# OR\tQ74IU0\tA6ZM40\t1.7016
+# OR\tQ74K17\tA6ZKK5\t0.8215
+# //
+# pros: smaller files.  easier to parse.  can represent a set of parameters with no orthologs.
+# cons: not all rows are identical in format, so requires a stateful parser.  but that is required anyway.
+    
+def convertOrthologs(ds):
+    convertedDir = os.path.join(ds, 'converted')
+    if not os.path.exists(convertedDir):
+        os.mkdir(convertedDir)
+    orthologsFiles = getOrthologsFiles(ds)
+    oldAndNewFiles = [(path, os.path.join(convertedDir, os.path.basename(path))) for path in orthologsFiles]
+    # convertOrthologsFiles(oldAndNewFiles)
+    # parallelize on lsf, b/c takes about 7 seconds per file and I have 4000 files.
+    funcName = 'roundup_dataset.convertOrthologsFiles'
+    for pairsList in util.splitIntoN(oldAndNewFiles, 200):
+        keywords = {'oldAndNewFiles': pairsList}
+        # convertOrthologsFiles(pairsList)
+        print lsfdispatch.dispatch(funcName, keywords=keywords)
+
+    
+def convertOrthologsFiles(oldAndNewFiles):
+    for path, newPath in oldAndNewFiles:
+        print path, '=>', newPath
+        convertOrthologsFile(path, newPath)
+
+        
+def convertOrthologsFile(path, newPath):
+    START = True
+    qdb = sdb = div = evalue = None
+    orthologs = []
+    with open(newPath, 'w') as fh, open(path) as fh2:
+        for line in fh2:
+            # example line: LACJO   YEAS7   0.2     1e-15   Q74IU0  A6ZM40  1.7016
+            qdb2, sdb2, div2, evalue2, qid, sid, dist = line.strip().split('\t')
+            if START: # start a new group of orthologs.
+                qdb = qdb2
+                sdb = sdb2
+                div = div2
+                evalue = evalue2
+                orthologs = [(qid, sid, dist)]
+                START = False
+            elif qdb != qdb2 or sdb != sdb2 or div != div2 or evalue != evalue2: # a new group of orthologs.  write out last group and start a new group.
+                fh.write('PA\t{}\t{}\t{}\t{}\n'.format(qdb, sdb, div, evalue))
+                for ortholog in orthologs:
+                    fh.write('OR\t{}\t{}\t{}\n'.format(*ortholog))
+                fh.write('//\n')
+                qdb = qdb2
+                sdb = sdb2
+                div = div2
+                evalue = evalue2                    
+                orthologs = [(qid, sid, dist)]
+            else: # append to the current group of orthologs
+                orthologs.append((qid, sid, dist))
+        if qdb is not None: # at end of file, write out the current group (if any) of orthologs
+            fh.write('PA\t{}\t{}\t{}\t{}\n'.format(qdb, sdb, div, evalue))
+            for ortholog in orthologs:
+                fh.write('OR\t{}\t{}\t{}\n'.format(*ortholog))
+            fh.write('//\n')
+            
+            
+
 
 # last line - python emacs bug fix
  
