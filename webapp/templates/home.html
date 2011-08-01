@@ -18,7 +18,7 @@
 <div id="leftleftcol">
 <h2 class="title">What is Roundup?</h2>
 <p>Roundup is a large-scale orthology database.  The orthologs are computed using the Reciprocal Smallest Distance (RSD) algorithm. This algorithm detects more (and more accurate) orthologs than reciprocal best blast hits and gives each ortholog a score based on its maximum likelihood evolutionary distance.</p>
-<p>Roundup results are integrated with terms from Gene Ontology and gene names from NCBI. Roundup is a living dataset: the underlying genomes and the orthologs computed from them are updated regularly.</p>
+<p>The genes used by Roundup come from <a href="http://www.uniprot.org/">UniProt</a> and are annotated with gene names and Gene Ontology terms.  Roundup is a living dataset: the underlying genomes and the orthologs computed from them are updated regularly.</p>
 <p>
 Read a <a href="http://wall.hms.harvard.edu/sites/default/files/RSD_tutorial.pdf">tutorial (PDF)</a> about the locally-installable version of the RSD algorithm then download the <a href="http://wall.hms.harvard.edu/sites/default/files/rsd_standalone.tar.gz">RSD algorithm package</a>.</p>
 <p>We have also run RSD on <a href="http://aws.amazon.com/ec2/">Amazon Elastic Compute Cloud</a>. The steps and code we used to run RSD on the cloud may be downloaded <a href="http://wall.hms.harvard.edu/sites/default/files/Cloud_RSD.zip">here</a>.</p>
@@ -26,49 +26,17 @@ Read a <a href="http://wall.hms.harvard.edu/sites/default/files/RSD_tutorial.pdf
 
 <div id="leftrightcol">
 <h2 class="title">Current Database Statistics</h2>
-<p>Number of genomes in Roundup: {{ numGenomes }}
-<br />
-Orthologs computed for {{ numGenomePairs }} pairs of genomes.
-<br />
-{{ numOrthologs }} orthologous pairs of genes predicted in total (for all parameter combinations).
-</p>
+<ul>
+<li>Number of genomes: {{ numGenomes }}.</li>
+<li>Number of pairs of genomes searched for othologs using the RSD algorithm: {{ numPairs }}.</li>
+<li>Number of orthologous pairs of genes inferred (for all parameter combinations): {{ numOrthologs }}.</li>
+</ul>
 </div>
 
 </div><!-- end leftcolsub -->
 </div> <!-- end leftcol -->
 
 <div id="rightcol">
-
-<div id="latestupdates" class="block">
-<h2>Latest Updates</h2> 
-
-
-<h3><a href="/updates/#150-genomes-added">150 Genomes Added</a></h3> 
-<p class="by">By: dennis</p> 
-<p class="date">Monday, June 29, 2009 - 11:27</p> 
-<p>Some great news: the most recent run of computation has finished after many months. The data from...</p>
-
-<h3><a href="/updates/#about-790-genomes-currently-being-computed">About 790 genomes currently being computed</a></h3> 
-<p class="by">By: dennis</p> 
-<p class="date">Monday, June 8, 2009 - 13:00</p> 
-<p>This amounts to about 6.4 gig of genomic data to compute, although the results files will be much...</p> 
-
-<h3><a href="/updates/#last-fridays-outage">Last Friday&#039;s outage</a></h3> 
-<p class="by">By: dennis</p> 
-<p class="date">Monday, June 8, 2009 - 12:53</p> 
-<p>Apologies to all for the outage on Friday 5 June. We hope it didn't inconvenience any research. T...</p>
-
-<h3><a href="/updates/#just-few-more-things">Just a few more things</a></h3> 
-<p class="by">By: dennis</p> 
-<p class="date">Wednesday, April 22, 2009 - 16:59</p> 
-<p>I'm completing the new portal on the front end, while Todd works on various database improvements...</p>
-
-<h3><a href="/updates/#orthologs-transitioned-new-schema-production-database">Orthologs transitioned to new schema in the production database</a></h3> 
-<p class="by">By: todd</p> 
-<p class="date">Friday, April 17, 2009 - 00:00</p> 
-<p>Transitioned orthologs from the old schema to the new schema in the production roundup database...</p>
-
-<h3><a href="/updates/">See more of the latest updates</a></h3> 
 
 </div> <!-- latest updates -->
 

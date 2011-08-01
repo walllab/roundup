@@ -83,7 +83,7 @@ def doOrthologyQuery(query_desc=None, tc_only=False, db_cursor_read_buffer_size=
 
     distanceLowerLimitFilter, distanceUpperLimitFilter = makeLowerAndUpperLimitFilterFuncs(distance_lower_limit, distance_upper_limit)
 
-    for conn in roundup_db.withRoundupDbConn():
+    with roundup_db.connCM() as conn: 
         pairs = makePairsForGenomeParams(genome, limit_genomes, genomes)
         orthologsLists = []
         for pair in pairs:

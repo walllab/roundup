@@ -19,20 +19,6 @@ import util
 _LSF_DISPATCH_CMD = 'python2.7 '+os.path.abspath(os.path.join(os.path.dirname(__file__), 'lsfdispatch.py'))
 
 
-def dispatchUpToOne(jobName, fullyQualifiedFuncName=None, keywords=None, lsfOptions=None):
-    '''
-    dispatch to lsf unless there is a job named jobName on lsf that is not ended.
-    If you want to run at most (and at least) one job to execute a series of tasks, this will only run the job if it is not already running.
-    warning: if this function is called several times in quick succession, multiple jobs can be submitted before lsf registers the presence of a job named jobName.
-    '''
-    infos = LSF.getJobInfosByJobName(jobName)
-    if infos and not all(LSF.isEndedStatus(info[LSF.STATUS]) for info in infos):
-        return
-    if lsfOptions is None:
-        lsfOptions = []
-    dispatch(fullyQualifiedFuncName, keywords, ['-J %s'%jobName]+lsfOptions)
-
-
 def dispatch(fullyQualifiedFuncName=None, keywords=None, lsfOptions=None):
     '''
     fullyQualifiedFuncName: function name including modules, etc., e.g. 'foo_package.gee_package.bar_module.baz_class.wiz_func'

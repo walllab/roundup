@@ -176,16 +176,16 @@ margin-left:15px;
 
 #globalnav {
 background:#051c27; 
-color:#555;
+color:#ddd;
 }
 #globalnav a {
-color:#555;
+color:#ddd;
 }
 #sitenav {
 background:#f7f7f7;
 }
 #sitenav a {
-color:#555;
+color:#111;
 }
 .nav {
 height:23px; 

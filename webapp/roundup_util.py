@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 '''
+acts as an interface between web code and other roundup code.
 contain orchestra and roundup specific code.
 '''
 
@@ -29,18 +30,6 @@ import LSF
 ##########################
 
 
-def rawResultsExist(params):
-    '''
-    params: a 4-tuple of roundup params like (qdb, sdb, div, evalue).
-    returns: True if the roundup results file exists and is valid.  False otherwise.
-    '''
-    path = roundup_common.makeRoundupResultsCachePath(*params)
-    if roundup_common.isValidRoundupFile(path):
-        return True
-    else:
-        return False
-    
-
 def getRawResults(params):
     '''
     params: a 4-tuple of roundup params like (qdb, sdb, div, evalue).
@@ -68,16 +57,41 @@ def getRawResults(params):
     return results
         
 
-def getRoundupDataStats():
-    '''
-    used by the website to report the latest size of roundup.
-    '''
-    return util.loadObject(roundup_common.STATS_PATH)
+def getDatasetStats():
+    return roundup_dataset.getDatasetStats(config.CURRENT_DATASET)
+    
 
-
-# def getGenomes():
-#     return roundup_dataset.getGenomes(config.CURRENT_DATASET) # the genomes used to generate pairs for the dataset.
-#     return roundup_db.getGenomes() # all the genomes in the genomes dir
+def getSourcesHtml(ds=config.CURRENT_DATASET):
+    '''
+    generate the sources page html div, and store it in the metadata.
+    '''
+    html = '''<div id="sources">
+<p id="sources_desc">
+Roundup Release {} uses the following sources:
+<ul>
+<li>
+<a href="http://www.uniprot.org">UniProt</a>, specifically UniProtKB/Swiss-Prot and UniProtKB/TrEMBL from Release {}, is used as a source for protein sequences from complete genomes, for sequence annotations, and for genome annotations.
+</li>
+<li>
+<a href="http://www.ncbi.nlm.nih.gov/taxonomy">The NCBI Taxonomy database</a> is used as a source for genome annotations.
+</li>
+<li>
+<a href="http://geneontology.org/">Gene Ontology</a> is used for sequence annotations.
+</li>
+</ul>
+</p>
+<p id="source_urls">
+The following is a comprehensive list of files that were downloaded for this Roundup release.  All sources are publicly available.
+<ul>
+'''.format(roundup_dataset.getReleaseName(ds), roundup_dataset.getUniprotRelease(ds))
+    for url in roundup_dataset.getSourceUrls(ds):
+        html += '<li><a href="{}">{}</a></li>\n'.format(url, url)
+    html += '''
+</ul>
+</p>
+</div>
+'''
+    return html
 
 
 def getGenomesAndNames():
@@ -87,69 +101,21 @@ def getGenomesAndNames():
     return roundup_db.getGenomesAndNames()
 
 
-def getGenomeDescriptions(genomes):
+def getGenomeDescriptions():
     '''
-    genomes: a list of genomes currently in roundup.
-    returns: a list of genome descriptions for the current genomes in roundup.
+    returns: a list of tuples with data describing each genome in roundup.
     '''
-    with open(os.path.join(config.PROJ_DIR, 'genome_descs.json.txt')) as fh:
-        descs = json.load(fh)
-        return [descs[g] for g in genomes if descs.has_key(g)]
-
-
-def cacheGenomeDescriptions(genomes=None):
-    '''
-    HACK:
-    cache the genome descriptions in a single file to improve performance.
-    Isilon performance is too slow to read >10 small files in a reasonable amount of time unless they are already in the isilon cache.
-    In the future, genome descriptions could be in the database.
-    '''
-    if genomes is None:
-        genomes = roundup_common.getGenomes()
-    descs = {}
-    for genome in genomes:
-        try:
-            descs[genome] = roundup_common.getGenomeDescription(genome)
-        except IOError:
-            # ignore missing description files to make the webpage more robust.
-            logging.error('failing to get description for genome={}'.format(genome))
-    with open(os.path.join(config.PROJ_DIR, 'genome_descs.json.txt'), 'w') as fh:
-        json.dump(descs, fh)
-    
-
-def isRunningJob(job):
-    '''
-    A job is running if it exists on LSF and is not ended.
-    '''
-    statuses = _getJobStatuses(job)
-    return bool(statuses and not LSF.isEndedStatus(statuses[0]))
-
-
-def isEndedJob(job):
-    '''
-    job: the name of a lsf job.
-    The job is ended if there is no status for it on LSF (i.e. bjobs returns nothing for it)
-    or if its status is DONE, EXIT, or ZOMBIE.
-    '''
-    statuses = _getJobStatuses(job)
-    return bool(not statuses or LSF.isEndedStatus(statuses[0]))
-
-
-def _getJobStatuses(job):
-    infos = LSF.getJobInfosByJobName(job)
-    # infos = LSF.getJobInfos([jobId])
-    if not infos: # pause to let lsf catch up and try again
-        time.sleep(0.1);
-        logging.debug('_getJobStatuses(): sleeping.  is this really necessary?')
-        infos = LSF.getJobInfosByJobName(job)
-        # infos = LSF.getJobInfos([jobId])
-    return [info[LSF.STATUS] for info in infos]
+    genomesData = roundup_db.getGenomesData()
+    return genomesData
 
 
 #########
 # CACHING
 #########
 
+#
+# used to cache query results.
+#
 
 def cacheHasKey(key):
     return cacheutil.Cache(manager=util.ClosingFactoryCM(config.openDbConn), table=config.CACHE_TABLE).has_key(key)
@@ -214,63 +180,5 @@ def lsfAndCacheDispatch(fullyQualifiedFuncName=None, keywords=None, cacheKey=Non
 #################
 # DEPRECATED CODE
 #################
-
-def getUpdateDescriptions():
-    '''
-    returns history.txt log as a web-readable list of updates.
-    '''
-    reGenome = re.compile('genome=([^ ]+)')
-    updates = []
-    history = roundup_common.getHistory()
-    # show the most recent updates first.
-    history.sort(reverse=True)
-    for dt, msg in history:
-        if msg.startswith('compute'):
-            if msg.find('replace_existing_genome') != -1:
-                genome = reGenome.search(msg).group(1)
-                updates.append(dt.strftime('%Y/%m/%d')+ ': Updated existing genome '+orthresult.roundupGenomeDisplayName(genome)+'\n')
-            if msg.find('add_new_genome') != -1:
-                genome = reGenome.search(msg).group(1)
-                updates.append(dt.strftime('%Y/%m/%d')+ ': Added new genome '+orthresult.roundupGenomeDisplayName(genome)+'\n')
-    return updates
-
-
-def deleteGenomeById(dbId):
-    '''
-    dbId: Id of genome to delete, e.g. 'Homo_sapiens.aa'
-    removes a genome from roundup as completely as possible.  removes any current and updated versions of the genome.
-    removes all results files based on the genome.  removes all results based on the genome from the (mysql) database.
-    note: this will not remove a genome that is currently being computed.
-    '''
-    print 'deleting %s'%dbId
-    
-    print 'deleting existing results files...'
-    allPairs = roundup_common.getPairs(roundup_common.getGenomes())
-    for qdb, sdb in allPairs:
-        if qdb == dbId or sdb == dbId:
-            for div, evalue in roundup_common.genDivEvalueParams():
-                print 'cleaning', qdb, sdb, div, evalue
-                path = roundup_common.makeRoundupResultsCachePath(qdb, sdb, div, evalue)
-                if os.path.isfile(path):
-                    os.remove(path)
-            
-    print 'deleting current database path (fasta, indices, metadata, etc.) if exists...'
-    currentDbPath = roundup_common.currentDbPath(dbId)
-    if os.path.isdir(currentDbPath):
-        print '...deleting %s'%currentDbPath
-        shutil.rmtree(currentDbPath)
-        
-    print 'deleting updated database path (fasta, indices, metadata, etc.) if exists...'
-    updatedDbPath = roundup_common.updatedDbPath(dbId)
-    if os.path.isdir(updatedDbPath):
-        print '...deleting %s'%updatedDbPath
-        shutil.rmtree(updatedDbPath)
-
-    print 'deleting results from mysql db...'
-    # this is slow b/c of the size of the table and indexing scheme used
-    roundup_db.deleteGenomeByName(dbId)
-
-
-
 
 # last line python emacs semantic cache bug fix

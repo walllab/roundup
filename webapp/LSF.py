@@ -10,6 +10,7 @@ but can set up any user, I think.  Simply importing this module will configure t
 import re
 import os
 import subprocess
+import time
 
 import execute
 import logging
@@ -51,25 +52,47 @@ if os.environ.has_key('LSF_LONG_QUEUE'):
     LSF_LONG_QUEUE = os.environ['LSF_LONG_QUEUE']
 
 
-def waitForJobsOption(jobIds):
+def isJobNameEnded(jobName, retry=False, delay=1.0):
     '''
-    jobIds: sequence of lsf job ids
-    returns: dependency expression that runs if all of the jobs become done or any of the jobs exit.
+    jobName: the name of a lsf job.
+    The job is ended if there is no status for it on LSF (i.e. bjobs returns nothing for it)
+    or if its status is DONE, EXIT, or ZOMBIE.
+    exception raised if there are multiple jobs for the same name.
     '''
-    # e.g. -w '(done(1) && ... && done(n)) || exit(1) || ... || exit(n)'
-    doneList = ['done('+id+')' for id in jobIds]
-    exitList = ['exit('+id+')' for id in jobIds]
-    doneExpr = '('+' && '.join(doneList)+')'
-    exitExpr = ' || '.join(exitList)
-    dependencyExpr = "-w '"+doneExpr+" || "+exitExpr+"'"
-    return dependencyExpr
+    statuses = getJobNameStatuses(jobName, retry, delay)
+    if len(statuses) > 1:
+        msg = 'isJobNameRunning: more than one LSF job for {}\nstatuses={}'.format(jobName, statuses)
+        raise Exception(msg)
+    return bool(not statuses or isEndedStatus(statuses[0]))
+
+
+def isJobNameRunning(jobName, retry=False, delay=1.0):
+    '''
+    checks if job is running, pending, suspended, or otherwise in the process of running on LSF.
+    A job is running if it exists on lsf and is not ended (i.e. DONE or EXIT)
+    returns: True if job is on LSF and has not ended.  False otherwise.
+    exception raised if there are multiple jobs for the same name.
+    '''
+    statuses = getJobNameStatuses(jobName, retry, delay)
+    if len(statuses) > 1:
+        msg = 'isJobNameRunning: more than one LSF job for {}\nstatuses={}'.format(jobName, statuses)
+        raise Exception(msg)
+    return bool(statuses and not isEndedStatus(statuses[0]))
 
 
 def isEndedStatus(status):
     return status == DONE_STATUS or status == EXIT_STATUS or status == ZOMBIE_STATUS
 
 
-def getJobInfosByJobName(jobName):
+def getJobNameStatuses(jobName, retry=False, delay=1.0):
+    infos = getJobNameInfos(jobName)
+    if not infos and retry: # pause to let lsf catch up and try again
+        time.sleep(delay);
+        infos = getJobNameInfos(jobName)
+    return [info[STATUS] for info in infos]
+
+
+def getJobNameInfos(jobName):
     '''
     jobName: name of a job
     returns: info for each job named jobName.
@@ -84,6 +107,14 @@ def getJobInfosByJobName(jobName):
     
     args = ['bjobs', '-a', '-u', 'all', '-w', '-J', str(jobName)]
     return getJobInfosSub(args)
+
+
+def getJobStatuses(job, retry=False, delay=1.0):
+    infos = getJobInfos([job])
+    if not infos and retry: # pause to let lsf catch up and try again
+        time.sleep(delay);
+        infos = getJobInfos([job])
+    return [info[STATUS] for info in infos]
 
 
 def getJobInfos(jobIds=None):
@@ -134,15 +165,18 @@ def getJobInfosSub(args):
 # FUNCTIONS TO SUBMIT COMMANDS TO LSF INCLUDING DEPENDENCIES AND ERROR HANDLING JOBS
 ####################################################################################
 
-def getLsfEmailOption():
+def waitForJobsOption(jobIds):
     '''
-    returns: an email address option (-u <email>) for a bsub command if RODEO_LSF_EMAIL env var is defined.
-    otherwise returns a blank string.    
+    jobIds: sequence of lsf job ids
+    returns: dependency expression that runs if all of the jobs become done or any of the jobs exit.
     '''
-    if os.environ.has_key('RODEO_LSF_EMAIL'):
-        return '-u '+str(os.environ['RODEO_LSF_EMAIL']);
-    else:
-        return '';
+    # e.g. -w '(done(1) && ... && done(n)) || exit(1) || ... || exit(n)'
+    doneList = ['done('+id+')' for id in jobIds]
+    exitList = ['exit('+id+')' for id in jobIds]
+    doneExpr = '('+' && '.join(doneList)+')'
+    exitExpr = ' || '.join(exitList)
+    dependencyExpr = "-w '"+doneExpr+" || "+exitExpr+"'"
+    return dependencyExpr
 
 
 def submitCheckJobs(jobids, cmds, dependentJobIds=None):
@@ -196,12 +230,12 @@ def submitToLSF(cmds, bsubOptions=None):
     throws: exception if the bsub submission fails.
     warning: may not work with synchronous/interactive bsub commands (e.g. with -K or -I options.)
     example:
-    queueOption = '-q '+roundup_common.SHORT_QUEUE
+    queueOption = '-q shared_15m'
     jobName = 'exit'+jobid
     jobNameOption = '-J '+jobName
     emailOption = '-N'
     cmds = ['mycommand']
-    jobId = LSF.submitToLSF(cmds, [queueOption, emailOption, jobNameOption, roundup_common.ROUNDUP_LSF_OUTPUT_OPTION])
+    jobId = LSF.submitToLSF(cmds, [queueOption, emailOption, jobNameOption, ' -o /dev/null'])
     '''
 
     if bsubOptions is None:
@@ -209,7 +243,7 @@ def submitToLSF(cmds, bsubOptions=None):
     
     # new way: raise exception when bsub command fails
     opts = ' '.join(bsubOptions)
-    cmd = 'bsub '+getLsfEmailOption()+' '+opts
+    cmd = 'bsub '+opts
     stdin = '\n'.join(cmds)
     logging.debug('submitToLSF(): cmd: %s'%cmd)
     logging.debug('submitToLSF(): stdin: %s'%stdin)
@@ -245,7 +279,7 @@ def bsub(cmds=None, queue=None, interactive=False, outputFile=None):
     if queue: queueOption = ' -q '+queue
     else: queueOption = ''
     
-    bsubcmd = 'bsub '+getLsfEmailOption()+' '+interactiveOption+' '+queueOption+' '+outputOption
+    bsubcmd = 'bsub '+interactiveOption+' '+queueOption+' '+outputOption
 
     pin, pout = os.popen2(bsubcmd)
     for cmd in cmds:
@@ -298,14 +332,14 @@ def main():
     cmds = [l.strip() for l in sys.stdin.readlines()]   
     num = 0 # to name output files (jblast already has a better way of doing this, I think)
     for cmd in cmds:
-        bsub = 'bsub '+getLsfEmailOption()+' -q rodeo_unlimited -N -o foo'+str(num)+' -J "'+jobName+'" '+cmd
+        bsub = 'bsub -q rodeo_unlimited -N -o foo'+str(num)+' -J "'+jobName+'" '+cmd
         num += 1
         os.system(bsub)
         
     # run cmd to concatenate all output files of cmds above.
     # if there are hundreds of files, this simple approach might fail
     cmd = 'cat '+' '.join(['foo'+str(n) for n in range(num)])
-    bsub = 'bsub -K '+getLsfEmailOption()+' -q rodeo_15m -w \'ended("'+jobName+'")\' '+cmd
+    bsub = 'bsub -K -q rodeo_15m -w \'ended("'+jobName+'")\' '+cmd
     os.sytem(bsub)
       
    

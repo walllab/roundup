@@ -72,7 +72,6 @@ def dropVersion(version):
             'DROP TABLE IF EXISTS {}'.format(versionTable(version, 'evalues')), 
             'DROP TABLE IF EXISTS {}'.format(versionTable(version, 'sequence')), 
             'DROP TABLE IF EXISTS {}'.format(versionTable(version, 'sequence_to_go_term')), 
-            'DROP TABLE IF EXISTS {}'.format(versionTable(version, 'results')),
             ]
     with connCM() as conn:
         for sql in sqls:
@@ -84,7 +83,14 @@ def createVersion(version):
     sqls = ['''CREATE TABLE IF NOT EXISTS {}
             (id smallint unsigned auto_increment primary key,
             acc varchar(100) NOT NULL,
-            name varchar(255) NOT NULL) ENGINE = InnoDB'''.format(versionTable(version, 'genomes')),
+            name varchar(255) NOT NULL,
+            ncbi_taxon varchar(20) NOT NULL,
+            taxon_category_code varchar(10) NOT NULL,
+            taxon_category_name varchar(255) NOT NULL,
+            taxon_division_code varchar(10) NOT NULL,
+            taxon_division_name varchar(255) NOT NULL,
+            num_seqs int unsigned NOT NULL,
+            UNIQUE KEY genome_acc_key (acc)) ENGINE = InnoDB'''.format(versionTable(version, 'genomes')),
             '''CREATE TABLE IF NOT EXISTS {}
             (id tinyint unsigned auto_increment primary key, name varchar(100) NOT NULL) ENGINE = InnoDB'''.format(versionTable(version, 'divergences')),
             '''CREATE TABLE IF NOT EXISTS {}
@@ -96,6 +102,7 @@ def createVersion(version):
             gene_name varchar(100),
             gene_id int,
             KEY genome_index (genome_id),
+            UNIQUE KEY sequence_index (external_sequence_id),
             UNIQUE KEY sequence_and_genome (external_sequence_id, genome_id) ) ENGINE = InnoDB'''.format(versionTable(version, 'sequence')),
             '''CREATE TABLE IF NOT EXISTS {}
             (id int unsigned auto_increment primary key,
@@ -105,23 +112,36 @@ def createVersion(version):
             go_term_type varchar(55) NOT NULL,
             KEY sequence_index (sequence_id),
             UNIQUE KEY sequence_and_acc_index (sequence_id, go_term_acc) ) ENGINE = InnoDB'''.format(versionTable(version, 'sequence_to_go_term')),
-            '''CREATE TABLE IF NOT EXISTS {}
-            (id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-            query_db SMALLINT UNSIGNED NOT NULL,
-            subject_db SMALLINT UNSIGNED NOT NULL,
-            divergence TINYINT UNSIGNED NOT NULL,
-            evalue TINYINT UNSIGNED NOT NULL,
-            mod_time DATETIME DEFAULT NULL,
-            orthologs LONGBLOB,
-            num_orthologs INT UNSIGNED NOT NULL,
-            KEY query_db_index (query_db),
-            KEY subject_db_index (subject_db),
-            UNIQUE KEY params_key (query_db, subject_db, divergence, evalue) ) ENGINE = InnoDB'''.format(versionTable(version, 'results')),
             ]
     with connCM() as conn:
         for sql in sqls:
             print sql
             dbutil.executeSQL(sql=sql, conn=conn)
+
+
+def dropVersionResults(version):
+    sql = 'DROP TABLE IF EXISTS {}'.format(versionTable(version, 'results'))
+    with connCM() as conn:
+        print sql
+        dbutil.executeSQL(sql=sql, conn=conn)
+
+
+def createVersionResults(version):
+    sql = '''CREATE TABLE IF NOT EXISTS {}
+    (id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    query_db SMALLINT UNSIGNED NOT NULL,
+    subject_db SMALLINT UNSIGNED NOT NULL,
+    divergence TINYINT UNSIGNED NOT NULL,
+    evalue TINYINT UNSIGNED NOT NULL,
+    mod_time DATETIME DEFAULT NULL,
+    orthologs LONGBLOB,
+    num_orthologs INT UNSIGNED NOT NULL,
+    KEY query_db_index (query_db),
+    KEY subject_db_index (subject_db),
+    UNIQUE KEY params_key (query_db, subject_db, divergence, evalue) ) ENGINE = InnoDB'''.format(versionTable(version, 'results'))
+    with connCM() as conn:
+        print sql
+        dbutil.executeSQL(sql=sql, conn=conn)
 
 
 #########################
@@ -151,9 +171,10 @@ def loadVersion(version, genomesFile, divergencesFile, evaluesFile, seqsFile, se
             dbutil.executeSQL(sql=sql, conn=conn, args=args)
 
 
-def loadVersionResults(version, genomeToId, divToId, evalueToId, geneToId, paramsAndOrthologsGen):
+def loadVersionResults(version, genomeToId, divToId, evalueToId, geneToId, resultsGen):
     '''
-    paramsAndOrthologsGen: a generator that yields ((qdb, sdb, div, evalue), orthologs) tuples.
+    resultsGen: a generator that yields ((qdb, sdb, div, evalue), orthologs) tuples.
+    convert the results into a rows, and insert them into the results table.
     `id` int(10) unsigned NOT NULL auto_increment,
     `query_db` smallint(5) unsigned NOT NULL,
     `subject_db` smallint(5) unsigned NOT NULL,
@@ -164,9 +185,9 @@ def loadVersionResults(version, genomeToId, divToId, evalueToId, geneToId, param
     `orthologs` longblob,
     `num_orthologs` int(10) unsigned NOT NULL,
     '''
-    def convertForDb(paramsAndOrthologs):
+    def convertForDb(result):
         # convert various items into the form the database table wants.  Change strings into database ids.  Encode orthologs, etc.
-        (qdb, sdb, div, evalue), orthologs = paramsAndOrthologs
+        (qdb, sdb, div, evalue), orthologs = result
         qdbId = genomeToId[qdb]
         sdbId = genomeToId[sdb]
         divId = divToId[div]
@@ -176,11 +197,11 @@ def loadVersionResults(version, genomeToId, divToId, evalueToId, geneToId, param
         numOrthologs = len(orthologs)
         return qdbId, sdbId, divId, evalueId, encodedOrthologs, numOrthologs
 
-    numPerGroup = 400 # not to fast, not to slow.
-    sql1 = 'INSERT INTO {} (query_db, subject_db, divergence, evalue, mod_time, orthologs, num_orthologs) VALUES '.format(versionTable(version, 'results'))
-    for i, group in enumerate(util.groupsOfN(paramsAndOrthologsGen, numPerGroup)):
+    numPerGroup = 400 # not to huge, not to slow.
+    sql1 = 'INSERT IGNORE INTO {} (query_db, subject_db, divergence, evalue, mod_time, orthologs, num_orthologs) VALUES '.format(versionTable(version, 'results'))
+    for i, group in enumerate(util.groupsOfN(resultsGen, numPerGroup)):
         sql = sql1 + ', '.join(['(%s, %s, %s, %s, NOW(), %s, %s) ' for j in range(len(group))]) # cannot just use numPerGroup, b/c last group can have fewer results.
-        argsLists = [convertForDb(paramsAndOrthologs) for paramsAndOrthologs in group]
+        argsLists = [convertForDb(result) for result in group]
         args = list(itertools.chain.from_iterable(argsLists)) # flatten args into one long list for the sql
         with connCM() as conn:
             fileLoadId = dbutil.insertSQL(conn, sql, args=args)
@@ -189,7 +210,9 @@ def loadVersionResults(version, genomeToId, divToId, evalueToId, geneToId, param
 #############################
 # ROUNDUP PARAMETER FUNCTIONS
 #############################
-
+#
+# Parameters: genomes, divergences, and evalues (and a little bit of sequences)
+# 
 
 def selectOne(conn, sql, args=None):
     '''
@@ -260,6 +283,30 @@ def getNameForId(id, table, conn=None):
         rowset = dbutil.selectSQL(sql=sql, conn=conn, args=[id])
         return rowset[0][0]
     
+
+def getGenomeToId(version=config.CURRENT_DB_VERSION):
+    sql = 'select acc, id from {}'.format(versionTable(version, 'genomes'))
+    with connCM() as conn:
+        return dict(dbutil.selectSQL(sql=sql, conn=conn))
+
+
+def getDivergenceToId(version=config.CURRENT_DB_VERSION):
+    sql = 'select name, id from {}'.format(versionTable(version, 'divergences'))
+    with connCM() as conn:
+        return dict(dbutil.selectSQL(sql=sql, conn=conn))
+
+
+def getEvalueToId(version=config.CURRENT_DB_VERSION):
+    sql = 'select name, id from {}'.format(versionTable(version, 'evalues'))
+    with connCM() as conn:
+        return dict(dbutil.selectSQL(sql=sql, conn=conn))
+
+
+def getSequenceToId(version=config.CURRENT_DB_VERSION):
+    sql = 'select external_sequence_id, id from {}'.format(versionTable(version, 'sequence'))
+    with connCM() as conn:
+        return dict(dbutil.selectSQL(sql=sql, conn=conn))
+
 
 ##########################
 # ORTHOLOG CODEC FUNCTIONS
@@ -396,11 +443,24 @@ def getOrthologs(qdb, sdb, divergence='0.2', evalue='1e-20', conn=None):
 # WEB FUNCTIONS: MISSING RESULTS, GENE NAMES
 ############################################
 
-def getGenomesAndNames():
+
+def getGenomesData(version=config.CURRENT_DB_VERSION):
+    '''
+    returns a list of tuples, one for each genome, of acc, name, ncbi_taxon, taxon_category_code,
+    taxon_category_name, taxon_division_code, taxon_division_name, and num_seqs.
+    '''
+    sql = '''SELECT acc, name, ncbi_taxon, taxon_category_code, taxon_category_name, taxon_division_code, taxon_division_name, num_seqs
+    FROM {}'''.format(versionTable(version, 'genomes'))
+    logging.debug(sql)
+    with connCM() as conn:
+        return dbutil.selectSQL(sql=sql, conn=conn)
+
+
+def getGenomesAndNames(version=config.CURRENT_DB_VERSION):
     '''
     returns a list of pairs of genome (e.g. MYCGE) and name (e.g. Mycoplasma genitalium)
     '''
-    sql = 'SELECT acc, name FROM {}'.format(versionTable(config.CURRENT_DB_VERSION, 'genomes'))
+    sql = 'SELECT acc, name FROM {}'.format(versionTable(version, 'genomes'))
     logging.debug(sql)
     with connCM() as conn:
         return dbutil.selectSQL(sql=sql, conn=conn)
@@ -496,401 +556,6 @@ def getSeqIdsForGeneName(geneName, genome=None, conn=None):
         return [row[0] for row in dbutil.selectSQL(sql=sql, args=params, conn=conn)]
 
 
-#################
-# DEPRECATED CODE
-#################    
-
-
-
-def loadVersionResultsOld(version, resultsFile):
-    numPerGroup = 400 # not to fast, not to slow.
-    sql1 = 'INSERT INTO {} (query_db, subject_db, divergence, evalue, filename, mod_time, orthologs, num_orthologs) VALUES '.format(versionTable(version, 'results'))
-    with open(resultsFile) as fh: #, connCM() as conn:
-        for i, lines in enumerate(util.groupsOfN(fh, numPerGroup)):
-            # print lines
-            sql = sql1 + ', '.join(['(%s, %s, %s, %s, %s, NOW(), %s, %s) ' for j in range(len(lines))]) # cannot just use numPerGroup, b/c the last group can have fewer lines.
-            splitLines = [line.strip().split('\t') for line in lines]
-            argsLists = [(qdbId, sdbId, divId, evalueId, filename, encodeOrthologs(json.loads(jsonOrthologs)), numOrthologs) for \
-                         resultId, qdbId, sdbId, divId, evalueId, filename, modTime, jsonOrthologs, numOrthologs in splitLines]
-            print i * numPerGroup
-            args = list(itertools.chain.from_iterable(argsLists))
-            # resultId, qdbId, sdbId, divId, evalueId, filename, modTime, jsonOrthologs, numOrthologs = line.strip().split('\t')
-            # print resultId
-            # encodedOrthologs = encodeOrthologs(json.loads(jsonOrthologs))
-            # args = (qdbId, sdbId, divId, evalueId, filename, encodedOrthologs, numOrthologs)
-            # logging.debug('sql=%s, args=%s'%(sql, args))
-            with connCM() as conn:
-                fileLoadId = dbutil.insertSQL(conn, sql, args=args)
-
-
-def withRoundupDbConn(conn=None, commit=True):
-    if conn == None:
-        with config.dbConnCM() as conn:
-            if commit:
-                with dbutil.doTransaction(conn) as conn:
-                    yield conn
-            else:
-                yield conn
-    else:
-        try:
-            yield conn
-        except:
-            if commit:
-                conn.rollback()
-            raise
-        else:
-            if commit:
-                conn.commit()
-
-
-
-# tables downloaded from ncbi: gene2accession, gene2go, gene_info
-# tables downloaded from gene ontology: go.term, ...
-
-
-def dropRoundupResultsTable(conn=None):
-    sql = 'DROP TABLE IF EXISTS '+ROUNDUP_MYSQL_DB+'.roundup_results'
-    with connCM(conn=conn) as conn:
-        dbutil.executeSQL(sql=sql, conn=conn)
-
-
-def createRoundupResultsTable(conn=None):
-    sql = '''CREATE TABLE IF NOT EXISTS '''+ROUNDUP_MYSQL_DB+'''.roundup_results
-    (id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    query_db SMALLINT UNSIGNED NOT NULL,
-    subject_db SMALLINT UNSIGNED NOT NULL,
-    divergence TINYINT UNSIGNED NOT NULL,
-    evalue TINYINT UNSIGNED NOT NULL,
-    filename TEXT,
-    mod_time DATETIME DEFAULT NULL,
-    orthologs LONGBLOB,
-    num_orthologs INT UNSIGNED NOT NULL,
-    KEY query_db_index (query_db),
-    KEY subject_db_index (subject_db),
-    UNIQUE KEY params_key (query_db, subject_db, divergence, evalue) ) ENGINE = InnoDB'''
-    with connCM(conn=conn) as conn:
-        dbutil.executeSQL(sql=sql, conn=conn)
-
-
-def dropRoundupSequenceTable(conn=None):
-    sql = '''DROP TABLE IF EXISTS '''+ROUNDUP_MYSQL_DB+'''.roundup_sequence'''
-    with connCM(conn=conn) as conn:
-        dbutil.executeSQL(sql=sql, conn=conn)
-
-
-def createRoundupSequenceTable(conn=None):
-    sql = '''CREATE TABLE IF NOT EXISTS '''+ROUNDUP_MYSQL_DB+'''.roundup_sequence
-        (id int unsigned auto_increment primary key,
-        external_sequence_id varchar(100) NOT NULL,
-        genome_id smallint(5) unsigned NOT NULL,
-        gene_name varchar(20),
-        gene_id int,
-        KEY genome_index (genome_id),
-        UNIQUE KEY sequence_and_genome (external_sequence_id, genome_id) ) ENGINE = InnoDB'''
-    with connCM(conn=conn) as conn:
-        dbutil.executeSQL(sql=sql, conn=conn)
-
-
-def dropRoundupSequenceToGoTermTable(conn=None):
-    sql = '''DROP TABLE IF EXISTS '''+ROUNDUP_MYSQL_DB+'''.roundup_sequence_to_go_term'''
-    with connCM(conn=conn) as conn:
-        dbutil.executeSQL(sql=sql, conn=conn)
-
-
-def createRoundupSequenceToGoTermTable(conn=None):
-    sql ='''CREATE TABLE IF NOT EXISTS '''+ROUNDUP_MYSQL_DB+'''.roundup_sequence_to_go_term
-        (id int unsigned auto_increment primary key,
-        sequence_id int unsigned NOT NULL,
-        go_term_acc varchar(255) NOT NULL,
-        go_term_name varchar(255) NOT NULL,
-        go_term_type varchar(55) NOT NULL,
-        KEY sequence_index (sequence_id),
-        UNIQUE KEY sequence_and_acc_index (sequence_id, go_term_acc) ) ENGINE = InnoDB'''
-    with connCM(conn=conn) as conn:
-        dbutil.executeSQL(sql=sql, conn=conn)
-
-
-def dropRoundupGenomesTable(conn=None):
-    sql = '''DROP TABLE IF EXISTS '''+ROUNDUP_MYSQL_DB+'''.roundup_genomes'''
-    with connCM(conn=conn) as conn:
-        dbutil.executeSQL(sql=sql, conn=conn)
-
-
-def createRoundupGenomesTable(conn=None):
-    sql = '''CREATE TABLE IF NOT EXISTS '''+ROUNDUP_MYSQL_DB+'''.roundup_genomes
-        (id smallint unsigned auto_increment primary key, name varchar(100) NOT NULL) ENGINE = InnoDB'''
-    with connCM(conn=conn) as conn:
-        dbutil.executeSQL(sql=sql, conn=conn)
-
-
-def dropRoundupDivergencesTable(conn=None):
-    sql = '''DROP TABLE IF EXISTS '''+ROUNDUP_MYSQL_DB+'''.roundup_divergences'''
-    with connCM(conn=conn) as conn:
-        dbutil.executeSQL(sql=sql, conn=conn)
-
-
-def createRoundupDivergencesTable(conn=None):
-    sql = '''CREATE TABLE IF NOT EXISTS '''+ROUNDUP_MYSQL_DB+'''.roundup_divergences
-        (id tinyint unsigned auto_increment primary key, name varchar(100) NOT NULL) ENGINE = InnoDB'''
-    with connCM(conn=conn) as conn:
-        dbutil.executeSQL(sql=sql, conn=conn)
-
-
-def dropRoundupEvaluesTable(conn=None):
-    sql = '''DROP TABLE IF EXISTS '''+ROUNDUP_MYSQL_DB+'''.roundup_evalues'''
-    with connCM(conn=conn) as conn:
-        dbutil.executeSQL(sql=sql, conn=conn)
-
-
-def createRoundupEvaluesTable(conn=None):
-    sql = '''CREATE TABLE IF NOT EXISTS '''+ROUNDUP_MYSQL_DB+'''.roundup_evalues
-        (id tinyint unsigned auto_increment primary key, name varchar(100) NOT NULL) ENGINE = InnoDB'''
-    with connCM(conn=conn) as conn:
-        dbutil.executeSQL(sql=sql, conn=conn)
-
-
-def dropRoundupDb(conn=None):
-    '''
-    Drop all roundup database tables
-    '''
-    with connCM(conn=conn) as conn:
-        dropRoundupSequenceTable(conn=conn)
-        dropRoundupGenomesTable(conn=conn)
-        dropRoundupDivergencesTable(conn=conn)
-        dropRoundupEvaluesTable(conn=conn)
-        dropRoundupResultsTable(conn=conn)
-        dropRoundupSequenceToGoTermTable(conn=conn)
-
-    
-def createRoundupDb(conn=None):
-    '''
-    Create any roundup tables that do not yet exist.
-    '''
-    with connCM(conn=conn) as conn:
-        createRoundupSequenceTable(conn=conn)
-        createRoundupGenomesTable(conn=conn)
-        createRoundupDivergencesTable(conn=conn)
-        createRoundupEvaluesTable(conn=conn)
-        createRoundupResultsTable(conn=conn)
-        createRoundupSequenceToGoTermTable(conn=conn)
-
-
-def updateRoundupSequenceToGoTermTable(conn=None):
-    sql = '''REPLACE INTO '''+ROUNDUP_MYSQL_DB+'''.roundup_sequence_to_go_term (sequence_id, go_term_acc, go_term_name, go_term_type)
-        SELECT DISTINCT rs.id, t.acc, t.name, t.term_type FROM '''+ROUNDUP_MYSQL_DB+'''.roundup_sequence rs JOIN go.gene2go g2g JOIN go.term t
-        WHERE rs.gene_id = g2g.geneid AND g2g.goid = t.acc
-        AND t.is_obsolete = 0 AND t.term_type = 'biological_process' '''
-    logging.debug(sql)
-    with connCM(conn=conn) as conn:
-        dbutil.executeSQL(sql=sql, conn=conn)
-
-
-def updateRoundupSequenceTable(conn=None):
-    '''
-    This query does not insert sequences.  Instead it updates sequences with gene name and gene id info.
-    To insert sequences, add roundup results files to the mysql db.
-    '''
-    sql = '''UPDATE '''+ROUNDUP_MYSQL_DB+'''.roundup_sequence rs
-    JOIN go.gene2accession g2a ON rs.external_sequence_id = g2a.prot_gi
-    JOIN go.gene_info gi ON g2a.geneid = gi.geneid
-    SET rs.gene_name = gi.symbol, rs.gene_id = gi.geneid
-    '''
-    logging.debug(sql)
-    with connCM(conn=conn) as conn:
-        dbutil.executeSQL(sql=sql, conn=conn)
-
-
-def updateRoundupDb(conn=None):
-    '''
-    this updates only some of the tables.  and to be properly updated they should be dropped and created first.
-    '''
-    with connCM(conn=conn) as conn:
-        updateRoundupSequenceTable(conn=conn)
-        updateRoundupSequenceToGoTermTable(conn=conn)    
-
-    
-def getValueForId(id, conn, tableName, idCol='id', valueCol='value', dbName=None):
-    '''
-    id: id for a table row.
-    returns: value found in valueCol for the first row identified with id.
-    '''
-    return getIdForValue(value=id, conn=conn, tableName=tableName, idCol=valueCol, valueCol=idCol, dbName=dbName, insertMissing=False)
-
-
-def getIdForValue(value, conn=None, tableName=None, idCol='id', valueCol='value', dbName=None, insertMissing=False):
-    '''
-    dbName: name of the database or schema the table is in.  if None, defaults to the current db or schema of the connection
-    tableName: name of enumeration lookup table
-    idCol: name of column which contains enumeration id
-    valueCol: name of column which contains the value of the enumeration
-    value: value to look up the id for.
-    insertMissing: if True and the value is not found, 
-    Searches the table for the id corresponding to the given value.
-    If the value is not in the table, adds it, returning the id for the newly added enum value.
-    return: id found in the idCol for the first row containing value in the valueCol.
-    '''
-    if tableName == None:
-        return None
-
-    def getId():
-        sql = 'SELECT '+idCol+' FROM '+dbName+'.'+tableName+' WHERE '+valueCol+' = %s'
-        rowset = dbutil.selectSQL(sql=sql, conn=conn, args=[value])
-        if rowset:
-            return rowset[0][0]
-        else:
-            return None
-
-    id = getId()
-    if id is None and insertMissing:
-        sql = 'INSERT INTO '+dbName+'.'+tableName+' ('+valueCol+') VALUES (%s)'
-        dbutil.executeSQL(sql=sql, conn=conn, args=[value])
-        id = getId()
-    return id
-
-
-####################
-# LOAD RESULTS FILES
-####################
-
-
-def loadGenome(genome, ids):
-    '''
-    ids: externalSequenceIds for genome.
-    genome: identifier/name e.g. Homo_sapiens.aa
-    loads the sequence identifiers into the roundup database, creating internal sequence identifiers for them which are later used when orthologs are loaded.
-    '''
-    with connCM() as conn:
-        sql = '''INSERT IGNORE INTO '''+ROUNDUP_MYSQL_DB+'''.roundup_sequence (external_sequence_id, genome_id) VALUES (%s, %s)'''
-        logging.debug('roundup_db.loadGenomeIds(), genome=%s'%genome)
-        genomeId = getIdForGenome(genome, conn=conn, insertMissing=True)
-        # execute each sequence insert as a transaction.  slow but will it avoid deadlock?
-        for seqId in ids:
-            with dbutil.doTransaction(conn) as conn:
-                dbutil.executeSQL(conn, sql, args=[seqId, genomeId])
-
-            
-def loadResultsFile(resultsFile, seqIdMap=None):
-    '''
-    resultsFile: filename containing roundup results
-    seqIdMap: a dict used to map seq ids to other data.  missing seq ids for genomes are added to the map.
-    If loading multiple results files, create a dict variable (e.g. foo={}) and pass it to each function call as seqIdMap parameter to speed up loading.
-    returns: Nothing.
-    '''
-    if seqIdMap is None:
-        seqIdMap = {}
-
-    with connCM() as conn:
-        logging.debug('loadResultsFile.  path=%s'%resultsFile)
-        qdb, sdb, div, evalue = roundup_common.splitRoundupFilename(resultsFile)
-        qdbId, sdbId, divId, evalueId = getRoundupParameterIds(conn=conn, insertMissing=True, qdb=qdb, sdb=sdb, divergence=div, evalue=evalue)
-        print qdb, qdbId
-        print sdb, sdbId
-        print div, divId
-        print evalue, evalueId
-        # insert results into roundup_orthologs table
-
-        # read orthologs from file
-        externalSeqIdAndGenomeIdPairs = set()
-        orthologs = []
-        for result in resultsGenerator(resultsFile):
-            queryId, subjectId, distance = result
-            externalSeqIdAndGenomeIdPairs.add((queryId, qdbId))
-            externalSeqIdAndGenomeIdPairs.add((subjectId, sdbId))
-            orthologs.append(((queryId, qdbId), (subjectId, sdbId), distance))
-
-        # update seqIdMap with sequences from orthologs
-        # assume all sequences are in roundup_sequence, because the genomes were loaded using loadGenome()
-        externalSeqIdAndGenomeIdPairsList = [pair for pair in externalSeqIdAndGenomeIdPairs if pair not in seqIdMap]
-        # get ids for previously existing sequences in roundup_sequence and add to seqIdMap.
-        sql = '''SELECT id FROM '''+ROUNDUP_MYSQL_DB+'''.roundup_sequence WHERE external_sequence_id=%s AND genome_id=%s'''
-        # logging.debug('sql='+sql)
-        for pair in externalSeqIdAndGenomeIdPairsList:
-            # get the unique seq id for each (external seq id, genome) pair, and add it to the map
-            seqIdMap[pair] = dbutil.selectSQL(sql=sql, args=args, conn=conn)[0][0]
-
-        # put orthologs in form for insertion into db
-        normalizedOrthologs = []
-        for queryPair, subjectPair, distance in orthologs:
-            try:
-                querySeqId = seqIdMap[queryPair]
-            except:
-                print resultsFile
-                print seqIdMap
-                raise
-            subjectSeqId = seqIdMap[subjectPair]
-            normalizedOrthologs.append((querySeqId, subjectSeqId, distance))
-
-        # insert orthologs into db
-        encodedOrthologs = encodeOrthologs(normalizedOrthologs)
-        numOrthologs = len(normalizedOrthologs)
-        sql = 'INSERT INTO '+ROUNDUP_MYSQL_DB+'.roundup_results (query_db, subject_db, divergence, evalue, filename, mod_time, orthologs, num_orthologs) '
-        sql += ' VALUES (%s, %s, %s, %s, %s, NOW(), %s, %s) '
-        sql += ' ON DUPLICATE KEY UPDATE filename=%s, mod_time=NOW(), orthologs=%s, num_orthologs=%s '
-        args = (qdbId, sdbId, divId, evalueId, resultsFile, encodedOrthologs, numOrthologs, resultsFile, encodedOrthologs, numOrthologs)
-        # logging.debug('sql=%s, args=%s'%(sql, args))
-        with dbutil.doTransaction(conn) as conn:
-            fileLoadId = dbutil.insertSQL(conn, sql, args=args)
-
-
-def resultsGenerator(resultsFilePath):
-    '''
-    yields: queryId, subjectId, distance for each ortholog in the resultsFileLines.
-    '''
-    for fh in util.withOpenFile(resultsFilePath):
-        for line in fh:
-            # remove whitespace from front and linebreak from end, to clean up data
-            line = line.lstrip()
-            line = line.rstrip('\n')
-            
-            # skip blank lines
-            if not line:
-                continue
-            # and skip comment lines
-            if line[0] == '#':
-                continue
-        
-            # break line into fields
-            subjectId, queryId, distance = line.split()
-            distance = float(distance)
-            
-            # values to be inserted
-            yield [queryId, subjectId, distance]
-
-
-
-def getNonLoadedResultsForParams(paramsList, conn=None):
-    '''
-    paramsList: list of tuples of roundup result params
-    Checks every tuple of qdb, sdb, div, evalue to see if it has been loaded into the db.
-    returns:  a list of tuples which have not been loaded into the db.
-    '''
-    with connCM(conn=conn) as conn:
-        nonLoadedParams = [params for params in paramsList if not isLoadedResultForParams(params=params, conn=conn)]
-        return nonLoadedParams
-    
-
-def isLoadedResultForParams(params, conn=None):
-    with connCM(conn=conn) as conn:
-        (qdb, sdb, div, evalue) = params
-        qdbId, sdbId, divId, evalueId = getRoundupParameterIds(conn=conn, insertMissing=True, qdb=qdb, sdb=sdb, divergence=div, evalue=evalue)
-        sql = ' SELECT rr.id FROM {} rr '.format(versionTable(config.CURRENT_DB_VERSION, 'results'))
-        sql += ' WHERE rr.query_db = %s AND rr.subject_db = %s AND rr.divergence = %s AND rr.evalue = %s '
-        args = (qdbId, sdbId, divId, evalueId)
-        results = dbutil.selectSQL(sql=sql, args=args, conn=conn)
-        if results:
-            return True
-        else:
-            return False
-
-
-def getRoundupParameterIds(qdb, sdb, divergence, evalue, conn=None):
-    with connCM(conn=conn) as conn:
-        qdbId = getIdForGenome(qdb, conn)
-        sdbId = getIdForGenome(sdb, conn)
-        divId = getIdForDivergence(divergence, conn)
-        evalueId = getIdForEvalue(evalue, conn)
-        return qdbId, sdbId, divId, evalueId
-
-
-
-# last line fix for emacs python mode bug -- do not cross
+##########################
+# DEPRECATED / UNUSED CODE
+##########################
