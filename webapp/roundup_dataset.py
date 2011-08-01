@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 '''
-# CONCEPTS TO LEARN
+## CONCEPTS TO LEARN
 * Dataset: ds, the id of a dataset.  also happens to be a directory path, but that is an implementation detail. 
 * Sources: a dir containing all the files needed to create the genomes and the metadata about those genomes: gene names, go terms, gene descriptions, genome names, etc.
 * Genomes: A dir containing dirs named after each genome and containing a fasta file and blast indexes named after the genome.
@@ -16,6 +16,16 @@
   sensitive to which code (dev or prod) is run.
 * Database: 
 
+
+# prepare a computation for various small Mycoplasma and Mycobacterium.
+cd /www/dev.roundup.hms.harvard.edu/webapp && python -c "import roundup_dataset;
+ds = '/groups/cbi/td23/test_dataset'
+genomes = 'MYCGE MYCGF MYCGH MYCH1 MYCH2 MYCH7 MYCHH MYCHJ MYCHP'.split()
+print genomes
+roundup_dataset.setGenomes(ds, genomes)
+roundup_dataset.prepareComputation(ds, numJobs=10)
+"
+
 '''
 
 # A description of Uniprot Knowledgebase files:
@@ -24,11 +34,6 @@
 # A list of all species ids abbreviations, their kingdom, taxon id, and official names, common names, and synonyms.  Cool!
 # http://www.expasy.org/cgi-bin/speclist
 
-# test getGenomes()
-# test splitting source files
-# test preparing computation.  are the jobs and pair files created?
-#   are the new_pairs.txt and old_pairs.txt created?
-# test rsd copyToWorking functionality
 
 '''
 # Fiddling with completes and dataset state to get completed stuff to run again.
@@ -43,22 +48,17 @@ emacs /groups/cbi/td23/roundup_uniprot/test_dataset/steps.complete.txt
 '''
 
 # standard library modules
-import sys
-import os
+import collections
+import glob
+import json
 import datetime
+import logging
+import os
+import random
 import shutil
+import subprocess
 import time
 import uuid
-import logging
-import urlparse
-import subprocess
-import random
-import gzip
-import json
-import collections
-
-# 3rd party modules
-import Bio.SeqIO
 
 # our modules
 import config
@@ -71,22 +71,56 @@ import util
 import roundup_db
 import lsfdispatch
 import rsd
+import orthologs
 
 
 MIN_GENOME_SIZE = 200 # ignore genomes with fewer sequences
 DIR_MODE = 0775 # directories in this dataset are world readable and group writable.
 
+# keys used for termToData and taxonToData  
+NAME = 'n'
+TYPE = 'y'
+DIV_NAME = 'div_name'
+DIV_CODE = 'div_code'
+CAT_NAME = 'cat_name'
+CAT_CODE = 'cat_code'
+
+# METADATA STORES, keys for getData()
+DATASET = 'dataset'
+GENES = 'genes' 
+GENE_TO_GENOME = 'gene_to_genome'
+GENE_TO_NAME = 'gene_to_name'
+GENE_TO_DESC = 'gene_to_desc'
+GENE_TO_GO_TERMS = 'gene_to_go_terms'
+GENE_TO_GENE_IDS = 'gene_to_gene_ids'
+TERM_TO_DATA = 'term_to_data'
+GENOME_TO_GENES = 'genome_to_genes'
+TAXON_TO_DATA = 'taxon_to_data'
+BLAST_STATS = 'blast_stats'
+RSD_STATS = 'rsd_stats'
 
 def main(ds):
-
+    '''
+    this function is half functional and half documentation of the steps required to make and compute a dataset
+    '''
     steps = [(prepareDataset, 'prepare dataset'),
-             (downloadCurrentUniprot, 'download current uniprot'),
-             (unzipUniprotSources, 'unzip uniprot sources'),
+             (downloadSources, 'download sources'),
+             (processSources, 'process taxon sources'),
              (splitUniprotIntoGenomes, 'split sources into fasta genomes'),
              (formatGenomes, 'format genomes'),
-             (extractGeneIdsAndGoTerms, 'extract'),
-             (extractGenomeAndGeneNames, 'extract'),
+             (extractFromFasta, 'extract from fasta'),
+             (extractFromIdMapping, 'extract from id mapping'),
+             (extractTaxonData, 'extract taxon data'),
+             (extractFromGeneOntology, 'extract from gene ontology'),
+             (extractUniprotRelease, 'extract uniprot release'),
+             (findMissingTaxonToData, ''), # check that we have taxon data for every genome
+             (setMissingTaxonToData, ''), # update the taxon data if necessary
+             (setSourcesHtml, 'set sources html'),
              (prepareComputation, 'prepare computation'),
+             (computeJobs, 'compute jobs'),
+             (extractDatasetStats, 'extract dataset stats'), # cache the number of orthologs
+             (extractPerformanceStats, 'extract performance stats'), # cache the times it took to run the blast and rsd jobs for all pairs.
+             (setReleaseDate, 'set release date'), # do this on the day you release to production
              ]
 
     for func, tag in steps:
@@ -110,8 +144,30 @@ def prepareDataset(ds):
     for path in (ds, getGenomesDir(ds), getOrthologsDir(ds), getJobsDir(ds), getSourcesDir(ds)):
         if not os.path.exists(path):
             os.makedirs(path, DIR_MODE)
+    setMetadata(ds, {}) # initialize a blank metadata for the dataset
 
-def downloadCurrentUniprot(ds):
+
+def downloadSource(ds, url, dest):
+    '''
+    helper function.  downloads a source and marks it complete
+    '''
+    if not os.path.exists(os.path.dirname(dest)):
+        os.makedirs(os.path.dirname(dest), DIR_MODE)
+    print 'downloading {} to {}...'.format(url, dest)
+    if isStepComplete(ds, 'download', url):
+        print '...skipping because already downloaded.'
+        return
+    cmd = 'curl --remote-time --output '+dest+' '+url
+    subprocess.check_call(cmd, shell=True)
+    print
+    markStepComplete(ds, 'download', url)
+    print '...done.'
+    pause = 10
+    print 'pausing for {} seconds.'.format(pause)
+    time.sleep(pause)
+    
+
+def downloadSources(ds):
     '''
     Download uniprot files containing protein fasta sequences and associated meta data (gene names, go annotations, dbxrefs, etc.)
     Download all these files to have a comprehensive set of data for a uniprotkb release:
@@ -142,81 +198,145 @@ def downloadCurrentUniprot(ds):
     idmapping_selected.tab.gz549 MB4/5/11 2:00:00 PM[parent directory]
     '''
     
-    print 'downloadCurrentUniprot: {}'.format(ds)
+    print 'downloadSources: {}'.format(ds)
+    sourcesDir = getSourcesDir(ds)
 
     # get as much as possible about the current uniprotkb release, in case it is needed later.
     currentUrl = 'ftp://ftp.uniprot.org/pub/databases/uniprot/current_release'
-    files = ['relnotes.txt',
-             'knowledgebase/complete/README', 
-             'knowledgebase/complete/README.gunzip', 
-             'knowledgebase/complete/README.reldate', 
-             'knowledgebase/complete/README.varsplic', 
-             'knowledgebase/complete/reldate.txt', 
-             'knowledgebase/complete/uniprot.xsd', 
-             'knowledgebase/complete/uniprot_sprot.dat.gz', 
-             'knowledgebase/complete/uniprot_sprot.fasta.gz', 
-             'knowledgebase/complete/uniprot_sprot.xml.gz', 
-             'knowledgebase/complete/uniprot_sprot_varsplic.fasta.gz', 
-             'knowledgebase/complete/uniprot_trembl.dat.gz', 
-             'knowledgebase/complete/uniprot_trembl.fasta.gz', 
-# skip enormous trembl xml file b/c curl might have trouble downloading it. 'knowledgebase/complete/uniprot_trembl.xml.gz',
-             'knowledgebase/idmapping/README', 
-             'knowledgebase/idmapping/idmapping.dat.example', 
-             'knowledgebase/idmapping/idmapping.dat.gz', 
-             'knowledgebase/idmapping/idmapping_selected.tab.example', 
-             'knowledgebase/idmapping/idmapping_selected.tab.gz', 
-             ]
+    uniprotFiles = ['relnotes.txt',
+                    'knowledgebase/complete/README', 
+                    'knowledgebase/complete/reldate.txt', 
+                    'knowledgebase/complete/uniprot_sprot.dat.gz', 
+                    'knowledgebase/complete/uniprot_sprot.fasta.gz', 
+                    'knowledgebase/complete/uniprot_trembl.dat.gz', 
+                    'knowledgebase/complete/uniprot_trembl.fasta.gz', 
+                    'knowledgebase/idmapping/README', 
+                    'knowledgebase/idmapping/idmapping.dat.gz', 
+                    'knowledgebase/idmapping/idmapping_selected.tab.gz', 
+                    ]    
+    uniprotUrlDests = [(currentUrl + '/' + f, os.path.join(sourcesDir, f)) for f in uniprotFiles]
+
+    taxonUrl = 'ftp://ftp.ncbi.nih.gov/pub'
+    taxonFiles = ['taxonomy/taxcat_readme.txt', 'taxonomy/taxcat.tar.gz', 'taxonomy/taxdump_readme.txt', 'taxonomy/taxdump.tar.gz']
+    taxonUrlDests = [(taxonUrl + '/' + f, os.path.join(sourcesDir, f)) for f in taxonFiles]
+
+    goUrlDests = [('ftp://ftp.geneontology.org/pub/go/godatabase/archive/go_daily-termdb-tables.tar.gz',
+                   os.path.join(sourcesDir, 'geneontology/go_daily-termdb-tables.tar.gz'))]
     
-    sourcesDir = getSourcesDir(ds)
-    for f in files:
-        url = currentUrl + '/' + f
-        dest = os.path.join(sourcesDir, f)
-        if not os.path.exists(os.path.dirname(dest)):
-            os.makedirs(os.path.dirname(dest), DIR_MODE)
-        print 'downloading {} to {}...'.format(url, dest)
-        if isStepComplete(ds, 'download', url):
-            print '...skipping because already downloaded.'
-            continue
-        cmd = 'curl --remote-time --output '+dest+' '+url
-        subprocess.check_call(cmd, shell=True)
-        print
-        markStepComplete(ds, 'download', url)
-        print '...done.'
-        pause = 20
-        print 'pausing for {} seconds.'.format(pause)
-        time.sleep(pause)
-    updateMetadata(ds, {'sources': {'download_time': str(datetime.datetime.now()), 'currentUrl': currentUrl, 'files': files}})
+    urlDests = uniprotUrlDests + taxonUrlDests + goUrlDests
+    for url, dest in urlDests:
+        downloadSource(ds, url, dest)
+    updateMetadata(ds, {'sources': urlDests})
     print 'done downloading sources.'
 
 
-def unzipUniprotSources(ds):
+def processSources(ds):
     '''
-    unzipping the files makes them take up more space, but it makes processing them faster.  especially if you have to process them
-    several times.
+    gunzip (and untar) some source files.
     '''
-    files = [
+    print 'processing sources...'
+    sourcesDir = getSourcesDir(ds)
+    
+    uniprotFiles = [
              'knowledgebase/complete/uniprot_sprot.dat.gz', 
              'knowledgebase/complete/uniprot_sprot.fasta.gz', 
              'knowledgebase/complete/uniprot_trembl.dat.gz', 
              'knowledgebase/complete/uniprot_trembl.fasta.gz', 
              'knowledgebase/idmapping/idmapping_selected.tab.gz', 
              ]
-    for f in files:
-        path = os.path.join(getSourcesDir(ds), f)
-        if os.path.exists(path):
-            print 'unzipping {}...'.format(f)
+    taxonFiles = ['taxonomy/taxcat.tar.gz', 'taxonomy/taxdump.tar.gz']
+    goFiles = ['geneontology/go_daily-termdb-tables.tar.gz']
+
+    for f in uniprotFiles + taxonFiles + goFiles:
+        path = os.path.join(sourcesDir, f)
+        if isStepComplete(ds, 'process source', path):
+            print '...skipping processing {} because already done.'.format(path)
+            continue
+        print 'processing', path
+        if path.endswith('.tar.gz'):
+            print '...tax xzf file'
+            subprocess.check_call(['tar', '-xzf', path], cwd=os.path.dirname(path))
+        elif path.endswith('.gz') and os.path.exists(path):
+            print '...gunzip file'
             subprocess.check_call(['gunzip', path])
+        markStepComplete(ds, 'process source', path)
+            
+    print '...done'
 
 
+def extractUniprotRelease(ds):
+    '''
+    e.g. 2011_06
+    '''
+    sourcesDir = getSourcesDir(ds)
+    with open(os.path.join(sourcesDir, 'relnotes.txt')) as fh:
+        release = fh.readline().strip().split()[-1]
+    updateMetadata(ds, {'uniprotRelease': release})
+    
+
+def extractTaxonData(ds):
+    '''
+    taxon category codes and names from ftp://ftp.ncbi.nlm.nih.gov/pub/taxonomy/taxcat_readme.txt:
+    A = Archaea
+    B = Bacteria
+    E = Eukaryota
+    V = Viruses and Viroids
+    U = Unclassified and Other
+    '''
+    sourcesDir = getSourcesDir(ds)
+    catCodeToName = {'A': 'Archaea', 'B': 'Bacteria', 'E': 'Eukaryota', 'V': 'Viruses and Viroids', 'U': 'Unclassified and Other'}
+    taxonToData = collections.defaultdict(dict)
+    for line in open(os.path.join(sourcesDir, 'taxonomy/categories.dmp')):
+        cat, speciestaxon, taxon = line.split()
+        taxonToData[taxon][CAT_CODE] = cat
+        taxonToData[taxon][CAT_NAME] = catCodeToName[cat]
+
+    divData = {}
+    for line in open(os.path.join(sourcesDir, 'taxonomy/division.dmp')):
+        divId, divCode, divName, etc = line.strip().split('\t|\t', 3)
+        divData[divId] = (divCode, divName)
+
+    for line in open(os.path.join(sourcesDir, 'taxonomy/nodes.dmp')):
+        taxon, parent_tax_id, rank, embl_code, divId, etc = line.strip().split('\t|\t', 5)
+        taxonToData[taxon][DIV_CODE] = divData[divId][0]
+        taxonToData[taxon][DIV_NAME] = divData[divId][1]
+
+    setData(ds, TAXON_TO_DATA, taxonToData)
+                   
+        
+def extractFromGeneOntology(ds):
+    '''
+    note: this works, b/c the go database on dev.mysql and mysql is the same.
+    creates a lookup for go term accessions to name and term_type.  e.g. 'GO:2000779' => 'regulation of double-strand break repair', 'biological_process'    
+    '''
+    # `id` int(11) NOT NULL AUTO_INCREMENT,
+    # `name` varchar(255) NOT NULL DEFAULT '',
+    # `term_type` varchar(55) NOT NULL,
+    # `acc` varchar(255) NOT NULL,
+    # `is_obsolete` int(11) NOT NULL DEFAULT '0',
+    # `is_root` int(11) NOT NULL DEFAULT '0',
+    # `is_relation` int(11) NOT NULL DEFAULT '0',
+    
+    termToData = {}
+    with open(os.path.join(getSourcesDir(ds), 'geneontology/go_daily-termdb-tables/term.txt')) as fh:
+        for line in fh:
+            id, name, termType, acc, isObsolete, etc = line.strip().split('\t', 5)
+            if isObsolete == '0' and termType == 'biological_process':
+                termToData[acc] = {NAME: name, TYPE: termType}
+    setData(ds, TERM_TO_DATA, termToData)
+
+            
 def splitUniprotIntoGenomes(ds, writing=True, skipDirs=False, cleanDirs=False, bufSize=5000000, joinBeforeWrite=True):
     '''
     create separate fasta files for each complete genome in the uniprot (sprot and trembl) data.
     do not create files for genomes that are too small.
     also save maps from genome to ncbi taxon id, and genome to size (# of sequences).
+    iterates once through the dat files to find out which sequences/entries belong to complete proteomes (and to get taxons and sequence counts.)
+    then iterates once through fasta files to write the fasta sequences for each genome.  
     '''
     seqToGenome = {} # track which sequences belong to which genome.  store sequences of all complete genomes
-    genomeToTaxon = {}
-    genomeToCount = collections.defaultdict(int)
+    genomeToTaxon = {} # maps each genome to an ncbi taxon id
+    genomeToCount = collections.defaultdict(int) # maps each genome to the number of sequences (in the dat files) for that genome.  should == num seqs in fasta files.
     
     # the dats have all the info needed to make fasta files, but the namelines in the uniprot fasta files are nice and hard to reconstruct from the dats.
     dats = [os.path.join(getSourcesDir(ds), 'knowledgebase/complete/uniprot_sprot.dat'), os.path.join(getSourcesDir(ds), 'knowledgebase/complete/uniprot_trembl.dat')]
@@ -227,6 +347,7 @@ def splitUniprotIntoGenomes(ds, writing=True, skipDirs=False, cleanDirs=False, b
     # fastas = ['/groups/cbi/td23/roundup_uniprot/uniprot_sprot_test.fasta']
 
     # gather which sequences belong to complete genomes, by parsing uniprot dat files.
+    # also get the ncbi taxon ids and a count of the sequences per genome.
     print datetime.datetime.now()
     for path in dats:
         print 'gathering ids in {}...'.format(path), datetime.datetime.now()
@@ -262,11 +383,11 @@ def splitUniprotIntoGenomes(ds, writing=True, skipDirs=False, cleanDirs=False, b
                     complete = False
 
     # filter out genomes that are too small, and their respective sequences.
-    genomeToCount = dict((genome, count) for genome, count in genomeToCount.items() if count >= MIN_GENOME_SIZE)
-    seqToGenome = dict((seqId, genome) for seqId, genome in seqToGenome.items() if genome in genomeToCount)
+    genomes = [genome for genome, count in genomeToCount.items() if count >= MIN_GENOME_SIZE]
+    seqToGenome = dict((seqId, genome) for seqId, genome in seqToGenome.items() if genome in genomes)
             
     # print a sorted list of genomes and number of sequences
-    for genome, count in sorted(genomeToCount.items(), key=lambda x: (x[1], x[0])):
+    for genome, count in sorted([(genome, genomeToCount[genome]) for genome in genomes], key=lambda x: (x[1], x[0])):
         print genome, count
         pass
 
@@ -298,17 +419,18 @@ def splitUniprotIntoGenomes(ds, writing=True, skipDirs=False, cleanDirs=False, b
                 for line in data:
                     outfh.write(line)
 
+    # remove any pre-existing genomes.
     if cleanDirs:
         print 'cleaning genomes directory...', datetime.datetime.now()
         cleanGenomes(ds)
 
     # make a directory for each genome in which to put the fasta file.
     print datetime.datetime.now()
-    genomes = set(seqToGenome.values())
     print 'initializing {} genome directories...'.format(len(genomes))
     for genome in genomes:
         makeGenomeDir(genome)
-        
+
+    # write the fasta sequences to the fasta files.  lots of caching here b/c filessystem is slow to open and close files.
     print datetime.datetime.now()
     for path in fastas:
         # iterate through every line in the fasta file.
@@ -338,7 +460,7 @@ def splitUniprotIntoGenomes(ds, writing=True, skipDirs=False, cleanDirs=False, b
                 
     print 'getting genomes and updating metadata...', datetime.datetime.now()
     
-    getGenomes(ds, refresh=True)
+    setGenomes(ds)
     updateMetadata(ds, {'genomeToTaxon': genomeToTaxon, 'genomeToCount': genomeToCount})
     print 'all done.', datetime.datetime.now()
     
@@ -348,62 +470,12 @@ def formatGenomes(ds):
     format genomes for blast.
     '''
     print 'formatting genomes. {}'.format(ds)
-    genomes = getGenomes(ds, refresh=True)
+    genomes = getGenomes(ds)
     for genome in genomes:
         fastaPath = getGenomeFastaPath(ds, genome)
         print 'format {}'.format(genome)
         rsd.formatForBlast(fastaPath)
     print 'done formatting genomes'
-
-
-def extractGeneIdsAndGoTerms(ds):
-    '''
-    From ftp://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/idmapping/README:
-    2) idmapping_selected.tab
-    We also provide this tab-delimited table which includes
-    the following mappings delimited by tab:
-
-        1. UniProtKB-AC
-        2. UniProtKB-ID
-        3. GeneID (EntrezGene)
-        4. RefSeq
-        5. GI
-        6. PDB
-        7. GO
-        8. IPI
-        9. UniRef100
-        10. UniRef90
-        11. UniRef50
-        12. UniParc
-        13. PIR
-        14. NCBI-taxon
-        15. MIM
-        16. UniGene
-        17. PubMed
-        18. EMBL
-        19. EMBL-CDS
-        20. Ensembl
-        21. Ensembl_TRS
-        22. Ensembl_PRO
-        23. Additional PubMed
-    Writes two dicts to files, one mapping gene to go terms, the other mapping gene to ncbi gene id.
-    '''
-    geneToGoTerms = {}
-    geneToGeneId = {}
-    with open(os.path.join(getSourcesDir(ds), 'knowledgebase/idmapping/idmapping_selected.tab')) as fh:
-        for i, line in enumerate(fh):
-            if i % 100000 == 0: print i
-            seqId, b, geneId, d, e, f, goTermsStr, etc = line.split('\t', 7)
-            goTerms = goTermsStr.split('; ') if goTermsStr else []
-            # print line
-            # print (seqId, b, geneId, d, e, f, goTerms)
-            geneToGoTerms[seqId] = goTerms
-            geneToGeneId[seqId] = geneId
-    with open(os.path.join(ds, 'gene_to_geneid.json'), 'w') as fh:
-        json.dump(geneToGeneId, fh, indent=2)
-    with open(os.path.join(ds, 'gene_to_go_terms.json'), 'w') as fh:
-        json.dump(geneToGoTerms, fh, indent=2)
-            
 
 
 def parseUniprotNameline(nameline):
@@ -438,7 +510,7 @@ def parseUniprotNameline(nameline):
     return {'acc': acc, 'geneDesc': geneDesc, 'geneName': geneName, 'orgName': orgName, 'orgId': orgId}
 
 
-def extractGenomeAndGeneNames(ds):
+def extractFromFasta(ds):
     '''
     parse from the namelines the uniprot fasta files the gene name, genome/organism name
     The organism name The gene name is optional.
@@ -447,9 +519,12 @@ def extractGenomeAndGeneNames(ds):
     example nameline: >sp|P38398|BRCA1_HUMAN Breast cancer type 1 susceptibility protein OS=Homo sapiens GN=BRCA1 PE=1 SV=2
     gene name (GN): BRCA1, organism abbr: HUMAN, organism (OS): Homo sapiens
     '''
-    genomeToName = {}
+    genes = []
     geneToName = {}
     geneToDesc = {}
+    geneToGenome = {}
+    genomeToGenes = {}
+    genomeToName = {}
     
     # EXCEPTIONS to the exactly one name for a genome rule, found in UniProtKB release 2011_04.
     # taxonid | 2nd name found | 1st name found
@@ -462,50 +537,107 @@ def extractGenomeAndGeneNames(ds):
     # since the sprot/trembl data has genomes that have different names in sprot and trembl (see exceptions listed above),
     # ignore these bad genomes.
     # badGenomes = set(['246196', '321332', '771870', '290318', '710128', '375286'])
+    # FIXED in 2011_06 release
     badGenomes = set()
     
-    for i, genome in enumerate(getGenomes(ds, refresh=True)):
+    for i, genome in enumerate(getGenomes(ds)):
+        if i % 20 == 0: print i
         path = getGenomeFastaPath(ds, genome)
-        print '{}: extracting from {}'.format(i, path)
+        if genome not in genomeToGenes:
+            genomeToGenes[genome] = []
+        # print '{}: extracting from {}'.format(i, path)
         for nameline, seq in fasta.readFasta(path):
             try:
                 data = parseUniprotNameline(nameline)
             except:
                 print (i, genome, path, nameline)
                 raise
-            seqId, geneDesc, geneName, genomeName  = data['acc'], data['geneDesc'], data['geneName'], data['orgName']
-            
+            gene, geneDesc, geneName, genomeName  = data['acc'], data['geneDesc'], data['geneName'], data['orgName']
+
             # a sequence must be encountered only once.
-            if geneToName.has_key(seqId):
-                raise Exception('Sequence encountered more than one time!', seqId, geneName, geneDesc, nameline, genome, path, i)
+            if geneToName.has_key(gene):
+                raise Exception('Sequence encountered more than one time!', gene, geneName, geneDesc, nameline, genome, path, i)
             else:
                 # gene name and description are optional
-                geneToName[seqId] = geneName
-                geneToDesc[seqId] = geneDesc
-
+                genes.append(gene)
+                geneToName[gene] = geneName
+                geneToDesc[gene] = geneDesc
+                geneToGenome[gene] = genome
+                genomeToGenes[genome].append(gene)
+                
             # assert exactly one name for genome.  b/c some genomes have a different name in sprot and trembl, make case-by-case exceptions.
             if not genomeToName.has_key(genome):
                 genomeToName[genome] = genomeName
             elif genomeToName[genome] != genomeName and genome not in badGenomes:
                 with open(os.path.join(ds, 'errors.extract_uniprot.txt'), 'a') as fh:
                     msg = '{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\n'
-                    msg = msg.format(datetime.datetime.now().isoformat(), 'genome_has_two_names', seqId, genome, genomeToName[genome], genomeName, os.path.basename(path))
+                    msg = msg.format(datetime.datetime.now().isoformat(), 'genome_has_two_names', gene, genome, genomeToName[genome], genomeName, os.path.basename(path))
                     fh.write(msg)
                     # print msg
-            
-    with open(os.path.join(ds, 'genome_to_name.json'), 'w') as fh:
-        json.dump(genomeToName, fh, indent=2)
-    with open(os.path.join(ds, 'gene_to_name.json'), 'w') as fh:
-        json.dump(geneToName, fh, indent=2)
-    with open(os.path.join(ds, 'gene_to_desc.json'), 'w') as fh:
-        json.dump(geneToDesc, fh, indent=2)
-        
-            
-def prepareComputation(ds, oldDs=None, numJobs=4000, pairs=None):
+
+    setData(ds, GENES, genes)
+    setData(ds, GENE_TO_NAME, geneToName)
+    setData(ds, GENE_TO_DESC, geneToDesc)
+    setData(ds, GENE_TO_GENOME, geneToGenome)
+    setData(ds, GENOME_TO_GENES, genomeToGenes)
+    updateMetadata(ds, {'genomeToName': genomeToName})
+
+
+def extractFromIdMapping(ds):
+    '''
+    From ftp://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/idmapping/README:
+    2) idmapping_selected.tab
+    We also provide this tab-delimited table which includes
+    the following mappings delimited by tab:
+
+        1. UniProtKB-AC
+        2. UniProtKB-ID
+        3. GeneID (EntrezGene)
+        4. RefSeq
+        5. GI
+        6. PDB
+        7. GO
+        8. IPI
+        9. UniRef100
+        10. UniRef90
+        11. UniRef50
+        12. UniParc
+        13. PIR
+        14. NCBI-taxon
+        15. MIM
+        16. UniGene
+        17. PubMed
+        18. EMBL
+        19. EMBL-CDS
+        20. Ensembl
+        21. Ensembl_TRS
+        22. Ensembl_PRO
+        23. Additional PubMed
+    Writes two dicts to files, one mapping gene to go terms, the other mapping gene to ncbi gene id.
+    '''
+
+    geneSet = set(getData(ds, GENES)) # a set to improve lookup performance.  all the seq ids from the genome fasta files.
+    geneToGoTerms = {}
+    geneToGeneIds = {}
+    with open(os.path.join(getSourcesDir(ds), 'knowledgebase/idmapping/idmapping_selected.tab')) as fh:
+        for i, line in enumerate(fh):
+            if i % 500000 == 0: print i
+            seqId, b, geneIdsStr, d, e, f, goTermsStr, etc = line.split('\t', 7)
+            if seqId in geneSet: # ignore sequences not in our set of genes (i.e. from genomes we ignore)
+                goTerms = goTermsStr.split('; ') if goTermsStr else []
+                geneIds = geneIdsStr.split('; ') if geneIdsStr else []
+                # print line
+                # print (seqId, b, geneIds, d, e, f, goTerms)
+                geneToGoTerms[seqId] = goTerms
+                geneToGeneIds[seqId] = geneIds
+
+    setData(ds, GENE_TO_GO_TERMS, geneToGoTerms)
+    setData(ds, GENE_TO_GENE_IDS, geneToGeneIds)
+
+
+def prepareComputation(ds, numJobs=4000):
     '''
     ds: dataset to ready for computation
-    pairs: if not None, this list of genome pairs specifies which pairs will be computed.  useful for creating small test computations.
-    oldDs: if not None, only compute pairs that have an updated genome in the new dataset.  for other pairs with no updated genomes, transfer results from oldDs to ds.
     numJobs: split computation into this many jobs.  More jobs = shorter jobs, better parallelism.
       Fewer jobs = fewer dirs and files to make isilon run slowly and overload lsf queue.
       Recommendation: <= 10000.
@@ -513,31 +645,16 @@ def prepareComputation(ds, oldDs=None, numJobs=4000, pairs=None):
     '''
     print 'prepare computation for {}'.format(ds)
 
-    if pairs:
-        newPairs = pairs
-        oldPairs = []
-    elif oldDs:
-        # get new and old pairs
-        newPairs, oldPairs = getNewAndDonePairs(ds, oldDs)
-        # get orthologs for old pairs and dump them into a orthologs file.
-    else:
-        newPairs = getPairs(ds)
-        oldPairs = []
-        
-    # save the pairs to be computed and the pairs whose orthologs need to be moved.
-    print 'saving new and old pairs'
-    setNewPairs(ds, newPairs)
-    setOldPairs(ds, oldPairs)
-    print 'new pair count:', len(newPairs)
-    print 'old pair count:', len(oldPairs)
+    pairs = getPairs(ds)
+    print 'pair count:', len(pairs)
 
     # create up to N jobs for the pairs to be computed.
     # each job contain len(pairs)/N pairs, except if N does not divide len(pairs) evenly, some jobs get an extra pair.
     # Distribute pairs among jobs so that each job will have about the same running time.
     # Ideally job running time would be explictly balanced, but currently pairs are just assigned randomly.
     # e.g. if you had 11 pairs (1,2,3,4,5,6,7,8,9,10,11) and 3 jobs, the pairs would be split into these jobs: (1,2,3,4),(5,6,7,8),(9,10,11)
-    random.shuffle(newPairs)
-    for i, jobPairs in enumerate(util.splitIntoN(newPairs, numJobs)):
+    random.shuffle(pairs)
+    for i, jobPairs in enumerate(util.splitIntoN(pairs, numJobs)):
         if i % 100 == 0: print 'preparing job', i
         job = 'job_{}'.format(i)
         print 'job:', job
@@ -550,65 +667,90 @@ def prepareComputation(ds, oldDs=None, numJobs=4000, pairs=None):
     getJobs(ds, refresh=True) # refresh the cached metadata
     
 
-def getNewAndDonePairs(ds, oldDs):
+def getSourcesHtml(ds):
     '''
-    ds: current dataset, containing genomes
-    oldDs: a previous dataset.
-    Sort all pairs of genomes in the current dataset into todo and done pairs:
-      new pairs need to be computed because each pair contains at least one genome that does not exist in or is different from the genomes of the old dataset.
-      done pairs do not need to be computed because the genomes of each pair are the same as the old dataset, so the old orthologs are still valid.
-    returns: the tuple, (newPairs, donePairs)
+    returns an html div describing the data sources for this version of the roundup dataset.  This fragment is stored in the dataset metadata.
     '''
-    raise Exception('untested')
-    genomesAndPaths = getGenomesAndPaths(ds)
-    oldGenomesAndPaths = getGenomesAndPaths(oldDs)
-    # a new genome is one not in the old genomes or different from the old genome.
-    newGenomes = set()
-    for genome in genomesAndPaths:
-        if genome not in oldGenomesAndPaths or not roundup_common.genomePathsEqual(genomesAndPaths[genome], oldGenomesAndPaths[genome]):
-            newGenomes.add(genome)
+    return getMetadata(ds)['sources_html']
 
-    pairs = roundup_common.getPairs(genomesAndPaths.keys())
-    newPairs = []
-    oldPairs = []
-    for pair in pairs:
-        if pair[0] in newGenomes or pair[1] in newGenomes:
-            newPairs.append(pair)
+
+def setSourcesHtml(ds):
+    '''
+    generate the sources page html div, and store it in the metadata.
+    '''
+    html = '''<div id="sources">
+<p id="sources_desc">
+Roundup Release {} uses the following sources:
+<ul>
+<li>
+<a href="http://www.uniprot.org">UniProt</a>, specifically UniProtKB/Swiss-Prot and UniProtKB/TrEMBL from Release {}, is used as a source for protein sequences from complete genomes, for sequence annotations, and for genome annotations.
+</li>
+<li>
+<a href="http://www.ncbi.nlm.nih.gov/taxonomy">The NCBI Taxonomy database</a> is used as a source for genome annotations.
+</li>
+<li>
+<a href="http://geneontology.org/">Gene Ontology</a> is used for sequence annotations.
+</li>
+</ul>
+</p>
+<p id="source_urls">
+The following is a comprehensive list of files that were downloaded for this Roundup release.  All sources are publicly available.
+<ul>
+'''.format(getReleaseName(ds), extractUniprotRelease(ds))
+    for url, dest in getMetadata(ds)['sources']:
+        html += '<li><a href="{}">{}</a></li>\n'.format(url, url)
+    html += '''
+</ul>
+</p>
+</div>
+'''
+    updateMetadata(ds, {'sources_html': html})
+    return html
+
+
+def findMissingTaxonToData(ds):
+    '''
+    Sadly, some taxon ids for uniprot genomes are missing from the ncbi taxonToData (category.dmp and nodes.dmp).
+    Why are they missing?  Some are for organisms (e.g. virus isolates like VAR66) not in ncbi.  For others, uniprot uses the wrong taxon id (e.g. SALPB)
+    This prints out which are missing.
+    Then one should construct by hand a lookup table for the missing taxons and use
+    setMissingTaxonToData() to create a lookup to be used when the database is loaded.
+    '''
+    genomes = getGenomes(ds)
+    genomeToName = getGenomeToName(ds)
+    genomeToTaxon = getGenomeToTaxon(ds)
+    taxonToData = getTaxonToData(ds)
+    for genome in genomes:
+        taxon = genomeToTaxon[genome]
+        name = genomeToName[genome]
+        if taxon not in taxonToData:
+            print 'missing_taxon', genome, taxon, name
         else:
-            oldPairs.append(pair)
+            catCode = taxonToData[taxon].get(CAT_CODE)
+            catName = taxonToData[taxon].get(CAT_NAME)
+            divCode = taxonToData[taxon].get(DIV_CODE)
+            divName = taxonToData[taxon].get(DIV_NAME)
+            if None in (catCode, catName, divCode, divName):
+                print 'missing_data', genome, taxon, name, catCode, catName, divCode, divName
 
-    return (newPairs, oldPairs)
 
-
-def moveOldOrthologs(ds, oldDs, pairs):
+def setMissingTaxonToData(ds, missingTaxonToData):
     '''
-    pairs: the pairs that do not need to be computed because their genomes have not changed.
-    Move orthologs files from the old dataset to the new dataset.
+    update taxonToData with data for the genome taxons that were missing data.
     '''
-    raise Exception('unimplemented')
-
-
-#########
-# TESTING
-#########
-
-def splitOrthologsIntoOldResultsFiles(ds, here='.'):
-    '''
-    here: directory in which to save results files.
-    This is useful for comparing new results, where orthologs for different pairs and parameter combinations are combined in a single file,
-    against old results, where every pair x param combo has its own file for orthologs.
-    '''
-    for job in getJobs(ds):
-        for (qdb, sdb, div, evalue, qhit, shit, dist) in getJobOrthologs(ds, job):
-            with open(os.path.join(here, '{}.aa_{}.aa_{}_{}'.format(qdb, sdb, div, evalue)), 'a') as fh:
-                fh.write('{} {} {}\n'.format(shit, qhit, dist))
-
+    taxonToData = getTaxonToData(ds)
+    taxonToData.update(missingTaxonToData)
+    setData(ds, TAXON_TO_DATA, taxonToData)
+        
         
 ###############
 # DATASET STUFF
 ###############
 
-def _getDatasetId(ds):
+def getDatasetId(ds):
+    '''
+    e.g. 2011_01
+    '''
     return os.path.basename(ds)
 
 
@@ -670,14 +812,14 @@ def cleanGenomes(ds):
     '''
     remove all the genomes in the genomes dir
     '''
-    genomes = getGenomes(ds, refresh=True)
+    genomes = getGenomes(ds)
     for genome in genomes:
         path = getGenomePath(ds, genome)
         if os.path.exists(path):
             print 'removing {}'.format(path)
             # shutil.rmtree(path)
     # reset genomes cache
-    getGenomes(ds, refresh=True)
+    setGenomes(ds)
 
 
 #################
@@ -689,18 +831,18 @@ def computeJobs(ds):
     submit all incomplete and non-running jobs to lsf, so they can compute their respective pairs.
     '''
     jobs = getJobs(ds)
-    util.writeToFile('computeJobs: ds={}\njobs={}\n'.format(ds, jobs), os.path.join(ds, makeUniqueDatetimeName(prefix='roundup_compute_history_')))
     for job in jobs:
         if isComplete(ds, 'job', job):
             print 'job is already complete:', job
             continue
-        if isJobRunning(ds, job):
+        if LSF.isJobNameRunning(getComputeJobName(ds, job)):
             print 'job is already running:', job
             continue
         funcName = 'roundup_dataset.computeJob'
         keywords = {'ds': ds, 'job': job}
         # reserve 500MB in /tmp for duration of job to avoid nodes where someone, not naming any names, has used too much space.
-        lsfOptions = ['-R "rusage[tmp=500]"', '-q '+LSF.LSF_LONG_QUEUE, roundup_common.ROUNDUP_LSF_OUTPUT_OPTION, '-J '+getComputeJobName(ds, job)]
+        # redirect output to /dev/null so we do not get thousands of useless emails from lsf.
+        lsfOptions = ['-R "rusage[tmp=500]"', '-q '+LSF.LSF_LONG_QUEUE, ' -o /dev/null', '-J '+getComputeJobName(ds, job)]
         jobid = lsfdispatch.dispatch(funcName, keywords=keywords, lsfOptions=lsfOptions)
         msg = 'computeJobs(): starting job on grid.  lsfjobid={}, ds={}, job={}'.format(jobid, ds, job)
         print msg
@@ -730,12 +872,10 @@ def computeJob(ds, job):
 
     # merge orthologs for pairs into a single file.
     if not isComplete(ds, 'job_ologs_merge', job):
-        # merge orthologs into a single file
-        removeJobOrthologs(ds, job) # remove any pre-existing stuff.  could happen if a job fails while writing orthologs to the file.
-        for pair in pairs:
-            orthologsPath = os.path.join(jobDir, '{}_{}.pair.orthologs.txt'.format(*pair))
-            orthologs = readOrthologsFile(orthologsPath)
-            addJobOrthologs(ds, job, orthologs)
+        jobOrthologsPath = getJobOrthologsPath(ds, job)
+        pairsPaths = [os.path.join(jobDir, '{}_{}.pair.orthologs.txt'.format(*pair)) for pair in pairs]
+        orthDatasGen = orthologs.orthDatasFromFilesGen(pairsPaths)
+        orthologs.orthDatasToFile(orthDatasGen, jobOrthologsPath)
         markComplete(ds, 'job_ologs_merge', job)
         
     # delete the individual pair olog files
@@ -788,12 +928,8 @@ def computePair(ds, pair, workingDir, orthologsPath):
         if not isComplete(ds, 'roundup', pair):
             startTime = time.time()
             divEvalueToOrthologs =  rsd.computeOrthologsUsingSavedHits(queryFastaPath, subjectFastaPath, divEvalues, forwardHitsPath, reverseHitsPath, workingDir=tmpDir)
-            # convert orthologs from a map to a table.
-            orthologs = []
-            for (div, evalue), partialOrthologs in divEvalueToOrthologs.items():
-                for query, subject, distance in partialOrthologs:
-                    orthologs.append((queryGenome, subjectGenome, div, evalue, query, subject, distance))
-            writeOrthologsFile(orthologs, orthologsPath)
+            orthDatas = [((queryGenome, subjectGenome, div, evalue), orthologs) for (div, evalue), orthologs in divEvalueToOrthologs.items()]
+            orthologs.orthDatasToFile(orthDatas, orthologsPath)
             putRsdStats(ds, queryGenome, subjectGenome, divEvalues, startTime=startTime, endTime=time.time())
             markComplete(ds, 'roundup', pair)
     # clean up files
@@ -804,20 +940,6 @@ def computePair(ds, pair, workingDir, orthologsPath):
     # complete pair computation
     putPairStats(ds, queryGenome, subjectGenome, startTime=pairStartTime, endTime=time.time())
     markComplete(ds, 'pair', pair)
-
-
-#################################
-# LOADING DATASET INTO DATABASE
-#################################
-
-def loadDatabase(ds):
-    # parse results files, getting a list of sequences.
-    # get gene name from fasta lines.
-    # get go ids from idmapping file.
-    # get go name from ...
-    
-    # drop and create tables for dataset.
-    pass
 
 
 ######
@@ -833,18 +955,22 @@ def getJobs(ds, refresh=False):
     if refresh:
         return updateMetadata(ds, {'jobs': os.listdir(getJobsDir(ds))})['jobs']
     else:
-        jobs = loadMetadata(ds).get('jobs')
+        jobs = getMetadata(ds).get('jobs')
         if not jobs:
             return updateMetadata(ds, {'jobs': os.listdir(getJobsDir(ds))})['jobs']
         else:
             return jobs
 
+
 def getJobPairs(ds, job):
-    return readPairsFile(os.path.join(getJobDir(ds, job), 'job_pairs.txt'))
+    with open(os.path.join(getJobDir(ds, job), 'job_pairs.json')) as fh:
+        return json.load(fh)
 
 
 def setJobPairs(ds, job, pairs):
-    writePairsFile(pairs, os.path.join(getJobDir(ds, job), 'job_pairs.txt'))
+    with open(os.path.join(getJobDir(ds, job), 'job_pairs.json'), 'w') as fh:
+        json.dump(pairs, fh, indent=0)
+    
 
 
 def getJobDir(ds, job):
@@ -855,57 +981,31 @@ def getJobOrthologsPath(ds, job):
     return os.path.join(getOrthologsDir(ds), '{}.orthologs.txt'.format(job))
 
 
-def getJobOrthologs(ds, job):
-    return readOrthologsFile(getJobOrthologsPath(ds, job))
-
-
-def removeJobOrthologs(ds, job):
-    writeOrthologsFile([], getJobOrthologsPath(ds, job))
-
-
-def addJobOrthologs(ds, job, orthologs):
-    writeOrthologsFile(orthologs, getJobOrthologsPath(ds, job), mode='a')
-
-
 def getComputeJobName(ds, job):
-    return _getDatasetId(ds) + '_' + job
+    return getDatasetId(ds) + '_' + job
 
-
-def isJobRunning(ds, job):
-    '''
-    checks if job is running on LSF.
-    returns: True if job is on LSF and has not ended.  False otherwise.
-    '''
-    jobName = getComputeJobName(ds, job)
-    infos = LSF.getJobInfosByJobName(jobName)
-    statuses = [s for s in [info[LSF.STATUS] for info in infos] if not LSF.isEndedStatus(s)]
-    if len(statuses) > 1:
-        msg = 'isJobRunning: more than one non-ended LSF job for '+jobName+'\ndataset='+str(ds)+'\nstatuses='+str(statuses)
-        raise Exception(msg)
-    if statuses:
-        return True
-    else:
-        return False
-                                                        
 
 #########
 # GENOMES
 #########
 
-def getGenomes(ds, refresh=False):
+def getGenomes(ds):
     '''
-    caches genomes in the dataset metadata if they have not already been
-    cached, b/c the isilon is wicked slow at listing dirs.
+    gets genomes cached in the metadata.
     returns: list of genomes in the dataset.
     '''
-    if refresh:
-        return updateMetadata(ds, {'genomes': os.listdir(getGenomesDir(ds))})['genomes']
-    else:
-        genomes = loadMetadata(ds).get('genomes')
-        if not genomes:
-            return updateMetadata(ds, {'genomes': os.listdir(getGenomesDir(ds))})['genomes']
-        else:
-            return genomes
+    return getMetadata(ds)['genomes']
+
+
+def setGenomes(ds, genomes=None):
+    '''
+    genomes: a list of genomes to cache.  If None, will get the list from the genomes directory.
+    caches genomes in the dataset metadata, b/c the isilon is wicked slow at listing dirs.
+    also useful for testing.  can make a small dataset.
+    '''
+    if genomes is None:
+        genomes = os.listdir(getGenomesDir(ds))
+    return updateMetadata(ds, {'genomes': genomes})['genomes']
 
     
 def getGenomesAndPaths(ds):
@@ -942,30 +1042,13 @@ def getGenomeIndexPath(ds, genome):
 
     
 
-###########
-# ORTHOLOGS
-###########
+###################
+# ORTHOLOGS/RESULTS
+###################
 
-def orthologFileGen(path):
-    '''
-    useful for iterating through the orthologs in a large file
-    '''
-    if os.path.exists(path):
-        with open(path) as fh:
-            for line in fh:
-                line = line.strip()
-                if line and not line.startswith('#'):
-                    yield line.split('\t')
     
-
-def readOrthologsFile(path):
-    return list(orthologFileGen(path))
-
-
-def writeOrthologsFile(orthologs, path, mode='w'):
-    with open(path, mode) as fh:
-        for ortholog in orthologs:
-            fh.write('{}\n'.format('\t'.join([str(f) for f in ortholog])))
+def getOrthologsFiles(ds):
+    return glob.glob(os.path.join(getOrthologsDir(ds), '*.orthologs.txt'))
 
 
 #######
@@ -981,35 +1064,6 @@ def getPairs(ds, genomes=None):
     return sorted(set([tuple(sorted((g1, g2))) for g1 in genomes for g2 in genomes if g1 != g2]))
 
 
-def getNewPairs(ds):
-    return readPairsFile(os.path.join(ds, 'new_pairs.txt'))
-
-
-def setNewPairs(ds, pairs):
-    writePairsFile(pairs, os.path.join(ds, 'new_pairs.txt'))
-
-
-def getOldPairs(ds):
-    return readPairsFile(os.path.join(ds, 'old_pairs.txt'))
-
-
-def setOldPairs(ds, pairs):
-    writePairsFile(pairs, os.path.join(ds, 'old_pairs.txt'))
-
-
-def writePairsFile(pairs, path):
-    with open(path, 'w') as fh:
-        json.dump(pairs, fh, indent=2)
-            
-
-def readPairsFile(path):
-    pairs = []
-    if os.path.exists(path):
-        with open(path) as fh:
-            pairs = json.load(fh)
-    return pairs
-
-
 ###########
 # COMPLETES
 ###########
@@ -1019,20 +1073,21 @@ def readPairsFile(path):
 # pros: concurrency. fast even with millions of completes.
 # cons: different mysql db for dev and prod, so must use the prod code on a prod dataset.
 
+
 def isComplete(ds, *key):
-    return kvGet(ds, key=str(key), default=False, ns='completes')
+    return workflow.isDone(completesNS(ds), key)
 
 
 def markComplete(ds, *key):
-    kvPut(ds, key=str(key), value=True, ns='completes')
+    workflow.markDone(completesNS(ds), key)
 
 
 def resetCompletes(ds):
-    resetKVStore(ds, ns='completes')    
+    return workflow.resetDones(completesNS(ds))
 
 
-def deleteCompletes(ds):
-    deleteKVStore(ds, ns='completes')    
+def completesNS(ds):
+    return 'roundup_dataset_{}'.format(getDatasetId(ds))
 
 
 # isStepComplete uses a flat file in the dataset.  Used for downloading source files and other few completes executed serially.
@@ -1054,70 +1109,6 @@ def markStepComplete(ds, *key):
         fh.write(str(key)+'\n')
         
         
-#################
-# KEY-VALUE STORE
-#################
-# Uses a database backed key-value store.  This makes it fast, even with millions of rows, and concurrency-safe.
-
-def kvGet(ds, key, default=None, ns='main'):
-    return getKVStore(ds, ns).get(key, default)
-
-    
-def kvPut(ds, key, value, ns='main'):
-    getKVStore(ds, ns).put(key, str(value))
-
-
-KEY_VALUE_CACHE = {}
-def getKVStore(ds, ns='main'):
-    '''
-    get the kvstore from the cache, or create one and place it in the cache.
-    '''
-    if ds in KEY_VALUE_CACHE and ns in KEY_VALUE_CACHE[ds]:
-        return KEY_VALUE_CACHE[ds][ns]
-    dsId = _getDatasetId(ds)
-    kv = kvstore.KVStore(util.ClosingFactoryCM(config.openDbConn), table='roundup_kvstore_{}_{}'.format(dsId, ns))
-    KEY_VALUE_CACHE.setdefault(ds, {})[ns] = kv
-    return kv
-
-
-def resetKVStore(ds, ns='main'):
-    '''
-    ds: a dataset id
-    ns: a namespace for the keys.  a string.  useful for separating key-values into groups that can be reset separately.
-    drop and create the table for ns, thereby clearing all the keys and values in it.
-    '''
-    dsId = _getDatasetId(ds)
-    if ds in KEY_VALUE_CACHE and ns in KEY_VALUE_CACHE[ds]:
-        del KEY_VALUE_CACHE.setdefault(ds, {})[ns]
-    kv = kvstore.KVStore(util.ClosingFactoryCM(config.openDbConn), table='roundup_kvstore_{}_{}'.format(dsId, ns), drop=True, create=True)
-
-
-def deleteKVStore(ds, ns='main'):
-    '''
-    used when deleting a dataset.
-    '''
-    dsId = _getDatasetId(ds)
-    if ds in KEY_VALUE_CACHE and ns in KEY_VALUE_CACHE[ds]:
-        del KEY_VALUE_CACHE.setdefault(ds, {})[ns]
-    kv = kvstore.KVStore(util.ClosingFactoryCM(config.openDbConn), table='roundup_kvstore_{}_{}'.format(dsId, ns), drop=True, create=False)
-    
-
-##################
-# HELPER FUNCTIONS
-##################
-
-def makeUniqueDatetimeName(datetimeObj=None, prefix='', suffix=''):
-    '''
-    prefix: e.g. 'results_'
-    suffix: e.g. '.txt'
-    datetimeObj: provide a datetime object if do not want to use the current date and time.
-    returns: a unique name stamped with and sortable by current date and time, e.g. 'results_20090212_155450_e547be40-bca8-4a98-8a3e-1ed923dd97de.txt'
-    '''
-    if not datetimeObj:
-        datetimeObj = datetime.datetime.now()
-    return prefix + datetimeObj.strftime("%Y%m%d_%H%M%S") + "_" + uuid.uuid4().hex + suffix
-
-
 ##########
 # METADATA
 ##########
@@ -1130,27 +1121,116 @@ def updateMetadata(ds, metadata):
     update existing dataset metadata with the values in metadata.
     returns: the updated dataset metadata.
     '''
-    md = loadMetadata(ds)
+    md = getMetadata(ds)
     md.update(metadata)
-    return dumpMetadata(ds, md)
+    return setMetadata(ds, md)
 
     
-def loadMetadata(ds):
+def getMetadata(ds):
     '''
     returns: a dict, the existing persisted dataset metadata.
     '''
-    path = os.path.join(ds, 'dataset.metadata.json')
-    if os.path.exists(path):
-        with open(os.path.join(ds, 'dataset.metadata.json')) as fh:
-            return json.load(fh)
-    else:
-        return {}
+    return getData(ds, DATASET)
     
 
-def dumpMetadata(ds, metadata):
-    with open(os.path.join(ds, 'dataset.metadata.json'), 'w') as fh:
-        json.dump(metadata, fh, indent=2)
-    return metadata
+def setMetadata(ds, metadata):
+    return setData(ds, DATASET, metadata)
+
+
+def getData(ds, key):
+    '''
+    used for storing big chunks of metadata, like geneToDesc.
+    '''
+    path = os.path.join(ds, 'metadata.{}.json'.format(key))
+    with open(path) as fh:
+        return json.load(fh)
+
+
+def setData(ds, key, data):
+    '''
+    used for storing big chunks of metadata, like geneToDesc.
+    '''
+    path = os.path.join(ds, 'metadata.{}.json'.format(key))
+    with open(path, 'w') as fh:
+        json.dump(data, fh, indent=0)
+    return data
+
+
+def getUniprotRelease(ds):
+    return getMetadata(ds)['uniprotRelease']
+
+
+def getSourceUrls(ds):
+    return [url for url, dest in getMetadata(ds)['sources']]
+
+        
+def getReleaseName(ds):
+    '''
+    returns: the name of this roundup release, in human readable form.  e.g. 2011_01
+    '''
+    return getDatasetId(ds)
+
+
+def getReleaseDate(ds):
+    '''
+    returns: a datetime.date object
+    '''
+    dateStr = datetime.date.getMetadata(ds)['releaseDate']
+    return datetime.datetime.strptime(dateStr, "%Y-%m-%d").date()
+
+    
+def setReleaseDate(ds, date=None):
+    '''
+    date: a datetime.date object.  if None, datetime.date.today() is used.
+    '''
+    if date is None:
+        date = datetime.date.today()
+    updateMetadata(ds, {'releaseDate': str(date.strftime("%Y-%m-%d"))})
+    
+
+def getGenomeToName(ds):
+    return getMetadata(ds)['genomeToName']
+
+
+def getGenomeToTaxon(ds):
+    return getMetadata(ds)['genomeToTaxon']
+
+
+def getGenomeToCount(ds):
+    return getMetadata(ds)['genomeToCount']
+
+
+def getDatasetStats(ds):
+    md = getMetadata(ds)
+    return dict((key, md[key]) for key in ('numGenomes', 'numPairs', 'numOrthologs'))
+
+
+def getGenomeToGenes(ds):
+    return getData(ds, GENOME_TO_GENES)
+
+
+def getGeneToName(ds):
+    return getData(ds, GENE_TO_NAME)
+
+
+def getGeneToGenome(ds):
+    return getData(ds, GENE_TO_GENOME)
+
+
+def getGeneToGoTerms(ds):
+    return getData(ds, GENE_TO_GO_TERMS)
+
+
+def getGeneToGeneIds(ds):
+    return getData(ds, GENE_TO_GENE_IDS)
+
+
+def getTermToData(ds):
+    return getData(ds, TERM_TO_DATA)
+
+
+def getTaxonToData(ds):
+    return getData(ds, TAXON_TO_DATA)
 
 
 #################
@@ -1158,26 +1238,35 @@ def dumpMetadata(ds, metadata):
 #################
 
 
+STATS_CACHE = {}
+def getStatsStore(ds):
+    if not STATS_CACHE:
+        dsId = getDatasetId(ds)
+        kv = kvstore.KVStore(util.ClosingFactoryCM(config.openDbConn), ns='roundup_dataset_{}_{}'.format(dsId, 'stats'))
+        STATS_CACHE[ds] = kv
+    return STATS_CACHE[ds]
+    
+
 def resetStats(ds):
-    resetKVStore(ds, ns='stats')    
+    getStatsStore(ds).reset()
 
 
 def deleteStats(ds):
-    deleteKVStore(ds, ns='stats')    
+    getStatsStore(ds).delete()
 
 
 def getStats(ds, key):
     '''
     if key is not present, returns an empty dict
     '''
-    return kvGet(ds, key=str(key), default={}, ns='stats')
+    return getStatsStore(ds).get(key, default={})
 
 
 def putStats(ds, key, stats):
     '''
     stats: a dict of statistics for blast, rsd, or a pair.
     '''
-    kvPut(ds, key=str(key), value=stats, ns='stats')
+    getStatsStore(ds).put(key, stats)
 
 
 def putBlastStats(ds, qdb, sdb, startTime, endTime):
@@ -1209,7 +1298,7 @@ def putPairStats(ds, qdb, sdb, startTime, endTime):
     sdbFastaPath = getGenomeFastaPath(ds, sdb)
     qdbBytes = os.path.getsize(qdbFastaPath)
     sdbBytes = os.path.getsize(sdbFastaPath)
-    genomeToCount = loadMetadata(ds)['genomeToCount']
+    genomeToCount = getMetadata(ds)['genomeToCount']
     qdbSeqs = genomeToCount[qdb]
     sdbSeqs = genomeToCount[sdb]
     stats = {'type': 'pair', 'qdb': qdb, 'sdb': sdb, 'startTime': startTime, 'endTime': endTime,
@@ -1222,12 +1311,142 @@ def putPairStats(ds, qdb, sdb, startTime, endTime):
 def getPairStats(ds, qdb, sdb):
     key = ('pair', qdb, sdb)
     return getStats(ds, key)
+
+
+def extractDatasetStats(ds):
+    '''
+    num genomes, num pairs, total num orthologs.
+    '''
+    numGenomes = len(getGenomes(ds))
+    numPairs = len(getPairs(ds))
+    numOrthologs = 0
+    for params, orthologs in orthologs.orthDatasFromFilesGen(getOrthologsFiles(ds)):
+        numOrthologs += len(orthologs)
+    updateMetadata(ds, {'numGenomes': numGenomes, 'numPairs': numPairs, 'numOrthologs': numOrthologs})
+
     
+def extractPerformanceStats(ds):
+    '''
+    this function needs to be fixed for future data set.  it currently only works for the old stats.
+    it should not dump the stats table and then use eval and json to parse it, when there are functions like getBlastStats().
+    '''
+    print 'this function needs to be fixed for future data set.  it currently only works for the old stats.'
+    
+    with nested.NestedTempDir(dir=roundup_common.LOCAL_DIR) as tmpDir:
+        tmpDir = ds
+        statsTable = 'roundup_kvstore_{}_stats'.format(getDatasetId(ds))
+        dumpFile = os.path.join(tmpDir, 'performance.stats.dump')
+        if not os.path.exists(dumpFile):
+            cmd = "time echo 'select name, value from {}' | mysql --skip-column-names -h dev.mysql devroundup > {}".format(statsTable, dumpFile)
+            subprocess.check_call(cmd, shell=True)
+    
+        print 'getting genome to count'
+        genomeToCount = getGenomeToCount(ds)
+        blastStats = {}
+        rsdStats = {}
+        totalTime = 0
+        print 'processing stats'
+        with open(dumpFile) as fh:
+            for i, line in enumerate(fh):
+                if i % 100000 == 0: print i
+                key, value = line.strip().split('\t')
+                stats = eval(json.loads(value))
+                elapsedTime = stats['endTime'] - stats['startTime']
+                args = eval(key)
+                kind, qdb, sdb = args
+                pair = (qdb, sdb)
+                if kind == 'blast':
+                    blastStats[json.dumps(pair)] = elapsedTime
+                    totalTime += elapsedTime
+                elif kind == 'rsd':
+                    rsdStats[json.dumps(pair)] = elapsedTime
+                    totalTime += elapsedTime
+        print 'total time:', totalTime
+        print 'saving stats'
+        setData(ds, BLAST_STATS, blastStats)
+        setData(ds, RSD_STATS, rsdStats)
 
 
 ########################
 # DEPRECATED / UNUSED
 ########################
+
+
+
+
+# CONVERSION OF ORTHOLOGS.TXT FILES FROM OLD TO NEW FORMAT
+# old format: tab-separated qdb, sdb, div, evalue, qid, sid, and dist.
+# example line: LACJO   YEAS7   0.2     1e-15   Q74IU0  A6ZM40  1.7016
+# all lines are the same.
+# pros: very simple.  each line describes all the params.
+# cons: bigger files.  can not represent a pair of genomes (and div, evalue) that has no orthologs.  also, a bit of a pain to parse into groups of orthologs
+
+# new format:
+# a set of orthologs starts with a params row, then has 0 or more ortholog rows, then has an end row.
+# Like this:
+# PA\tLACJO\tYEAS7\t0.2\t1e-15
+# OR\tQ74IU0\tA6ZM40\t1.7016
+# OR\tQ74K17\tA6ZKK5\t0.8215
+# //
+# pros: smaller files.  easier to parse.  can represent a set of parameters with no orthologs.
+# cons: not all rows are identical in format, so requires a stateful parser.  but that is required anyway.
+    
+def convertOrthologs(ds):
+    convertedDir = os.path.join(ds, 'converted')
+    if not os.path.exists(convertedDir):
+        os.mkdir(convertedDir)
+    orthologsFiles = getOrthologsFiles(ds)
+    oldAndNewFiles = [(path, os.path.join(convertedDir, os.path.basename(path))) for path in orthologsFiles]
+    # convertOrthologsFiles(oldAndNewFiles)
+    # parallelize on lsf, b/c takes about 7 seconds per file and I have 4000 files.
+    funcName = 'roundup_dataset.convertOrthologsFiles'
+    for pairsList in util.splitIntoN(oldAndNewFiles, 200):
+        keywords = {'oldAndNewFiles': pairsList}
+        # convertOrthologsFiles(pairsList)
+        print lsfdispatch.dispatch(funcName, keywords=keywords)
+
+    
+def convertOrthologsFiles(oldAndNewFiles):
+    for path, newPath in oldAndNewFiles:
+        print path, '=>', newPath
+        convertOrthologsFile(path, newPath)
+
+        
+def convertOrthologsFile(path, newPath):
+    START = True
+    qdb = sdb = div = evalue = None
+    orthologs = []
+    with open(newPath, 'w') as fh, open(path) as fh2:
+        for line in fh2:
+            # example line: LACJO   YEAS7   0.2     1e-15   Q74IU0  A6ZM40  1.7016
+            qdb2, sdb2, div2, evalue2, qid, sid, dist = line.strip().split('\t')
+            if START: # start a new group of orthologs.
+                qdb = qdb2
+                sdb = sdb2
+                div = div2
+                evalue = evalue2
+                orthologs = [(qid, sid, dist)]
+                START = False
+            elif qdb != qdb2 or sdb != sdb2 or div != div2 or evalue != evalue2: # a new group of orthologs.  write out last group and start a new group.
+                fh.write('PA\t{}\t{}\t{}\t{}\n'.format(qdb, sdb, div, evalue))
+                for ortholog in orthologs:
+                    fh.write('OR\t{}\t{}\t{}\n'.format(*ortholog))
+                fh.write('//\n')
+                qdb = qdb2
+                sdb = sdb2
+                div = div2
+                evalue = evalue2                    
+                orthologs = [(qid, sid, dist)]
+            else: # append to the current group of orthologs
+                orthologs.append((qid, sid, dist))
+        if qdb is not None: # at end of file, write out the current group (if any) of orthologs
+            fh.write('PA\t{}\t{}\t{}\t{}\n'.format(qdb, sdb, div, evalue))
+            for ortholog in orthologs:
+                fh.write('OR\t{}\t{}\t{}\n'.format(*ortholog))
+            fh.write('//\n')
+            
+            
+
 
 # last line - python emacs bug fix
  

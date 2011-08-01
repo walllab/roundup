@@ -52,6 +52,7 @@ def run(args, stdin=None, shell=True):
 def dispatch(name, args=None, keywords=None):
     '''
     name: name of callable/function including modules, etc., e.g. 'foo_package.gee_package.bar_module.wiz_func'
+    that can be imported from the current sys.path
     args: a list of arguments for the callable/function.
     keywords: a dict of keyword parameters for the callable/function.
     using the fully qualifed name, loads module, finds and calls function with the given args and keywords

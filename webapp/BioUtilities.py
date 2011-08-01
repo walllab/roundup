@@ -12,9 +12,8 @@ import util
 import fasta
 
 
-def findSeqIdWithFasta(fasta, genome):
+def findSeqIdWithFasta(fasta, subjectIndexPath):
     ''' return first hit '''
-    subjectIndexPath = roundup_common.fastaFileForDbPath(roundup_common.makeDbPath(genome))
     try:
         path = nested.makeTempPath()
         util.writeToFile(fasta, path)
@@ -41,5 +40,5 @@ def getFastaForId(id, indexPath):
     
     '''
     # return execute.run('fastacmd -d %s -s "lcl|%s"'%(indexPath, id))
-    return execute.run('blastdbcmd -db %s -entry "lcl|%s"'%(indexPath, id))
+    return execute.run('blastdbcmd -db %s -entry "%s"'%(indexPath, id))
 

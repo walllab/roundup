@@ -25,12 +25,14 @@ import orthquery
 import orthresult
 import BioUtilities
 import roundup_db
+import LSF
 
 
 USE_CACHE = True
 SYNC_QUERY_LIMIT = 20 # run an asynchronous query (on lsf) if more than this many genomes are in the query.
-GENOMES = roundup_util.getGenomes()
-GENOME_CHOICES = [(g, orthresult.genomeDisplayName(g)) for g in GENOMES] # pairs of genome id and display name
+GENOMES_AND_NAMES = roundup_util.getGenomesAndNames()
+GENOMES = [genome for genome, name in GENOMES_AND_NAMES]
+GENOME_CHOICES = sorted([(g, '{}: {}'.format(g, n)) for g, n in GENOMES_AND_NAMES], key=lambda gn: gn[1]) # sorted by display name
 DIVERGENCE_CHOICES = [(d, d) for d in roundup_common.DIVERGENCES]
 EVALUE_CHOICES = [(d, d) for d in reversed(roundup_common.EVALUES)] # 1e-20 .. 1e-5
 IDENTIFIER_TYPE_CHOICES = [('gene_name_type', 'Gene Name'), ('seq_id_type', 'Sequence Id')]
@@ -52,31 +54,36 @@ def displayName(key, nameMap=DISPLAY_NAME_MAP):
 
 
 def home(request):
-    stats = roundup_util.getRoundupDataStats() # keys: numGenomes, numGenomePairs, numOrthologs
+    stats = roundup_util.getDatasetStats() # keys: numGenomes, numPairs, numOrthologs
     return django.shortcuts.render(request, 'home.html', dict([('nav_id', 'home')] + stats.items()))
 
+
+def about(request):
+    stats = roundup_util.getDatasetStats() # keys: numGenomes, numPairs, numOrthologs
+    return django.shortcuts.render(request, 'about.html', {'nav_id': 'about', 'numGenomes': stats['numGenomes']})
+    
 
 def documentation(request):
     return django.shortcuts.render(request, 'documentation.html', {'nav_id': 'documentation'})
 
 
-def project_overview(request):
-    stats = roundup_util.getRoundupDataStats() # keys: numGenomes, numGenomePairs, numOrthologs
-    return django.shortcuts.render(request, 'project_overview.html', dict([('nav_id', 'project_overview')] + stats.items()))
-
-
-def about(request):
-    stats = roundup_util.getRoundupDataStats() # keys: numGenomes, numGenomePairs, numOrthologs
-    return django.shortcuts.render(request, 'about.html', dict([('nav_id', 'about')] + stats.items()))
-    
-
 def genomes(request):
-    return django.shortcuts.render(request, 'genomes.html', {'nav_id': 'genomes'})
+    # tuples for each genome containing: acc, name, taxon, cat, catName, div, divName, size
+    descs = sorted(roundup_util.getGenomeDescriptions(), key=lambda d: d[1]) # sorted by name
+    eukaryota = [desc for desc in descs if desc[3] == 'E']
+    archaea = [desc for desc in descs if desc[3] == 'A']
+    bacteria = [desc for desc in descs if desc[3] == 'B']
+    viruses = [desc for desc in descs if desc[3] == 'V']
+    unclassified = [desc for desc in descs if desc[3] == 'U']
+    num_genomes, num_eukaryota, num_archaea, num_bacteria, num_viruses, num_unclassified = [len(g) for g in (descs, eukaryota, archaea, bacteria, viruses, unclassified)]
+    kw = {'nav_id': 'genomes', 'descGroups': [eukaryota, archaea, bacteria, viruses, unclassified], 'num_genomes': num_genomes,
+          'num_eukaryota': num_eukaryota, 'num_archaea': num_archaea, 'num_bacteria': num_bacteria, 'num_viruses': num_viruses, 'num_unclassified': num_unclassified}
+    return django.shortcuts.render(request, 'genomes.html', kw)
 
 
 def sources(request):
-    descs = roundup_util.getGenomeDescriptions(GENOMES)
-    return django.shortcuts.render(request, 'sources.html', {'nav_id': 'sources', 'sources': descs})
+    html = roundup_util.getSourcesHtml()
+    return django.shortcuts.render(request, 'regular.html', {'nav_id': 'sources', 'html': html})
 
 
 def updates(request):
@@ -222,7 +229,7 @@ def lookup(request):
         if form.is_valid(): # All validation rules pass
             logging.debug(form.cleaned_data)
             genome, fasta = form.cleaned_data['genome'], form.cleaned_data['fasta'] 
-            seqId = BioUtilities.findSeqIdWithFasta(fasta, genome)
+            seqId = BioUtilities.findSeqIdWithFasta(fasta, roundup_dataset.getGenomeIndexPath(config.CURRENT_DATASET, genome))
             # store result in cache, so can do a redirect/get. 
             key = makeUniqueId()
             roundup_util.cacheSet(key, {'genome': genome, 'fasta': fasta, 'seqId': seqId})
@@ -353,7 +360,7 @@ def browse(request):
             logging.debug('browseId={}, browseIdType={}'.format(browseId, browseIdType))
             if browseId and browseIdType == 'gene_name_type':
                 genome = form.cleaned_data['primary_genome']
-                seqIds = roundup_db.getSeqIdsForGeneName(geneName=browseId, database=genome)
+                seqIds = roundup_db.getSeqIdsForGeneName(geneName=browseId, genome=genome)
                 if not seqIds: # no seq ids matching the gene name were found.  oh no!
                     message = 'In your Browse query, Roudnup did not find the gene named "{}" in the genome "{}".  Try searching for a gene name.'.format(browseId, genome)
                     # store result in cache, so can do a redirect/get. 
@@ -572,7 +579,7 @@ def orth_query(request, queryId):
     if USE_CACHE and roundup_util.cacheHasKey(resultId) and orthresult.resultExists(resultId):
         logging.debug('cache hit.')
         return django.shortcuts.redirect(django.core.urlresolvers.reverse(orth_result, kwargs={'resultId': resultId}))
-    elif not config.NO_LSF and roundup_util.isRunningJob(resultId):
+    elif not config.NO_LSF and LSF.isJobNameRunning(resultId, retry=True, delay=0.2):
         logging.debug('cache miss. job is already running.  go to waiting page.')
         return django.shortcuts.redirect(django.core.urlresolvers.reverse(orth_wait, kwargs={'resultId': resultId}))
     elif config.NO_LSF or querySize <= SYNC_QUERY_LIMIT:
@@ -606,7 +613,7 @@ def job_ready(request):
     # validate inputs to avoid malicious attacks
     job = request.GET.get('job')
     logging.debug('\tjob={}'.format(job))
-    data = json.dumps({'ready': bool(not job or roundup_util.isEndedJob(job))})
+    data = json.dumps({'ready': bool(not job or LSF.isJobNameEnded(job, retry=True, delay=0.2))})
     logging.debug('\tdata={}'.format(data))
     # data = json.dumps({'ready': True})
     return django.http.HttpResponse(data, content_type='application/json')

@@ -124,7 +124,7 @@ def doOrthologyQuery(query_desc=None, tc_only=False, db_cursor_read_buffer_size=
         # get genome database ids
         genomeIds = set([sequenceIdToSequenceDataMap[id][roundup_common.GENOME_ID_KEY] for id in sequenceIds])
         genomeIds = list(genomeIds)
-        genomes = [roundup_db.getDatabaseForId(id=id, conn=conn) for id in genomeIds]
+        genomes = [roundup_db.getGenomeForId(id=id, conn=conn) for id in genomeIds]
         # map genome to genomeId
         genomeToGenomeId = dict(zip(genomes, genomeIds))
         genomeIdToGenome = dict(zip(genomeIds, genomes))
@@ -260,8 +260,8 @@ def doOrthologyQuery2(query_desc=None, tc_only=False, db_cursor_read_buffer_size
         # get genome database ids
 #        genomeIds = set([sequenceIdToSequenceDataMap[id][roundup_common.GENOME_ID_KEY] for id in sequenceIds])
 #        genomeIds = list(genomeIds)
-#        genomes = [roundup_db.getDatabaseForId(id=id, conn=conn) for id in genomeIds]
-        genomeIds = [roundup_db.getIdForDatabase(db, conn) for db in genomes]
+#        genomes = [roundup_db.getGenomeForId(id=id, conn=conn) for id in genomeIds]
+        genomeIds = [roundup_db.getIdForGenome(db, conn) for db in genomes]
         # map genome to genomeId
         genomeToGenomeId = dict(zip(genomes, genomeIds))
         genomeIdToGenome = dict(zip(genomeIds, genomes))
@@ -389,8 +389,8 @@ def doOrthologyQuery3(query_desc=None, tc_only=False, db_cursor_read_buffer_size
         # get genome database ids
         # genomeIds = set([sequenceIdToSequenceDataMap[id][roundup_common.GENOME_ID_KEY] for id in sequenceIds])
         # genomeIds = list(genomeIds)
-        # genomes = [roundup_db.getDatabaseForId(id=id, conn=conn) for id in genomeIds]
-        genomeIds = [roundup_db.getIdForDatabase(db, conn) for db in genomes]
+        # genomes = [roundup_db.getGenomeForId(id=id, conn=conn) for id in genomeIds]
+        genomeIds = [roundup_db.getIdForGenome(db, conn) for db in genomes]
         # map genome to genomeId
         genomeToGenomeId = dict(zip(genomes, genomeIds))
         genomeIdToGenome = dict(zip(genomeIds, genomes))
@@ -523,8 +523,8 @@ def doOrthologyQuery4(query_desc=None, tc_only=False, db_cursor_read_buffer_size
         # get genome database ids
         # genomeIds = set([sequenceIdToSequenceDataMap[id][roundup_common.GENOME_ID_KEY] for id in sequenceIds])
         # genomeIds = list(genomeIds)
-        # genomes = [roundup_db.getDatabaseForId(id=id, conn=conn) for id in genomeIds]
-        genomeIds = [roundup_db.getIdForDatabase(db, conn) for db in genomes]
+        # genomes = [roundup_db.getGenomeForId(id=id, conn=conn) for id in genomeIds]
+        genomeIds = [roundup_db.getIdForGenome(db, conn) for db in genomes]
         # map genome to genomeId
         genomeToGenomeId = dict(zip(genomes, genomeIds))
         genomeIdToGenome = dict(zip(genomeIds, genomes))

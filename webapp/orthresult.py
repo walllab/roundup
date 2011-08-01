@@ -14,6 +14,7 @@ import nested
 import logging
 import execute
 import roundup_common
+import roundup_dataset
 import fasta
 import BioUtilities
 
@@ -348,27 +349,11 @@ def resultToTermsSummary(resultId, urlFunc, otherParams={}):
 
 def makeSeqIdLink(id):
     '''
-    creates a link for NCBI and Ensembl identifiers to the corresponding page at NCBI or Ensembl.
+    creates a link for uniprot accs.
     '''
-    if isGINumber(id):
-        idLink = "<a href=\"http://www.ncbi.nlm.nih.gov/entrez/viewer.fcgi?db=protein&val=%s\">%s</a>"%(id, id)
-    elif isEnsemblId(id):
-        idLink = "<a href=\"http://www.ensembl.org/common/psychic?site=&species=&q=%s\">%s</a>"%(id, id)
-    else:
-        idLink = id
-    return idLink
+    return '<a href="http://www.uniprot.org/uniprot/{}">{}</a>'.format(id, id)
 
-
-def isEnsemblId(seqId):
-    ''' heuristic for guessing if an id is from ensembl.'''
-    return seqId.startswith('ENS') or seqId.startswith('NEWSIN') or seqId.startswith('GS')
-
-
-def isGINumber(seqId):
-    ''' heuristic for guessing if an id is from NCBI.'''
-    return re.search('^\d+$', seqId)
-
-
+    
 def makeQueryDescHtml(result):
     ''' creates html describing the search that was run to produce this result. '''
     return '<h3>Search Description</h3>\n<pre>'+str(result.get('query_desc'))+'</pre>\n'
@@ -676,7 +661,8 @@ def resultToGeneView(resultId, urlFunc, otherParams={}):
         content += '<li>'+genomeDisplayName(genome)+'<br/><pre>'
         for seqId in selectedRow[i]:
             try:
-                fastaPath = roundup_common.fastaFileForDbPath(roundup_common.makeDbPath(genome))
+                fastaPath = roundup_dataset.getGenomeIndexPath(config.CURRENT_DATASET, genome)
+                # fastaPath = roundup_common.fastaFileForDbPath(roundup_common.makeDbPath(genome))
                 logging.debug('fastaPath: {}'.format(fastaPath))
                 content += BioUtilities.getFastaForId(seqIdToDataMap.get(seqId, {}).get(roundup_common.EXTERNAL_SEQUENCE_ID_KEY), fastaPath)
             except:
@@ -843,6 +829,26 @@ if __name__=='__main__':
 #####################
 # DEPRECATED/OLD CODE
 #####################
+
+
+def makeSeqIdLinkOld(id):
+    if isGINumber(id):
+        idLink = "<a href=\"http://www.ncbi.nlm.nih.gov/entrez/viewer.fcgi?db=protein&val=%s\">%s</a>"%(id, id)
+    elif isEnsemblId(id):
+        idLink = "<a href=\"http://www.ensembl.org/common/psychic?site=&species=&q=%s\">%s</a>"%(id, id)
+    else:
+        idLink = id
+    return idLink
+
+
+def isEnsemblId(seqId):
+    ''' heuristic for guessing if an id is from ensembl.'''
+    return seqId.startswith('ENS') or seqId.startswith('NEWSIN') or seqId.startswith('GS')
+
+
+def isGINumber(seqId):
+    ''' heuristic for guessing if an id is from NCBI.'''
+    return re.search('^\d+$', seqId)
 
 
 

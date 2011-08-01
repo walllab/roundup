@@ -165,8 +165,8 @@ def readFasta(fastaFile, strict=True):
 def readFastaLines(fastaFile, strict=True, goodOnly=True):
     '''
     fastaFile: a file-like object or a path to a fasta file
-    yields: the lines of the fasta sequence (nameline and sequence data lines) for each sequence in the fasta file.
-    lines include newlines.
+    yields: a seq of fasta sequence lines for each sequence in the fasta file.
+    the first line is the nameline.  the other lines are the sequence data lines.  lines include newlines.
     '''
     if isinstance(fastaFile, basestring):
         with open(fastaFile) as fh:
