@@ -56,22 +56,22 @@ def connCM(conn=None, commit=True):
 # TABLE CREATE AND DROP FUNCTIONS
 #################################
 
-def versionTable(version, table):
+def releaseTable(release, table):
     '''
     table: e.g. 'genomes', 'sequence', or 'results'.  
     creates the database-scoped, correct name for a table in the roundup database.
-    basically, it fills in this template: 'roundup.roundup_<version>_<table>'.
+    basically, it fills in this template: 'roundup.roundup_<release>_<table>'.
     returns: the full table name e.g. 'roundup.roundup_201106_dataset_genomes'
     '''
-    return '{}.roundup_{}_{}'.format(ROUNDUP_MYSQL_DB, version, table)
+    return '{}.roundup_{}_{}'.format(ROUNDUP_MYSQL_DB, release, table)
 
 
-def dropVersion(version):
-    sqls = ['DROP TABLE IF EXISTS {}'.format(versionTable(version, 'genomes')),
-            'DROP TABLE IF EXISTS {}'.format(versionTable(version, 'divergences')), 
-            'DROP TABLE IF EXISTS {}'.format(versionTable(version, 'evalues')), 
-            'DROP TABLE IF EXISTS {}'.format(versionTable(version, 'sequence')), 
-            'DROP TABLE IF EXISTS {}'.format(versionTable(version, 'sequence_to_go_term')), 
+def dropRelease(release):
+    sqls = ['DROP TABLE IF EXISTS {}'.format(releaseTable(release, 'genomes')),
+            'DROP TABLE IF EXISTS {}'.format(releaseTable(release, 'divergences')), 
+            'DROP TABLE IF EXISTS {}'.format(releaseTable(release, 'evalues')), 
+            'DROP TABLE IF EXISTS {}'.format(releaseTable(release, 'sequence')), 
+            'DROP TABLE IF EXISTS {}'.format(releaseTable(release, 'sequence_to_go_term')), 
             ]
     with connCM() as conn:
         for sql in sqls:
@@ -79,7 +79,7 @@ def dropVersion(version):
             dbutil.executeSQL(sql=sql, conn=conn)
 
 
-def createVersion(version):
+def createRelease(release):
     sqls = ['''CREATE TABLE IF NOT EXISTS {}
             (id smallint unsigned auto_increment primary key,
             acc varchar(100) NOT NULL,
@@ -90,11 +90,11 @@ def createVersion(version):
             taxon_division_code varchar(10) NOT NULL,
             taxon_division_name varchar(255) NOT NULL,
             num_seqs int unsigned NOT NULL,
-            UNIQUE KEY genome_acc_key (acc)) ENGINE = InnoDB'''.format(versionTable(version, 'genomes')),
+            UNIQUE KEY genome_acc_key (acc)) ENGINE = InnoDB'''.format(releaseTable(release, 'genomes')),
             '''CREATE TABLE IF NOT EXISTS {}
-            (id tinyint unsigned auto_increment primary key, name varchar(100) NOT NULL) ENGINE = InnoDB'''.format(versionTable(version, 'divergences')),
+            (id tinyint unsigned auto_increment primary key, name varchar(100) NOT NULL) ENGINE = InnoDB'''.format(releaseTable(release, 'divergences')),
             '''CREATE TABLE IF NOT EXISTS {}
-            (id tinyint unsigned auto_increment primary key, name varchar(100) NOT NULL) ENGINE = InnoDB'''.format(versionTable(version, 'evalues')),
+            (id tinyint unsigned auto_increment primary key, name varchar(100) NOT NULL) ENGINE = InnoDB'''.format(releaseTable(release, 'evalues')),
             '''CREATE TABLE IF NOT EXISTS {}
             (id int unsigned auto_increment primary key,
             external_sequence_id varchar(100) NOT NULL,
@@ -103,7 +103,7 @@ def createVersion(version):
             gene_id int,
             KEY genome_index (genome_id),
             UNIQUE KEY sequence_index (external_sequence_id),
-            UNIQUE KEY sequence_and_genome (external_sequence_id, genome_id) ) ENGINE = InnoDB'''.format(versionTable(version, 'sequence')),
+            UNIQUE KEY sequence_and_genome (external_sequence_id, genome_id) ) ENGINE = InnoDB'''.format(releaseTable(release, 'sequence')),
             '''CREATE TABLE IF NOT EXISTS {}
             (id int unsigned auto_increment primary key,
             sequence_id int unsigned NOT NULL,
@@ -111,7 +111,7 @@ def createVersion(version):
             go_term_name varchar(255) NOT NULL,
             go_term_type varchar(55) NOT NULL,
             KEY sequence_index (sequence_id),
-            UNIQUE KEY sequence_and_acc_index (sequence_id, go_term_acc) ) ENGINE = InnoDB'''.format(versionTable(version, 'sequence_to_go_term')),
+            UNIQUE KEY sequence_and_acc_index (sequence_id, go_term_acc) ) ENGINE = InnoDB'''.format(releaseTable(release, 'sequence_to_go_term')),
             ]
     with connCM() as conn:
         for sql in sqls:
@@ -119,14 +119,14 @@ def createVersion(version):
             dbutil.executeSQL(sql=sql, conn=conn)
 
 
-def dropVersionResults(version):
-    sql = 'DROP TABLE IF EXISTS {}'.format(versionTable(version, 'results'))
+def dropReleaseResults(release):
+    sql = 'DROP TABLE IF EXISTS {}'.format(releaseTable(release, 'results'))
     with connCM() as conn:
         print sql
         dbutil.executeSQL(sql=sql, conn=conn)
 
 
-def createVersionResults(version):
+def createReleaseResults(release):
     sql = '''CREATE TABLE IF NOT EXISTS {}
     (id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     query_db SMALLINT UNSIGNED NOT NULL,
@@ -138,7 +138,7 @@ def createVersionResults(version):
     num_orthologs INT UNSIGNED NOT NULL,
     KEY query_db_index (query_db),
     KEY subject_db_index (subject_db),
-    UNIQUE KEY params_key (query_db, subject_db, divergence, evalue) ) ENGINE = InnoDB'''.format(versionTable(version, 'results'))
+    UNIQUE KEY params_key (query_db, subject_db, divergence, evalue) ) ENGINE = InnoDB'''.format(releaseTable(release, 'results'))
     with connCM() as conn:
         print sql
         dbutil.executeSQL(sql=sql, conn=conn)
@@ -149,19 +149,19 @@ def createVersionResults(version):
 #########################
 
     
-def loadVersion(version, genomesFile, divergencesFile, evaluesFile, seqsFile, seqToGoTermsFile):
+def loadRelease(release, genomesFile, divergencesFile, evaluesFile, seqsFile, seqToGoTermsFile):
     '''
-    version: the id of the version being loaded
+    release: the id of the release being loaded
     genomesFile: each line contains a tab-separated id (integer) and external genome id/name (string).
     The ids should go from 1 to N (where N is the number of genomes.)  Genomes should be unique.
     Why use LOAD DATA INFILE?  Because it is very fast relative to insert.  a discussion of insertion speed: http://dev.mysql.com/doc/refman/5.1/en/insert-speed.html
     
     '''
-    sqls = ['LOAD DATA LOCAL INFILE %s INTO TABLE {}'.format(versionTable(version, 'genomes')), 
-            'LOAD DATA LOCAL INFILE %s INTO TABLE {}'.format(versionTable(version, 'divergences')), 
-            'LOAD DATA LOCAL INFILE %s INTO TABLE {}'.format(versionTable(version, 'evalues')), 
-            'LOAD DATA LOCAL INFILE %s INTO TABLE {}'.format(versionTable(version, 'sequence')), 
-            'LOAD DATA LOCAL INFILE %s INTO TABLE {}'.format(versionTable(version, 'sequence_to_go_term')), 
+    sqls = ['LOAD DATA LOCAL INFILE %s INTO TABLE {}'.format(releaseTable(release, 'genomes')), 
+            'LOAD DATA LOCAL INFILE %s INTO TABLE {}'.format(releaseTable(release, 'divergences')), 
+            'LOAD DATA LOCAL INFILE %s INTO TABLE {}'.format(releaseTable(release, 'evalues')), 
+            'LOAD DATA LOCAL INFILE %s INTO TABLE {}'.format(releaseTable(release, 'sequence')), 
+            'LOAD DATA LOCAL INFILE %s INTO TABLE {}'.format(releaseTable(release, 'sequence_to_go_term')), 
             ]
     argsList = [[genomesFile], [divergencesFile], [evaluesFile], [seqsFile], [seqToGoTermsFile]]
     
@@ -171,7 +171,7 @@ def loadVersion(version, genomesFile, divergencesFile, evaluesFile, seqsFile, se
             dbutil.executeSQL(sql=sql, conn=conn, args=args)
 
 
-def loadVersionResults(version, genomeToId, divToId, evalueToId, geneToId, resultsGen):
+def loadReleaseResults(release, genomeToId, divToId, evalueToId, geneToId, resultsGen):
     '''
     resultsGen: a generator that yields ((qdb, sdb, div, evalue), orthologs) tuples.
     convert the results into a rows, and insert them into the results table.
@@ -198,7 +198,7 @@ def loadVersionResults(version, genomeToId, divToId, evalueToId, geneToId, resul
         return qdbId, sdbId, divId, evalueId, encodedOrthologs, numOrthologs
 
     numPerGroup = 400 # not to huge, not to slow.
-    sql1 = 'INSERT IGNORE INTO {} (query_db, subject_db, divergence, evalue, mod_time, orthologs, num_orthologs) VALUES '.format(versionTable(version, 'results'))
+    sql1 = 'INSERT IGNORE INTO {} (query_db, subject_db, divergence, evalue, mod_time, orthologs, num_orthologs) VALUES '.format(releaseTable(release, 'results'))
     for i, group in enumerate(util.groupsOfN(resultsGen, numPerGroup)):
         sql = sql1 + ', '.join(['(%s, %s, %s, %s, NOW(), %s, %s) ' for j in range(len(group))]) # cannot just use numPerGroup, b/c last group can have fewer results.
         argsLists = [convertForDb(result) for result in group]
@@ -227,7 +227,7 @@ def getGenomeForId(id, conn=None):
     '''
     returns: name of database whose id is id.
     '''
-    sql = 'SELECT acc FROM {} WHERE id=%s'.format(versionTable(config.CURRENT_DB_VERSION, 'genomes'))
+    sql = 'SELECT acc FROM {} WHERE id=%s'.format(releaseTable(config.CURRENT_RELEASE, 'genomes'))
     return selectOne(conn, sql, args=[id])
 
 
@@ -236,7 +236,7 @@ def getIdForGenome(genome, conn=None):
     db: name of roundup database registered in the mysql db lookup table.  e.g. Homo_sapiens.aa
     returns: id used to refer to that db in the roundup results table or None if db was not found.
     '''
-    sql = 'SELECT id FROM {} WHERE acc=%s'.format(versionTable(config.CURRENT_DB_VERSION, 'genomes'))
+    sql = 'SELECT id FROM {} WHERE acc=%s'.format(releaseTable(config.CURRENT_RELEASE, 'genomes'))
     return selectOne(conn, sql, args=[genome])
 
 
@@ -244,14 +244,14 @@ def getDivergenceForId(id, conn=None):
     '''
     returns: divergence value whose id is id.
     '''
-    return getNameForId(id=id, table=versionTable(config.CURRENT_DB_VERSION, 'divergences'), conn=conn)
+    return getNameForId(id=id, table=releaseTable(config.CURRENT_RELEASE, 'divergences'), conn=conn)
 
 
 def getEvalueForId(id, conn=None):
     '''
     returns: evalue whose id is id.
     '''
-    return getNameForId(id=id, table=versionTable(config.CURRENT_DB_VERSION, 'evalues'), conn=conn)
+    return getNameForId(id=id, table=releaseTable(config.CURRENT_RELEASE, 'evalues'), conn=conn)
 
 
 def getIdForEvalue(evalue, conn=None):
@@ -259,7 +259,7 @@ def getIdForEvalue(evalue, conn=None):
     evalue: value of roundup evalue, e.g. 1e-5
     returns: id used to refer to evalue in the roundup results table or None if evalue was not found.
     '''
-    return getIdForName(name=evalue, table=versionTable(config.CURRENT_DB_VERSION, 'evalues'), conn=conn)
+    return getIdForName(name=evalue, table=releaseTable(config.CURRENT_RELEASE, 'evalues'), conn=conn)
 
 
 def getIdForDivergence(divergence, conn=None):
@@ -267,7 +267,7 @@ def getIdForDivergence(divergence, conn=None):
     divergence: value of roundup divergence, e.g. 0.2
     returns: id used to refer to divergence in the roundup results table or None if divergence was not found.
     '''
-    return getIdForName(name=divergence, table=versionTable(config.CURRENT_DB_VERSION, 'divergences'), conn=conn)
+    return getIdForName(name=divergence, table=releaseTable(config.CURRENT_RELEASE, 'divergences'), conn=conn)
 
 
 def getIdForName(name, table, conn=None):
@@ -284,26 +284,26 @@ def getNameForId(id, table, conn=None):
         return rowset[0][0]
     
 
-def getGenomeToId(version=config.CURRENT_DB_VERSION):
-    sql = 'select acc, id from {}'.format(versionTable(version, 'genomes'))
+def getGenomeToId(release=config.CURRENT_RELEASE):
+    sql = 'select acc, id from {}'.format(releaseTable(release, 'genomes'))
     with connCM() as conn:
         return dict(dbutil.selectSQL(sql=sql, conn=conn))
 
 
-def getDivergenceToId(version=config.CURRENT_DB_VERSION):
-    sql = 'select name, id from {}'.format(versionTable(version, 'divergences'))
+def getDivergenceToId(release=config.CURRENT_RELEASE):
+    sql = 'select name, id from {}'.format(releaseTable(release, 'divergences'))
     with connCM() as conn:
         return dict(dbutil.selectSQL(sql=sql, conn=conn))
 
 
-def getEvalueToId(version=config.CURRENT_DB_VERSION):
-    sql = 'select name, id from {}'.format(versionTable(version, 'evalues'))
+def getEvalueToId(release=config.CURRENT_RELEASE):
+    sql = 'select name, id from {}'.format(releaseTable(release, 'evalues'))
     with connCM() as conn:
         return dict(dbutil.selectSQL(sql=sql, conn=conn))
 
 
-def getSequenceToId(version=config.CURRENT_DB_VERSION):
-    sql = 'select external_sequence_id, id from {}'.format(versionTable(version, 'sequence'))
+def getSequenceToId(release=config.CURRENT_RELEASE):
+    sql = 'select external_sequence_id, id from {}'.format(releaseTable(release, 'sequence'))
     with connCM() as conn:
         return dict(dbutil.selectSQL(sql=sql, conn=conn))
 
@@ -343,23 +343,23 @@ def deleteGenomeByName(genome, conn=None):
         print 'dbId=%s'%dbId
 
         # remove from roundup_results
-        sql = 'DELETE FROM {} WHERE query_db=%s OR subject_db=%s'.format(versionTable(config.CURRENT_DB_VERSION, 'results'))
+        sql = 'DELETE FROM {} WHERE query_db=%s OR subject_db=%s'.format(releaseTable(config.CURRENT_RELEASE, 'results'))
         print sql
         dbutil.executeSQL(sql=sql, conn=conn, args=[dbId, dbId])
 
         # delete sequence to go term entries for the given genome
         sql = 'DELETE FROM rs2gt USING {} AS rs2gt INNER JOIN {} AS rs WHERE rs2gt.sequence_id = rs.id AND rs.genome_id=%s'
-        sql = sql.format(versionTable(config.CURRENT_DB_VERSION, 'sequence_to_go_term'), versionTable(config.CURRENT_DB_VERSION, 'sequence'))
+        sql = sql.format(releaseTable(config.CURRENT_RELEASE, 'sequence_to_go_term'), releaseTable(config.CURRENT_RELEASE, 'sequence'))
         print sql
         dbutil.executeSQL(sql=sql, conn=conn, args=[dbId])
 
         # delete sequences from the genome.
-        sql = 'DELETE FROM {} WHERE genome_id=%s'.format(versionTable(config.CURRENT_DB_VERSION, 'sequence'))
+        sql = 'DELETE FROM {} WHERE genome_id=%s'.format(releaseTable(config.CURRENT_RELEASE, 'sequence'))
         print sql
         dbutil.executeSQL(sql=sql, conn=conn, args=[dbId])
         
         # remove genome
-        sql = 'DELETE FROM {} WHERE id=%s'.format(versionTable(config.CURRENT_DB_VERSION, 'genomes'))
+        sql = 'DELETE FROM {} WHERE id=%s'.format(releaseTable(config.CURRENT_RELEASE, 'genomes'))
         print sql
         dbutil.executeSQL(sql=sql, conn=conn, args=[dbId])
 
@@ -377,7 +377,7 @@ def getSequenceIdToSequenceDataMap(sequenceIds, conn=None):
     with connCM(conn=conn) as conn:        
         for group in util.groupsOfN(sequenceIds, 1000):
             # sql = 'SELECT id, external_sequence_id, genome_id, gene_name FROM '+ROUNDUP_MYSQL_DB+'.roundup_sequence WHERE id=%s'
-            sql = 'SELECT id, external_sequence_id, genome_id, gene_name FROM {} '.format(versionTable(config.CURRENT_DB_VERSION, 'sequence'))
+            sql = 'SELECT id, external_sequence_id, genome_id, gene_name FROM {} '.format(releaseTable(config.CURRENT_RELEASE, 'sequence'))
             sql += ' WHERE id IN ('+', '.join([str(id) for id in group])+')'
             # logging.debug('sql='+sql)
             # logging.debug('sequenceIds='+str(sequenceIds))
@@ -402,7 +402,7 @@ def getSequenceIdToTermsMap(sequenceIds, conn=None):
     termMap = {}
     for group in util.groupsOfN(sequenceIds, 1000):
         sql = 'SELECT rs2gt.sequence_id, rs2gt.go_term_acc, rs2gt.go_term_name'
-        sql += ' FROM {} AS rs2gt'.format(versionTable(config.CURRENT_DB_VERSION, 'sequence_to_go_term'))
+        sql += ' FROM {} AS rs2gt'.format(releaseTable(config.CURRENT_RELEASE, 'sequence_to_go_term'))
         sql += ' WHERE rs2gt.sequence_id IN ('+', '.join([str(id) for id in group])+') '
         # logging.debug('sql='+sql)
         # logging.debug('len sequenceIds='+str(len(sequenceIds)))
@@ -430,7 +430,7 @@ def getOrthologs(qdb, sdb, divergence='0.2', evalue='1e-20', conn=None):
         divId = getIdForDivergence(divergence, conn)
         evalueId = getIdForEvalue(evalue, conn)
         sql = 'SELECT rr.orthologs '
-        sql += ' FROM {} rr'.format(versionTable(config.CURRENT_DB_VERSION, 'results'))
+        sql += ' FROM {} rr'.format(releaseTable(config.CURRENT_RELEASE, 'results'))
         sql += ' WHERE rr.query_db = %s AND rr.subject_db = %s AND rr.divergence = %s AND rr.evalue = %s '
         args = [qdbId, sdbId, divId, evalueId]
         logging.debug('sql='+sql)
@@ -444,23 +444,23 @@ def getOrthologs(qdb, sdb, divergence='0.2', evalue='1e-20', conn=None):
 ############################################
 
 
-def getGenomesData(version=config.CURRENT_DB_VERSION):
+def getGenomesData(release=config.CURRENT_RELEASE):
     '''
     returns a list of tuples, one for each genome, of acc, name, ncbi_taxon, taxon_category_code,
     taxon_category_name, taxon_division_code, taxon_division_name, and num_seqs.
     '''
     sql = '''SELECT acc, name, ncbi_taxon, taxon_category_code, taxon_category_name, taxon_division_code, taxon_division_name, num_seqs
-    FROM {}'''.format(versionTable(version, 'genomes'))
+    FROM {}'''.format(releaseTable(release, 'genomes'))
     logging.debug(sql)
     with connCM() as conn:
         return dbutil.selectSQL(sql=sql, conn=conn)
 
 
-def getGenomesAndNames(version=config.CURRENT_DB_VERSION):
+def getGenomesAndNames(release=config.CURRENT_RELEASE):
     '''
     returns a list of pairs of genome (e.g. MYCGE) and name (e.g. Mycoplasma genitalium)
     '''
-    sql = 'SELECT acc, name FROM {}'.format(versionTable(version, 'genomes'))
+    sql = 'SELECT acc, name FROM {}'.format(releaseTable(release, 'genomes'))
     logging.debug(sql)
     with connCM() as conn:
         return dbutil.selectSQL(sql=sql, conn=conn)
@@ -469,7 +469,7 @@ def getGenomesAndNames(version=config.CURRENT_DB_VERSION):
 def numOrthologs(conn=None):
     num = 0
     with connCM(conn=conn) as conn:
-        sql = 'SELECT num_orthologs FROM {}'.format(versionTable(config.CURRENT_DB_VERSION, 'results'))
+        sql = 'SELECT num_orthologs FROM {}'.format(releaseTable(config.CURRENT_RELEASE, 'results'))
         rows = dbutil.selectSQL(sql=sql, conn=conn)
         num = sum(row[0] for row in rows)
     return num
@@ -488,7 +488,7 @@ def findGeneNamesLike(substring, searchType=CONTAINS_TYPE, conn=None):
     searchType: specify how the gene name should contain substring
     returns: list of every gene name containing substring according to the searchType.
     '''
-    sql = ' SELECT DISTINCT rs.gene_name FROM {} rs '.format(versionTable(config.CURRENT_DB_VERSION, 'sequence'))
+    sql = ' SELECT DISTINCT rs.gene_name FROM {} rs '.format(releaseTable(config.CURRENT_RELEASE, 'sequence'))
     sql += ' WHERE rs.gene_name LIKE %s'
     if searchType == CONTAINS_TYPE:
         args = ['%' + substring + '%']
@@ -515,7 +515,7 @@ def findGeneNameGenomePairsLike(substring, searchType=CONTAINS_TYPE, conn=None):
     mapped to all genomes that contain a seq id that has that gene name.
     '''
     sql = ' SELECT DISTINCT rs.gene_name, rg.name'
-    sql += ' FROM {} rs JOIN {} rg '.format(versionTable(config.CURRENT_DB_VERSION, 'sequence'), versionTable(config.CURRENT_DB_VERSION, 'genomes'))
+    sql += ' FROM {} rs JOIN {} rg '.format(releaseTable(config.CURRENT_RELEASE, 'sequence'), releaseTable(config.CURRENT_RELEASE, 'genomes'))
     sql += ' WHERE rs.gene_name LIKE %s'
     if searchType == CONTAINS_TYPE:
         args = ['%' + substring + '%']
@@ -544,7 +544,7 @@ def getSeqIdsForGeneName(geneName, genome=None, conn=None):
     '''
     with connCM(conn=conn) as conn:
         sql = 'SELECT DISTINCT rs.external_sequence_id '
-        sql += ' FROM {} rs '.format(versionTable(config.CURRENT_DB_VERSION, 'sequence'))
+        sql += ' FROM {} rs '.format(releaseTable(config.CURRENT_RELEASE, 'sequence'))
         sql += ' WHERE rs.gene_name = %s '
         params = [geneName]
         if genome:

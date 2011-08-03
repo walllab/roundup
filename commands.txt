@@ -1,17 +1,6 @@
 # This is a file of useful commands associated with Roundup.  Enjoy.  -TFD
 
 
-#############################
-# DEPLOYING CODE TO A DATASET
-#############################
-# Datasets run off their own code.  Since they are so long running we do not want changes in the code for dev/prod to affect the computation.
-# deploy from laptop to orchestra
-cd ~/work/roundup && ./build.py --deployenv=orch_dev 
-# deploy from webapp to dataset
-ssho 
-rsync -avz /www/dev.roundup.hms.harvard.edu/webapp /groups/cbi/roundup/201106_dataset_code/.
-
-
 ################################
 # VERSION CONTROL AND DEPLOYMENT
 ################################
@@ -31,97 +20,99 @@ git push
 git checkout master
 
 
-###########################
-# RUNNING A DEV COMPUTATION
-###########################
+###################################
+# THE MAKING OF A DATASET / RELEASE
+###################################
 
-[todo] roundup uniprot: drop in genomes from current roundup to test a small computation and compare results with current roundup.
-[done] had to change the file names, b/c genomes are 'foo', not 'foo.aa', and fasta/index files are 'foo.faa', not 'foo.aa'.  
-had to split job orthologs into individual files to compare against old files in current roundup.
-results are all the same!
+# First figure out which release this is.  If it is the second release of 2011, then the release name 2011_02 and the dataset is /groups/cbi/roundup/datasets/2011_02
+# many of these steps take a while, minutes to hours.  computeJobs takes weeks (on a large dataset).
+cd /www/dev.roundup.hms.harvard.edu/webapp && time python -c 'import roundup_dataset; ds = "/groups/cbi/roundup/datasets/2011_02"; roundup_dataset.prepareDataset(ds)'
 
-# copy current roundup genomes to test dataset
-cp -vpr /groups/rodeo/roundup/genomes/current/Mycoplasma_* /groups/cbi/td23/roundup_uniprot/test_dataset/genomes/.
-# choose a few genomes to compare and put them in the test dataset metadata
-"Mycoplasma_synoviae_53",
-"Mycoplasma_pneumoniae",
-"Mycoplasma_mycoides",
-"Mycoplasma_genitalium"
-# change the .aa to .faa.  This is what happens when you change naming conventions!
-python -c 'import re, subprocess, os, roundup_dataset;
-ds = "/groups/cbi/td23/roundup_uniprot/test_dataset"
-genomes = roundup_dataset.getGenomes(ds)
-for genome in genomes:
-  gd = roundup_dataset.getGenomesDir(ds)
-  badGenomeDir = os.path.join(gd, genome+".aa")
-  genomeDir = roundup_dataset.getGenomePath(genome, ds)
-  print ds
-  print genome
-  print badGenomeDir
-  print genomeDir
-  if os.path.exists(badGenomeDir):
-    cmd = "mv {} {}".format(badGenomeDir, genomeDir)
-    print cmd
-    subprocess.check_call(cmd, shell=True)
-  if os.path.exists(genomeDir):
-    for file in [os.path.join(genomeDir, f) for f in os.listdir(genomeDir)]:
-      print file
-      if file.find(".aa") > -1:
-        newFile = re.sub("\.aa", ".faa", file)
-        print newFile
-        cmd = "mv {} {}".format(file, newFile)
-        print cmd
-        # subprocess.check_call(cmd, shell=True)
-'
-# remove existing jobs
-rm -rf /groups/cbi/td23/roundup_uniprot/test_dataset/jobs/*
-# drop completes table so jobs will run
-echo 'drop table key_value_store_roundup_ds_test_dataset' | mysql devroundup
-# remove prepare computation  complete too
-emacs /groups/cbi/td23/roundup_uniprot/test_dataset/steps.complete.txt
-# prepare jobs
-python -c 'import roundup_dataset;
-ds = "/groups/cbi/td23/roundup_uniprot/test_dataset"
-roundup_dataset.prepareComputation(ds, numJobs=4)'
-# results
-job = job_0 start = 0 end = 2
-jobPairs= [('Mycoplasma_pneumoniae', 'Mycoplasma_synoviae_53'), ('Mycoplasma_mycoides', 'Mycoplasma_pneumoniae')]
-job = job_1 start = 2 end = 4
-jobPairs= [('Mycoplasma_genitalium', 'Mycoplasma_synoviae_53'), ('Mycoplasma_mycoides', 'Mycoplasma_synoviae_53')]
-job = job_2 start = 4 end = 5
-jobPairs= [('Mycoplasma_genitalium', 'Mycoplasma_pneumoniae')]
-job = job_3 start = 5 end = 6
-jobPairs= [('Mycoplasma_genitalium', 'Mycoplasma_mycoides')]
-# run jobs
-python -c 'import roundup_dataset;
-ds = "/groups/cbi/td23/roundup_uniprot/test_dataset"
-roundup_dataset.computeJobs(ds)'
+# sometimes this needs to be rerun a few times, since the downloads of the large dat files can fail.
+cd /www/dev.roundup.hms.harvard.edu/webapp && time python -c 'import roundup_dataset; ds = "/groups/cbi/roundup/datasets/2011_02"; roundup_dataset.downloadSources(ds)'
 
-# split new orthologs into results files.
-python -c 'import roundup_dataset;
-ds = "/groups/cbi/td23/roundup_uniprot/test_dataset"
-roundup_dataset.splitOrthologsIntoOldResultsFiles(ds, "/home/td23/tmp/test_dataset")'
+cd /www/dev.roundup.hms.harvard.edu/webapp && time python -c 'import roundup_dataset; ds = "/groups/cbi/roundup/datasets/2011_02"; roundup_dataset.splitUniprotIntoGenomes(ds)'
+cd /www/dev.roundup.hms.harvard.edu/webapp && time python -c 'import roundup_dataset; ds = "/groups/cbi/roundup/datasets/2011_02"; roundup_dataset.formatGenomes(ds)'
+cd /www/dev.roundup.hms.harvard.edu/webapp && time python -c 'import roundup_dataset; ds = "/groups/cbi/roundup/datasets/2011_02"; roundup_dataset.extractFromFasta(ds)'
+cd /www/dev.roundup.hms.harvard.edu/webapp && time python -c 'import roundup_dataset; ds = "/groups/cbi/roundup/datasets/2011_02"; roundup_dataset.extractFromIdMapping(ds)'
+cd /www/dev.roundup.hms.harvard.edu/webapp && time python -c 'import roundup_dataset; ds = "/groups/cbi/roundup/datasets/2011_02"; roundup_dataset.extractTaxonData(ds)'
+cd /www/dev.roundup.hms.harvard.edu/webapp && time python -c 'import roundup_dataset; ds = "/groups/cbi/roundup/datasets/2011_02"; roundup_dataset.extractFromGeneOntology(ds)'
+cd /www/dev.roundup.hms.harvard.edu/webapp && time python -c 'import roundup_dataset; ds = "/groups/cbi/roundup/datasets/2011_02"; roundup_dataset.extractUniprotRelease(ds)'
 
-# compare with existing results files:
-python -c 'import roundup_dataset, roundup_common, os, subprocess;
-ds = "/groups/cbi/td23/roundup_uniprot/test_dataset"
-for qdb, sdb in roundup_dataset.getPairs(ds):
-  for div, evalue in roundup_common.genDivEvalueParams():
-    old = roundup_common.makeRoundupResultsCachePath(qdb+".aa", sdb+".aa", div, evalue, "/groups/rodeo/roundup/results/current")
-    new = "/home/td23/tmp/test_dataset/{}.aa_{}.aa_{}_{}".format(qdb, sdb, div, evalue)
-    print old, os.path.exists(old)
-    print new, os.path.exists(new)
-    subprocess.check_call("cp {} foo.old".format(old), shell=True)
-    subprocess.check_call("cp {} foo.new".format(new), shell=True)
-    print subprocess.check_output("diff foo.old foo.new", shell=True)
-'
-# all the results are the same!  It works!  Here is a sample:
-/groups/rodeo/roundup/results/current/44/d3/Mycoplasma_genitalium.aa_Mycoplasma_mycoides.aa_0.2_1e-5 True
-/home/td23/tmp/test_dataset/Mycoplasma_genitalium.aa_Mycoplasma_mycoides.aa_0.2_1e-5 True
+# the taxon ids for some genomes in UniProt Release 2011_06 did not have corresponding taxon info from ncbi.  these steps are to find those taxons and manually add the data.
+cd /www/dev.roundup.hms.harvard.edu/webapp && time python -c 'import roundup_dataset; ds = "/groups/cbi/roundup/datasets/2011_02"; roundup_dataset.findMissingTaxonToData(ds)'
+cd /www/dev.roundup.hms.harvard.edu/webapp && time python -c 'import roundup_dataset; ds = "/groups/cbi/roundup/datasets/2011_02"; roundup_dataset.setMissingTaxonToData(ds)'
 
-/groups/rodeo/roundup/results/current/44/d3/Mycoplasma_genitalium.aa_Mycoplasma_mycoides.aa_0.2_1e-10 True
-/home/td23/tmp/test_dataset/Mycoplasma_genitalium.aa_Mycoplasma_mycoides.aa_0.2_1e-10 True
+cd /www/dev.roundup.hms.harvard.edu/webapp && time python -c 'import roundup_dataset; ds = "/groups/cbi/roundup/datasets/2011_02"; roundup_dataset.prepareComputation(ds)'
+cd /www/dev.roundup.hms.harvard.edu/webapp && time python -c 'import roundup_dataset; ds = "/groups/cbi/roundup/datasets/2011_02"; roundup_dataset.computeJobs(ds)'
+cd /www/dev.roundup.hms.harvard.edu/webapp && time python -c 'import roundup_dataset; ds = "/groups/cbi/roundup/datasets/2011_02"; roundup_dataset.extractDatasetStats(ds)'
+cd /www/dev.roundup.hms.harvard.edu/webapp && time python -c 'import roundup_dataset; ds = "/groups/cbi/roundup/datasets/2011_02"; roundup_dataset.extractPerformanceStats(ds)'
 
-/groups/rodeo/roundup/results/current/44/d3/Mycoplasma_genitalium.aa_Mycoplasma_mycoides.aa_0.2_1e-15 True
-/home/td23/tmp/test_dataset/Mycoplasma_genitalium.aa_Mycoplasma_mycoides.aa_0.2_1e-15 True
+# this is done on the day one releases to production.  Or it can be set manually by passing in a datetime.date object.
+cd /www/dev.roundup.hms.harvard.edu/webapp && time python -c 'import roundup_dataset; ds = "/groups/cbi/roundup/datasets/2011_02"; roundup_dataset.setReleaseDate(ds)'
+
+
+#####################################
+# LOADING A DATASET INTO THE DATABASE
+#####################################
+
+# load genomes, divergences, evalues, sequence, and sequence_to_go_term tables into database using dev code and prod database
+cd /www/dev.roundup.hms.harvard.edu/webapp && ROUNDUP_MYSQL_SERVER=mysql.cl.med.harvard.edu ROUNDUP_MYSQL_DB=roundup time python -c "import roundup_load;
+ds = '/groups/cbi/roundup/datasets/201106_dataset'
+roundup_load.loadDatabase(ds)
+"
+
+# drop/create the results table.  track what has been loaded with a dones table.  use dev code and prod database.
+cd /www/dev.roundup.hms.harvard.edu/webapp && ROUNDUP_MYSQL_SERVER=mysql.cl.med.harvard.edu ROUNDUP_MYSQL_DB=roundup time python -c "import roundup_load;
+ds = '/groups/cbi/roundup/datasets/201106_dataset'
+roundup_load.initLoadOrthDatas(ds)
+"
+
+# load orthologs into the results table.  this takes a while.  hours or days for a big dataset. 
+# if this job fails, rerunning the command will resume it (more or less) from where it left off.
+cd /www/dev.roundup.hms.harvard.edu/webapp && ROUNDUP_MYSQL_SERVER=mysql.cl.med.harvard.edu ROUNDUP_MYSQL_DB=roundup bsub -q shared_12h time python -c "import roundup_load;
+ds = '/groups/cbi/roundup/datasets/201106_dataset'
+roundup_load.loadOrthDatas(ds)
+"
+
+# after (a day or so when) the loadResulta job finishes.  Run it again to confirm that everything has loaded.
+cd /www/dev.roundup.hms.harvard.edu/webapp && ROUNDUP_MYSQL_SERVER=mysql.cl.med.harvard.edu ROUNDUP_MYSQL_DB=roundup bsub -q shared_12h time python -c "import roundup_load;
+ds = '/groups/cbi/roundup/datasets/201106_dataset'
+roundup_load.loadOrthDatas(ds)
+"
+
+# Example of how to use ROUNDUP_MYSQL_SERVER and ROUNDUP_MYSQL_DB environment variables to make the dev code load into the prod database.
+# basically prepend the env vars to the command.
+cd /www/dev.roundup.hms.harvard.edu/webapp && ROUNDUP_MYSQL_SERVER=mysql.cl.med.harvard.edu ROUNDUP_MYSQL_DB=roundup time python -c "import roundup_load;
+ds = '/groups/cbi/roundup/datasets/2010_01'
+roundup_load.loadDatabase(ds)
+"
+
+
+##################################################################
+# RUNNING A TEST COMPUTATION USING ONLY A FEW GENOMES IN A DATASET
+##################################################################
+
+# clear any existing computation.  removes jobs, completes, and orthologs
+cd /www/dev.roundup.hms.harvard.edu/webapp && python -c "import roundup_dataset;
+ds = '/groups/cbi/td23/test_dataset'
+roundup_dataset.cleanJobs(ds)
+roundup_dataset.cleanOrthologs(ds)
+"
+
+# prepare a computation using only your test genomes
+cd /www/dev.roundup.hms.harvard.edu/webapp && python -c "import roundup_dataset;
+ds = '/groups/cbi/td23/test_dataset'
+genomes = 'MYCGE MYCGF MYCGH MYCH1 MYCH2 MYCH7 MYCHH MYCHJ MYCHP'.split()
+print genomes
+roundup_dataset.setGenomes(ds, genomes) # this is the key step.  settting the genomes manually.
+roundup_dataset.prepareComputation(ds, numJobs=10) # use fewer jobs than the default 4000.
+"
+
+# compute the orthologs
+cd /www/dev.roundup.hms.harvard.edu/webapp && python -c "import roundup_dataset;
+ds = '/groups/cbi/td23/test_dataset'
+roundup_dataset.computeJobs(ds)
+"
+
 

@@ -37,12 +37,12 @@ def loadDatabase(ds, dropCreate=True, writeLookups=True, writeSeqs=True, readSeq
     The flags are for use during testing and debugging, when you do not want to spend the time required to, e.g. read in the sequence metadata.
     '''
     
-    version = roundup_dataset.getDatasetId(ds)
+    release = roundup_dataset.getDatasetId(ds)
 
     if dropCreate:
         print 'dropping and creating tables'
-        roundup_db.dropVersion(version)
-        roundup_db.createVersion(version)
+        roundup_db.dropRelease(release)
+        roundup_db.createRelease(release)
 
     print 'creating unique ids for genes, genomes, divs, and evalues'
     print '...loading genomeToGenes'
@@ -101,7 +101,7 @@ def loadDatabase(ds, dropCreate=True, writeLookups=True, writeSeqs=True, readSeq
 
         if loadTables:
             print 'loading tables'
-            roundup_db.loadVersion(version, genomesFile, divsFile, evaluesFile, seqsFile, seqToGoTermsFile)
+            roundup_db.loadRelease(release, genomesFile, divsFile, evaluesFile, seqsFile, seqToGoTermsFile)
 
 
 def makeIds(ds):
@@ -197,18 +197,18 @@ def writeLookupTable(items, itemToId, itemsFile):
 ########################
 
 def cleanOrthDatasDones(ds):
-    version = roundup_dataset.getDatasetId(ds)
-    ns = 'roundup_load_{}'.format(version)
+    release = roundup_dataset.getDatasetId(ds)
+    ns = 'roundup_load_{}'.format(release)
     workflow.dropDones(ns)
 
     
 def initLoadOrthDatas(ds):
-    version = roundup_dataset.getDatasetId(ds)
+    release = roundup_dataset.getDatasetId(ds)
     print 'dropping and creating results table'
-    roundup_db.dropVersionResults(version)
-    roundup_db.createVersionResults(version)
+    roundup_db.dropReleaseResults(release)
+    roundup_db.createReleaseResults(release)
     print 'resetting dones'
-    ns = 'roundup_load_{}'.format(version)
+    ns = 'roundup_load_{}'.format(release)
     workflow.resetDones(ns)
 
     
@@ -216,14 +216,14 @@ def loadOrthDatas(ds):
     '''
     load orthDatas serially.  takes a long time.  use dones to resume job if it dies.
     '''
-    version = roundup_dataset.getDatasetId(ds)
-    ns = 'roundup_{}'.format(version)
+    release = roundup_dataset.getDatasetId(ds)
+    ns = 'roundup_{}'.format(release)
 
     print 'getting ids'
-    genomeToId = roundup_db.getGenomeToId(version)
-    divToId = roundup_db.getDivergenceToId(version)
-    evalueToId = roundup_db.getEvalueToId(version)
-    geneToId = roundup_db.getSequenceToId(version)
+    genomeToId = roundup_db.getGenomeToId(release)
+    divToId = roundup_db.getDivergenceToId(release)
+    evalueToId = roundup_db.getEvalueToId(release)
+    geneToId = roundup_db.getSequenceToId(release)
 
     print 'loading orthDatas'
     for path in roundup_dataset.getOrthologsFiles(ds):
@@ -232,7 +232,7 @@ def loadOrthDatas(ds):
         else:
             print 'loading', path
             orthDatasGen = orthologs.orthDatasFromFileGen(path)
-            roundup_db.loadVersionResults(version, genomeToId, divToId, evalueToId, geneToId, orthDatasGen)
+            roundup_db.loadReleaseResults(release, genomeToId, divToId, evalueToId, geneToId, orthDatasGen)
             workflow.markDone(ns, path)
-
+    print 'done loading all orthDatas'
 

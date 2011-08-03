@@ -14,7 +14,6 @@
 * Completes: track which stages of creating a dataset or running a computation have been completed.  There are two completes, one in the database that is concurrency-safe
   and scalable to millions of entries (useful for tracking complete pairs), and one on the filesystem, which is human editable and stored with the dataset so it is not
   sensitive to which code (dev or prod) is run.
-* Database: 
 
 
 # prepare a computation for various small Mycoplasma and Mycobacterium.
@@ -101,32 +100,8 @@ RSD_STATS = 'rsd_stats'
 
 def main(ds):
     '''
-    this function is half functional and half documentation of the steps required to make and compute a dataset
     '''
-    steps = [(prepareDataset, 'prepare dataset'),
-             (downloadSources, 'download sources'),
-             (processSources, 'process taxon sources'),
-             (splitUniprotIntoGenomes, 'split sources into fasta genomes'),
-             (formatGenomes, 'format genomes'),
-             (extractFromFasta, 'extract from fasta'),
-             (extractFromIdMapping, 'extract from id mapping'),
-             (extractTaxonData, 'extract taxon data'),
-             (extractFromGeneOntology, 'extract from gene ontology'),
-             (extractUniprotRelease, 'extract uniprot release'),
-             (findMissingTaxonToData, ''), # check that we have taxon data for every genome
-             (setMissingTaxonToData, ''), # update the taxon data if necessary
-             (setSourcesHtml, 'set sources html'),
-             (prepareComputation, 'prepare computation'),
-             (computeJobs, 'compute jobs'),
-             (extractDatasetStats, 'extract dataset stats'), # cache the number of orthologs
-             (extractPerformanceStats, 'extract performance stats'), # cache the times it took to run the blast and rsd jobs for all pairs.
-             (setReleaseDate, 'set release date'), # do this on the day you release to production
-             ]
-
-    for func, tag in steps:
-        if not isStepComplete(ds, tag):
-            func(ds)
-            markStepComplete(ds, tag)
+    print 'See commands.txt for details on how to make a dataset.'
             
 
         
@@ -139,8 +114,8 @@ def prepareDataset(ds):
     '''
     Make the directory structure, tables, etc., a new dataset needs.
     '''
-    resetCompletes(ds)
-    resetStats(ds)
+    resetCompletes(ds) # make an empty db table for dones
+    resetStats(ds) # make an empty db table for stats
     for path in (ds, getGenomesDir(ds), getOrthologsDir(ds), getJobsDir(ds), getSourcesDir(ds)):
         if not os.path.exists(path):
             os.makedirs(path, DIR_MODE)
@@ -154,13 +129,13 @@ def downloadSource(ds, url, dest):
     if not os.path.exists(os.path.dirname(dest)):
         os.makedirs(os.path.dirname(dest), DIR_MODE)
     print 'downloading {} to {}...'.format(url, dest)
-    if isStepComplete(ds, 'download', url):
+    if isComplete(ds, 'download', url):
         print '...skipping because already downloaded.'
         return
     cmd = 'curl --remote-time --output '+dest+' '+url
     subprocess.check_call(cmd, shell=True)
     print
-    markStepComplete(ds, 'download', url)
+    markComplete(ds, 'download', url)
     print '...done.'
     pause = 10
     print 'pausing for {} seconds.'.format(pause)
@@ -249,7 +224,7 @@ def processSources(ds):
 
     for f in uniprotFiles + taxonFiles + goFiles:
         path = os.path.join(sourcesDir, f)
-        if isStepComplete(ds, 'process source', path):
+        if isComplete(ds, 'process source', path):
             print '...skipping processing {} because already done.'.format(path)
             continue
         print 'processing', path
@@ -259,7 +234,7 @@ def processSources(ds):
         elif path.endswith('.gz') and os.path.exists(path):
             print '...gunzip file'
             subprocess.check_call(['gunzip', path])
-        markStepComplete(ds, 'process source', path)
+        markComplete(ds, 'process source', path)
             
     print '...done'
 
@@ -667,47 +642,6 @@ def prepareComputation(ds, numJobs=4000):
     getJobs(ds, refresh=True) # refresh the cached metadata
     
 
-def getSourcesHtml(ds):
-    '''
-    returns an html div describing the data sources for this version of the roundup dataset.  This fragment is stored in the dataset metadata.
-    '''
-    return getMetadata(ds)['sources_html']
-
-
-def setSourcesHtml(ds):
-    '''
-    generate the sources page html div, and store it in the metadata.
-    '''
-    html = '''<div id="sources">
-<p id="sources_desc">
-Roundup Release {} uses the following sources:
-<ul>
-<li>
-<a href="http://www.uniprot.org">UniProt</a>, specifically UniProtKB/Swiss-Prot and UniProtKB/TrEMBL from Release {}, is used as a source for protein sequences from complete genomes, for sequence annotations, and for genome annotations.
-</li>
-<li>
-<a href="http://www.ncbi.nlm.nih.gov/taxonomy">The NCBI Taxonomy database</a> is used as a source for genome annotations.
-</li>
-<li>
-<a href="http://geneontology.org/">Gene Ontology</a> is used for sequence annotations.
-</li>
-</ul>
-</p>
-<p id="source_urls">
-The following is a comprehensive list of files that were downloaded for this Roundup release.  All sources are publicly available.
-<ul>
-'''.format(getReleaseName(ds), extractUniprotRelease(ds))
-    for url, dest in getMetadata(ds)['sources']:
-        html += '<li><a href="{}">{}</a></li>\n'.format(url, url)
-    html += '''
-</ul>
-</p>
-</div>
-'''
-    updateMetadata(ds, {'sources_html': html})
-    return html
-
-
 def findMissingTaxonToData(ds):
     '''
     Sadly, some taxon ids for uniprot genomes are missing from the ncbi taxonToData (category.dmp and nodes.dmp).
@@ -737,6 +671,16 @@ def findMissingTaxonToData(ds):
 def setMissingTaxonToData(ds, missingTaxonToData):
     '''
     update taxonToData with data for the genome taxons that were missing data.
+# example of updating taxonToData with missing taxon data
+cd /www/dev.roundup.hms.harvard.edu/webapp && time python -c "import roundup_dataset;
+ds = '/groups/cbi/roundup/datasets/2011_01'
+missingTaxonToData = {'272994': {roundup_dataset.CAT_CODE: 'B', roundup_dataset.CAT_NAME: 'Bacteria', roundup_dataset.DIV_CODE: 'BCT', roundup_dataset.DIV_NAME: 'Bacteria'},
+'587201': {roundup_dataset.CAT_CODE: 'V', roundup_dataset.CAT_NAME: 'Viruses and Viroids', roundup_dataset.DIV_CODE: 'VRL', roundup_dataset.DIV_NAME: 'Viruses'},
+'587202': {roundup_dataset.CAT_CODE: 'V', roundup_dataset.CAT_NAME: 'Viruses and Viroids', roundup_dataset.DIV_CODE: 'VRL', roundup_dataset.DIV_NAME: 'Viruses'},
+'587203': {roundup_dataset.CAT_CODE: 'V', roundup_dataset.CAT_NAME: 'Viruses and Viroids', roundup_dataset.DIV_CODE: 'VRL', roundup_dataset.DIV_NAME: 'Viruses'},
+}
+roundup_dataset.setMissingTaxonToData(ds, missingTaxonToData)
+"
     '''
     taxonToData = getTaxonToData(ds)
     taxonToData.update(missingTaxonToData)
@@ -1082,6 +1026,10 @@ def markComplete(ds, *key):
     workflow.markDone(completesNS(ds), key)
 
 
+def unmarkComplete(ds, *key):
+    workflow.unmarkDone(completesNS(ds), key)
+
+
 def resetCompletes(ds):
     return workflow.resetDones(completesNS(ds))
 
@@ -1090,25 +1038,6 @@ def completesNS(ds):
     return 'roundup_dataset_{}'.format(getDatasetId(ds))
 
 
-# isStepComplete uses a flat file in the dataset.  Used for downloading source files and other few completes executed serially.
-# pros: easy to edit completes by hand.  completes associated with the dataset, not the database environment of the code base.  
-# cons: very slow for many completes; concurrent writing of completes is unsafe.
-def isStepComplete(ds, *key):
-    stepsPath = os.path.join(ds, 'steps.complete.txt')
-    if not os.path.exists(stepsPath):
-        return False
-    keyStr = str(key)
-    with open(stepsPath) as fh:
-        completes = set(line.strip() for line in fh if line.strip())
-        return keyStr in completes
-
-    
-def markStepComplete(ds, *key):
-    stepsPath = os.path.join(ds, 'steps.complete.txt')
-    with open(stepsPath, 'a') as fh:
-        fh.write(str(key)+'\n')
-        
-        
 ##########
 # METADATA
 ##########
