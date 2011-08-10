@@ -20,7 +20,6 @@ import roundup_dataset
 import roundup_db
 import workflow
 import nested
-import orthologs
 
 
 #################################
@@ -231,7 +230,7 @@ def loadOrthDatas(ds):
             print 'already loaded:', path
         else:
             print 'loading', path
-            orthDatasGen = orthologs.orthDatasFromFileGen(path)
+            orthDatasGen = roundup_common.orthDatasFromFileGen(path)
             roundup_db.loadReleaseResults(release, genomeToId, divToId, evalueToId, geneToId, orthDatasGen)
             workflow.markDone(ns, path)
     print 'done loading all orthDatas'

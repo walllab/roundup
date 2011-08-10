@@ -25,7 +25,7 @@ import orthquery
 import orthresult
 import BioUtilities
 import roundup_db
-import LSF
+import lsf
 
 
 USE_CACHE = True
@@ -579,7 +579,7 @@ def orth_query(request, queryId):
     if USE_CACHE and roundup_util.cacheHasKey(resultId) and orthresult.resultExists(resultId):
         logging.debug('cache hit.')
         return django.shortcuts.redirect(django.core.urlresolvers.reverse(orth_result, kwargs={'resultId': resultId}))
-    elif not config.NO_LSF and LSF.isJobNameRunning(resultId, retry=True, delay=0.2):
+    elif not config.NO_LSF and lsf.isJobNameOn(resultId, retry=True, delay=0.2):
         logging.debug('cache miss. job is already running.  go to waiting page.')
         return django.shortcuts.redirect(django.core.urlresolvers.reverse(orth_wait, kwargs={'resultId': resultId}))
     elif config.NO_LSF or querySize <= SYNC_QUERY_LIMIT:
@@ -613,7 +613,7 @@ def job_ready(request):
     # validate inputs to avoid malicious attacks
     job = request.GET.get('job')
     logging.debug('\tjob={}'.format(job))
-    data = json.dumps({'ready': bool(not job or LSF.isJobNameEnded(job, retry=True, delay=0.2))})
+    data = json.dumps({'ready': bool(not job or lsf.isJobNameOff(job, retry=True, delay=0.2))})
     logging.debug('\tdata={}'.format(data))
     # data = json.dumps({'ready': True})
     return django.http.HttpResponse(data, content_type='application/json')

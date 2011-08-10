@@ -80,7 +80,7 @@ def strToBool(value):
     An arbitrary set of human-readable strings is mapped to False.  Everything else is true.
     What is false? Ingoring case, 'F', 'FALSE', '0', '0.0', 'None'
     '''
-    return str(value).upper() not in ('F', 'FALSE', '0', '0.0', 'NO', 'N', 'None')
+    return str(value).upper() not in ('F', 'FALSE', '0', '0.0', 'NO', 'N', 'NONE')
 
 
 def getBoolFromEnv(key, default=True):

@@ -62,15 +62,15 @@ import uuid
 # our modules
 import config
 import fasta
-import LSF
-import nested
 import kvstore
-import roundup_common
-import util
-import roundup_db
+import lsf
 import lsfdispatch
+import nested
+import roundup_common
+import roundup_db
 import rsd
-import orthologs
+import util
+import workflow
 
 
 MIN_GENOME_SIZE = 200 # ignore genomes with fewer sequences
@@ -610,17 +610,18 @@ def extractFromIdMapping(ds):
     setData(ds, GENE_TO_GENE_IDS, geneToGeneIds)
 
 
-def prepareComputation(ds, numJobs=4000):
+def prepareComputation(ds, numJobs=4000, pairs=None):
     '''
     ds: dataset to ready for computation
     numJobs: split computation into this many jobs.  More jobs = shorter jobs, better parallelism.
       Fewer jobs = fewer dirs and files to make isilon run slowly and overload lsf queue.
       Recommendation: <= 10000.
-
+    pairs: If None, compute orthologs for all pairs of genomes.  If not None, only compute these pairs.  useful for testing.  
     '''
     print 'prepare computation for {}'.format(ds)
 
-    pairs = getPairs(ds)
+    if pairs is None:
+        pairs = getPairs(ds)
     print 'pair count:', len(pairs)
 
     # create up to N jobs for the pairs to be computed.
@@ -779,14 +780,14 @@ def computeJobs(ds):
         if isComplete(ds, 'job', job):
             print 'job is already complete:', job
             continue
-        if LSF.isJobNameRunning(getComputeJobName(ds, job)):
+        if lsf.isJobNameOn(getComputeJobName(ds, job)):
             print 'job is already running:', job
             continue
         funcName = 'roundup_dataset.computeJob'
         keywords = {'ds': ds, 'job': job}
         # reserve 500MB in /tmp for duration of job to avoid nodes where someone, not naming any names, has used too much space.
         # redirect output to /dev/null so we do not get thousands of useless emails from lsf.
-        lsfOptions = ['-R "rusage[tmp=500]"', '-q '+LSF.LSF_LONG_QUEUE, ' -o /dev/null', '-J '+getComputeJobName(ds, job)]
+        lsfOptions = ['-R "rusage[tmp=500]"', '-q '+roundup_common.LSF_LONG_QUEUE, '-o /dev/null', '-J '+getComputeJobName(ds, job)]
         jobid = lsfdispatch.dispatch(funcName, keywords=keywords, lsfOptions=lsfOptions)
         msg = 'computeJobs(): starting job on grid.  lsfjobid={}, ds={}, job={}'.format(jobid, ds, job)
         print msg
@@ -818,8 +819,8 @@ def computeJob(ds, job):
     if not isComplete(ds, 'job_ologs_merge', job):
         jobOrthologsPath = getJobOrthologsPath(ds, job)
         pairsPaths = [os.path.join(jobDir, '{}_{}.pair.orthologs.txt'.format(*pair)) for pair in pairs]
-        orthDatasGen = orthologs.orthDatasFromFilesGen(pairsPaths)
-        orthologs.orthDatasToFile(orthDatasGen, jobOrthologsPath)
+        orthDatasGen = roundup_common.orthDatasFromFilesGen(pairsPaths)
+        roundup_common.orthDatasToFile(orthDatasGen, jobOrthologsPath)
         markComplete(ds, 'job_ologs_merge', job)
         
     # delete the individual pair olog files
@@ -873,7 +874,7 @@ def computePair(ds, pair, workingDir, orthologsPath):
             startTime = time.time()
             divEvalueToOrthologs =  rsd.computeOrthologsUsingSavedHits(queryFastaPath, subjectFastaPath, divEvalues, forwardHitsPath, reverseHitsPath, workingDir=tmpDir)
             orthDatas = [((queryGenome, subjectGenome, div, evalue), orthologs) for (div, evalue), orthologs in divEvalueToOrthologs.items()]
-            orthologs.orthDatasToFile(orthDatas, orthologsPath)
+            roundup_common.orthDatasToFile(orthDatas, orthologsPath)
             putRsdStats(ds, queryGenome, subjectGenome, divEvalues, startTime=startTime, endTime=time.time())
             markComplete(ds, 'roundup', pair)
     # clean up files
@@ -1169,7 +1170,7 @@ def getTaxonToData(ds):
 
 STATS_CACHE = {}
 def getStatsStore(ds):
-    if not STATS_CACHE:
+    if ds not in STATS_CACHE:
         dsId = getDatasetId(ds)
         kv = kvstore.KVStore(util.ClosingFactoryCM(config.openDbConn), ns='roundup_dataset_{}_{}'.format(dsId, 'stats'))
         STATS_CACHE[ds] = kv
@@ -1223,15 +1224,7 @@ def getRsdStats(ds, qdb, sdb):
 
     
 def putPairStats(ds, qdb, sdb, startTime, endTime):
-    qdbFastaPath = getGenomeFastaPath(ds, qdb)
-    sdbFastaPath = getGenomeFastaPath(ds, sdb)
-    qdbBytes = os.path.getsize(qdbFastaPath)
-    sdbBytes = os.path.getsize(sdbFastaPath)
-    genomeToCount = getMetadata(ds)['genomeToCount']
-    qdbSeqs = genomeToCount[qdb]
-    sdbSeqs = genomeToCount[sdb]
-    stats = {'type': 'pair', 'qdb': qdb, 'sdb': sdb, 'startTime': startTime, 'endTime': endTime,
-             'qdbBytes': qdbBytes, 'sdbBytes': sdbBytes, 'qdbSeqs': qdbSeqs, 'sdbSeqs': sdbSeqs}
+    stats = {'type': 'pair', 'qdb': qdb, 'sdb': sdb, 'startTime': startTime, 'endTime': endTime}
     key = ('pair', qdb, sdb)
     putStats(ds, key, stats)
     return stats
@@ -1249,12 +1242,49 @@ def extractDatasetStats(ds):
     numGenomes = len(getGenomes(ds))
     numPairs = len(getPairs(ds))
     numOrthologs = 0
-    for params, orthologs in orthologs.orthDatasFromFilesGen(getOrthologsFiles(ds)):
+    for params, orthologs in roundup_common.orthDatasFromFilesGen(getOrthologsFiles(ds)):
         numOrthologs += len(orthologs)
     updateMetadata(ds, {'numGenomes': numGenomes, 'numPairs': numPairs, 'numOrthologs': numOrthologs})
 
     
-def extractPerformanceStats(ds):
+def extractPerformanceStats(ds, pairs=None):
+    '''
+    pairs: default is to collect stats for all pairs.  It can be useful for testing to set pairs to a specific list of pairs.
+    '''
+    blastStats = {}
+    rsdStats = {}
+    totalTime = 0
+    totalRsdTime = 0
+    totalBlastTime = 0
+    
+    if pairs is None:
+        pairs = getPairs(ds)
+
+    def elapsedTime(stats):
+        return stats['endTime'] - stats['startTime']
+    
+    for qdb, sdb in pairs:
+        forwardTime = elapsedTime(getBlastStats(ds, qdb, sdb))
+        reverseTime = elapsedTime(getBlastStats(ds, sdb, qdb))
+        rsdTime = elapsedTime(getRsdStats(ds, qdb, sdb))
+
+        blastStats[json.dumps((qdb, sdb))] = forwardTime
+        blastStats[json.dumps((sdb, qdb))] = reverseTime
+        rsdStats[json.dumps((qdb, sdb))] = rsdTime
+
+        totalTime += forwardTime + reverseTime + rsdTime
+        totalBlastTime += forwardTime + reverseTime
+        totalRsdTime += rsdTime
+
+    print 'total time:', totalTime
+    print 'total blast time:', totalBlastTime
+    print 'total rsd time:', totalRsdTime
+    print 'saving stats'
+    setData(ds, BLAST_STATS, blastStats)
+    setData(ds, RSD_STATS, rsdStats)
+        
+
+def extractPerformanceStatsOld(ds):
     '''
     this function needs to be fixed for future data set.  it currently only works for the old stats.
     it should not dump the stats table and then use eval and json to parse it, when there are functions like getBlastStats().
@@ -1269,8 +1299,6 @@ def extractPerformanceStats(ds):
             cmd = "time echo 'select name, value from {}' | mysql --skip-column-names -h dev.mysql devroundup > {}".format(statsTable, dumpFile)
             subprocess.check_call(cmd, shell=True)
     
-        print 'getting genome to count'
-        genomeToCount = getGenomeToCount(ds)
         blastStats = {}
         rsdStats = {}
         totalTime = 0
