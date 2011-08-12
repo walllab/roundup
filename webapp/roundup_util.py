@@ -22,7 +22,6 @@ import roundup_common
 import roundup_db
 import roundup_dataset
 import util
-import LSF
 
 
 ##########################

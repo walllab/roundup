@@ -25,12 +25,14 @@ import orthquery
 import orthresult
 import BioUtilities
 import roundup_db
+import roundup_dataset
 import lsf
 
 
 USE_CACHE = True
 SYNC_QUERY_LIMIT = 20 # run an asynchronous query (on lsf) if more than this many genomes are in the query.
 GENOMES_AND_NAMES = roundup_util.getGenomesAndNames()
+GENOME_TO_NAME = dict(GENOMES_AND_NAMES)
 GENOMES = [genome for genome, name in GENOMES_AND_NAMES]
 GENOME_CHOICES = sorted([(g, '{}: {}'.format(g, n)) for g, n in GENOMES_AND_NAMES], key=lambda gn: gn[1]) # sorted by display name
 DIVERGENCE_CHOICES = [(d, d) for d in roundup_common.DIVERGENCES]
@@ -169,7 +171,7 @@ def raw(request):
     else:
         form = RawForm() # An unbound form
 
-    example = "{'first_genome': 'Homo_sapiens.aa', 'second_genome': 'Mus_musculus.aa'}"
+    example = "{'first_genome': 'HUMAN', 'second_genome': 'MOUSE'}"
     return django.shortcuts.render(request, 'raw.html', {'form': form, 'nav_id': 'raw', 'form_doc_id': 'raw',
                                                          'form_action': django.core.urlresolvers.reverse(raw), 'form_example': example})
 
@@ -238,14 +240,14 @@ def lookup(request):
     else:
         form = LookupForm() # An unbound form
 
-    example = "{'fasta': '>example_nameline\\nMYSIVKEIIVDPYKRLKWGFIPVKRQVEDLPDDLNSTEIV\\nTISNSIQSHETAENFITTTSEKDQLHFETSSYSEHKDNVN\\nVTRSYEYRDEADRPWWRFFDEQEYRINEKERSHNKWYS\\nWFKQGTSFKEKKLLIKLDVLLAFYSCIAYWVKYLD', 'genome': 'Saccharomyces_cerevisiae.aa'}"
+    example = "{'fasta': '>example_nameline\\nMYSIVKEIIVDPYKRLKWGFIPVKRQVEDLPDDLNSTEIV\\nTISNSIQSHETAENFITTTSEKDQLHFETSSYSEHKDNVN\\nVTRSYEYRDEADRPWWRFFDEQEYRINEKERSHNKWYS\\nWFKQGTSFKEKKLLIKLDVLLAFYSCIAYWVKYLD', 'genome': 'YEAST'}"
     return django.shortcuts.render(request, 'lookup.html', {'form': form, 'nav_id': 'lookup', 'form_doc_id': 'lookup',
                                                             'form_action': django.core.urlresolvers.reverse(lookup), 'form_example': example})
 
 def lookup_result(request, key):
     if roundup_util.cacheHasKey(key):
         kw = roundup_util.cacheGet(key)
-        page = '<h2>Lookup a Sequence Id for a FASTA Sequence Result</h2>\n<h3>Query</h3>Genome: <pre>{}</pre>'.format(orthresult.genomeDisplayName(kw['genome']))
+        page = '<h2>Lookup a Sequence Id for a FASTA Sequence Result</h2>\n<h3>Query</h3>Genome: <pre>{}</pre>'.format(GENOME_TO_NAME[kw['genome']])
         page += 'FASTA Sequence: <pre>{}</pre>'.format(kw['fasta'])
         page += '<h3>Result</h3>Sequence Id: {}'.format(kw['seqId'])
         return django.shortcuts.render(request, 'regular.html', {'html': page, 'nav_id': 'contact'})
@@ -309,7 +311,7 @@ def search_gene_names_result(request, key):
         page += "<table>\n"
         page += "<tr><td>Gene Name</td><td>Genome</td></tr>\n"
         for geneName, genome in pairs:
-            page += "<tr><td>{}</td><td>{}</td></tr>\n".format(geneName, orthresult.genomeDisplayName(genome))
+            page += "<tr><td>{}</td><td>{}: {}</td></tr>\n".format(geneName, genome, GENOME_TO_NAME[genome])
         page += "</table>\n"
         return django.shortcuts.render(request, 'regular.html', {'html': page, 'nav_id': 'search_gene_names'})
     else:
@@ -383,7 +385,7 @@ def browse(request):
     else:
         form = BrowseForm() # An unbound form
 
-    example = "{'primary_genome': 'Apis_mellifera.aa', 'identifier': '110749629', 'identifier_type': 'seq_id_type', 'secondary_genomes': ['Homo_sapiens.aa', 'Mus_musculus.aa']}" # javascript
+    example = "{'primary_genome': 'YEAST', 'identifier': 'Q03834', 'identifier_type': 'seq_id_type', 'secondary_genomes': ['HUMAN', 'MOUSE']}" # javascript
     # , 'include_gene_name': 'true', 'include_go_term': 'true'}" # javascript
     return django.shortcuts.render(request, 'browse.html',
                                    {'form': form, 'nav_id': 'browse', 'form_doc_id': 'browse',
@@ -428,7 +430,7 @@ def cluster(request):
     else:
         form = ClusterForm() # An unbound form
 
-    example = "{'genomes': ['Homo_sapiens.aa', 'Mus_musculus.aa', 'Arabidopsis_thaliana.aa']}" #, 'include_gene_name': 'true', 'include_go_term': 'true'}" 
+    example = "{'genomes': ['HUMAN', 'MOUSE', 'YEAST']}"
     return django.shortcuts.render(request, 'cluster.html',
                                    {'form': form, 'nav_id': 'cluster', 'form_doc_id': 'cluster',
                                     'form_action': django.core.urlresolvers.reverse(cluster), 'form_example': example})
@@ -488,12 +490,11 @@ def makeOrthQueryFromBrowseForm(form):
     browseId = form.cleaned_data.get('identifier')
     browseIdType = form.cleaned_data.get('identifier_type')
     queryDesc = 'Browse Query:\n'
-    queryDesc += '\t{}={}\n'.format(displayName('genome'), orthresult.genomeDisplayName(orthQuery['genome']))
-    
+    queryDesc += '\t{}={}: {}\n'.format(displayName('genome'), orthQuery['genome'], GENOME_TO_NAME[orthQuery['genome']])
     queryDesc += '\t{}={}\n'.format(displayName('identifier_type'), displayName(form.cleaned_data.get('identifier_type')))
     queryDesc += '\t{}={}\n'.format(displayName('identifier'), form.cleaned_data.get('identifier'))
     # queryDesc += '\t{}={}\n'.format(displayName('seq_ids'), ', '.join(orthQuery['seq_ids']))
-    queryDesc += '\t{}={}\n'.format(displayName('limit_genomes'), ', '.join([orthresult.genomeDisplayName(g) for g in orthQuery['limit_genomes']]))
+    queryDesc += '\t{}={}\n'.format(displayName('limit_genomes'), '\n\t\t'.join(['{}: {}'.format(g, GENOME_TO_NAME[g]) for g in orthQuery['limit_genomes']]))
     queryDesc += '\t{}={}\n'.format(displayName('divergence'), orthQuery['divergence'])
     queryDesc += '\t{}={}\n'.format(displayName('evalue'), orthQuery['evalue'])
     queryDesc += '\t{}={}\n'.format(displayName('distance_lower_limit'), orthQuery['distance_lower_limit'])
@@ -517,7 +518,7 @@ def makeOrthQueryFromClusterForm(form):
     orthQuery['distance_upper_limit'] = form.cleaned_data.get('distance_upper_limit')
     
     queryDesc = 'Retrieve Query:\n'
-    queryDesc += '\t{}={}\n'.format(displayName('genomes'), ', '.join([orthresult.genomeDisplayName(g) for g in orthQuery['genomes']]))
+    queryDesc += '\t{}={}\n'.format(displayName('genomes'), '\n\t\t'.join(['{}: {}'.format(g, GENOME_TO_NAME[g]) for g in orthQuery['genomes']]))
     queryDesc += '\t{}={}\n'.format(displayName('divergence'), orthQuery['divergence'])
     queryDesc += '\t{}={}\n'.format(displayName('evalue'), orthQuery['evalue'])
     queryDesc += '\t{}={}\n'.format(displayName('distance_lower_limit'), orthQuery['distance_lower_limit'])

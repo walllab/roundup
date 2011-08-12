@@ -514,7 +514,7 @@ def findGeneNameGenomePairsLike(substring, searchType=CONTAINS_TYPE, conn=None):
     returns: list of unique pairs of gene name and genome names for every gene name containing substring according to the searchType
     mapped to all genomes that contain a seq id that has that gene name.
     '''
-    sql = ' SELECT DISTINCT rs.gene_name, rg.name'
+    sql = ' SELECT DISTINCT rs.gene_name, rg.acc'
     sql += ' FROM {} rs JOIN {} rg '.format(releaseTable(config.CURRENT_RELEASE, 'sequence'), releaseTable(config.CURRENT_RELEASE, 'genomes'))
     sql += ' WHERE rs.gene_name LIKE %s'
     if searchType == CONTAINS_TYPE:
@@ -528,11 +528,11 @@ def findGeneNameGenomePairsLike(substring, searchType=CONTAINS_TYPE, conn=None):
     else:
         raise Exception('Unrecognized searchType.  searchType=%s'%searchType)
     sql += ' AND rs.genome_id = rg.id '
-    sql += ' ORDER BY rg.name, rs.gene_name '
+    sql += ' ORDER BY rg.acc, rs.gene_name '
     
-    # results are a tuple of tuples which containing an gene name and genome.
+    # results are a tuple of tuples which containing an gene name and genome and genome name.
     with connCM(conn=conn) as conn:
-        return [(row[0], row[1]) for row in dbutil.selectSQL(sql=sql, args=args, conn=conn)]
+        return [tuple(row) for row in dbutil.selectSQL(sql=sql, args=args, conn=conn)]
 
 
 def getSeqIdsForGeneName(geneName, genome=None, conn=None):
