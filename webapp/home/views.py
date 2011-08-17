@@ -56,7 +56,7 @@ DISPLAY_NAME_MAP = {'fasta': 'FASTA Sequence', 'genome': 'Genome',
 
 CT_XML = 'xml'
 CT_TXT = 'txt'
-RAW_CONTENT_TYPE_CHOICES = [('', 'Foo'), (CT_TXT, 'Text'), (CT_XML, 'OrthoXML')]
+RAW_CONTENT_TYPE_CHOICES = [(CT_TXT, 'Text'), (CT_XML, 'OrthoXML')]
 RAW_CONTENT_TYPE_TO_NAME = dict(RAW_CONTENT_TYPE_CHOICES)
 RAW_CONTENT_TYPES = RAW_CONTENT_TYPE_TO_NAME.keys()
 
