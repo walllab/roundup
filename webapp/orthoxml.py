@@ -282,6 +282,10 @@ def toOrthoXML(origin, originVersion, species, groups, scoreDefs=None, notes=Non
     rootStart += 'origin="{}" originVersion="{}" xsi:schemaLocation="http://orthoXML.org/2011/ http://www.orthoxml.org/0.3/orthoxml.xsd">{}'.format(origin, originVersion, newl)
     yield rootStart
     
+    if notes:
+        for xml in notes.toXml(indent, newl, level+1):
+            yield xml
+
     # yield species one at a time b/c they can be big, containing tens of thousands of genes.
     for spec in species:
         for xml in spec.toXml(indent, newl, level+1):
@@ -300,10 +304,6 @@ def toOrthoXML(origin, originVersion, species, groups, scoreDefs=None, notes=Non
         for xml in group.toXml(indent, newl, level+2):
             yield xml
     yield indent*(level+1) + '</groups>{}'.format(newl)
-
-    if notes:
-        for xml in notes.toXml(indent, newl, level+1):
-            yield xml
 
     rootEnd = '</orthoXML>{}'.format(newl)
     yield rootEnd
