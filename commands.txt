@@ -48,9 +48,15 @@ cd /www/dev.roundup.hms.harvard.edu/webapp && time python -c 'import roundup_dat
 cd /www/dev.roundup.hms.harvard.edu/webapp && time python -c 'import roundup_dataset; ds = "/groups/cbi/roundup/datasets/2011_02"; roundup_dataset.extractDatasetStats(ds)'
 cd /www/dev.roundup.hms.harvard.edu/webapp && time python -c 'import roundup_dataset; ds = "/groups/cbi/roundup/datasets/2011_02"; roundup_dataset.extractPerformanceStats(ds)'
 
+# making all genomes and orthologs available for download.
+cd /www/dev.roundup.hms.harvard.edu/webapp && time python -c 'import roundup_dataset; ds = "/groups/cbi/roundup/datasets/2011_02"; roundup_dataset.processGenomesForDownload(ds)'
+cd /www/dev.roundup.hms.harvard.edu/webapp && time python -c 'import roundup_dataset; ds = "/groups/cbi/roundup/datasets/2011_02"; roundup_dataset.collateOrthologs(ds)'
+# orthoxml is skipped b/c the orthoxml files are too large.
+# cd /www/dev.roundup.hms.harvard.edu/webapp && time python -c 'import roundup_dataset; ds = "/groups/cbi/roundup/datasets/2011_02"; roundup_dataset.convertToOrthoXML(ds)'
+cd /www/dev.roundup.hms.harvard.edu/webapp && time python -c 'import roundup_dataset; ds = "/groups/cbi/roundup/datasets/2011_02"; roundup_dataset.zipDownloadPaths(ds)'
+
 # this is done on the day one releases to production.  Or it can be set manually by passing in a datetime.date object.
 cd /www/dev.roundup.hms.harvard.edu/webapp && time python -c 'import roundup_dataset; ds = "/groups/cbi/roundup/datasets/2011_02"; roundup_dataset.setReleaseDate(ds)'
-
 
 #####################################
 # LOADING A DATASET INTO THE DATABASE

@@ -7,6 +7,7 @@ It implements functions for normalizing pairs and getting RSD parameters.
 
 
 import os
+import io
 
 import config
 import util
@@ -114,10 +115,20 @@ class OrthData(object):
 
 
 def orthDatasFromFile(path):
-    return [orthData for orthData in orthDatasFromFileGen(path)]
+    return list(orthDatasFromFileGen(path))
 
 
 def orthDatasFromFileGen(path):
+    '''
+    path: contains zero or more orthDatas.  must exist.
+    yields: every orthData, a pair of params and orthologs, in path.
+    '''
+    with open(path) as fh:
+        for orthData in orthDatasFromStreamGen(fh):
+            yield orthData
+
+
+def oldOrthDatasFromFileGen(path):
     '''
     path: contains zero or more orthDatas.  must exist.
     yields: every orthData, a pair of params and orthologs, in path.
@@ -161,11 +172,47 @@ def orthDatasToFile(orthDatas, path, mode='w'):
     //
     '''
     with open(path, mode) as fh:
-        for (qdb, sdb, div, evalue), orthologs in orthDatas:
-            fh.write('PA\t{}\t{}\t{}\t{}\n'.format(qdb, sdb, div, evalue))
-            for ortholog in orthologs:
-                fh.write('OR\t{}\t{}\t{}\n'.format(*ortholog))
-            fh.write('//\n')
+        orthDatasToStream(orthDatas, fh)
+
+
+def orthDatasToStr(orthDatas):
+    '''
+    serialize orthDatas as a string.
+    returns: a string containing the serialized orthDatas.
+    '''
+    with io.BytesIO() as handle:
+        orthDatasToStream(orthDatas, handle)
+        return handle.getvalue()
+    
+
+def orthDatasToStream(orthDatas, handle):
+    '''
+    handle: an open io stream (e.g. a filehandle or a StringIO) to which the orthDatas are written
+    the handle is not opened or closed in this function.
+    '''
+    for (qdb, sdb, div, evalue), orthologs in orthDatas:
+        handle.write('PA\t{}\t{}\t{}\t{}\n'.format(qdb, sdb, div, evalue))
+        for ortholog in orthologs:
+            handle.write('OR\t{}\t{}\t{}\n'.format(*ortholog))
+        handle.write('//\n')
+    return handle
+
+
+def orthDatasFromStreamGen(handle):
+    '''
+    handle: an open io stream (e.g. a filehandle or a StringIO) from which orthDatas are read and yielded
+    yields: every orthData, a pair of params and orthologs, in path.
+    '''
+    for line in handle:
+        if line.startswith('PA'):
+            lineType, qdb, sdb, div, evalue = line.strip().split('\t')
+            orthologs = []
+        elif line.startswith('OR'):
+            lineType, qid, sid, dist = line.strip().split('\t')                        
+            orthologs.append((qid, sid, dist))
+        elif line.startswith('//'):
+            yield ((qdb, sdb, div, evalue), orthologs)
+    
     
                     
 ##########################

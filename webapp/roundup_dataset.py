@@ -54,6 +54,7 @@ import datetime
 import logging
 import os
 import random
+import re
 import shutil
 import subprocess
 import time
@@ -66,6 +67,7 @@ import kvstore
 import lsf
 import lsfdispatch
 import nested
+import orthoxml
 import roundup_common
 import roundup_db
 import rsd
@@ -116,7 +118,7 @@ def prepareDataset(ds):
     '''
     resetCompletes(ds) # make an empty db table for dones
     resetStats(ds) # make an empty db table for stats
-    for path in (ds, getGenomesDir(ds), getOrthologsDir(ds), getJobsDir(ds), getSourcesDir(ds)):
+    for path in (ds, getGenomesDir(ds), getOrthologsDir(ds), getJobsDir(ds), getSourcesDir(ds), getDownloadDir(ds)):
         if not os.path.exists(path):
             os.makedirs(path, DIR_MODE)
     setMetadata(ds, {}) # initialize a blank metadata for the dataset
@@ -686,8 +688,191 @@ roundup_dataset.setMissingTaxonToData(ds, missingTaxonToData)
     taxonToData = getTaxonToData(ds)
     taxonToData.update(missingTaxonToData)
     setData(ds, TAXON_TO_DATA, taxonToData)
+
+
+#################################
+# DOWNLOAD AND ORTHOXML FUNCTIONS
+#################################
+
+def processGenomesForDownload(ds):
+    '''
+    copy genome fasta files into a dir under download dir, then tar.gz the dir.
+    '''
+    downloadDir = getDownloadDir(ds)
+    genomes = getGenomes(ds)
+    downloadGenomesDir = os.path.join(downloadDir, 'genomes')
+    if not os.path.exists(downloadGenomesDir):
+        os.mkdir(downloadGenomesDir, DIR_MODE)
+    for genome in genomes:
+        print genome
+        shutil.copy(getGenomeFastaPath(ds, genome), downloadGenomesDir)
+
+    print 'tarring dir'
+    subprocess.check_call(['tar', '-czf', 'genomes.tar.gz', 'genomes'], cwd=downloadDir)
+    print 'deleting dir'
+    shutil.rmtree(downloadGenomesDir)
+
+
+def collateOrthologs(ds):
+    '''
+    collate orthologs from jobs files into files for each parameter combination in the download dir.
+    '''
+
+    divEvalues, txtPaths, xmlPaths = getDownloadPaths(ds)
+    # open files
+    divEvalueToFH = dict([(divEvalue, open(path, 'w')) for divEvalue, path in zip(divEvalues, txtPaths)])
+    try:
+        print 'collating orthologs'
+        for orthData in roundup_common.orthDatasFromFilesGen(getOrthologsFiles(ds)):
+            params, orthologs = orthData
+            qdb, sdb, div, evalue = params
+            roundup_common.orthDatasToStream([orthData], divEvalueToFH[(div, evalue)])
+    finally:
+        for fh in divEvalueToFH.values():
+            fh.close()
+
+
+def convertToOrthoXML(ds, onGrid=True, clean=False):
+    '''
+    convert collated orthologs files to orthoxml format.
+    clean: if True, will delete the xml files if they already exist, and also clean the dones for these jobs
+    onGrid: if True, will convert txt files to xml in parallel on lsf.  Otherwise, will run serially in this process.
+    '''
+    divEvalues, txtPaths, xmlPaths = getDownloadPaths(ds)
+    ns = getDatasetId(ds) + '_to_orthoxml'
+    jobs = [('roundup_dataset.convertTxtToOrthoXML', {'ds': ds, 'txtPath': txtPath, 'xmlPath': xmlPath}) for txtPath, xmlPath in zip(txtPaths, xmlPaths)]
+    lsfOptions = ['-q '+roundup_common.LSF_LONG_QUEUE]
+    if clean:
+        for xmlPath in xmlPaths:
+            if os.path.exists(xmlPath):
+                os.remove(xmlPath)
+        workflow.dropDones(ns)
+    workflow.runJobs(ns, jobs, lsfOptions=lsfOptions, onGrid=onGrid)
+
+
+def zipDownloadPaths(ds, onGrid=True, clean=False):
+    '''
+    after orthologs have been collated and converted to orthoxml, zip the files
+    '''
+    divEvalues, txtPaths, xmlPaths = getDownloadPaths(ds)
+    ns = getDatasetId(ds) + '_zip_download'
+    jobs = [('roundup_dataset.zipDownloadPath', {'path': path}) for path in txtPaths + xmlPaths if os.path.exists(path)]
+    lsfOptions = ['-q '+roundup_common.LSF_LONG_QUEUE]
+    if clean:
+        workflow.dropDones(ns)
+    workflow.runJobs(ns, jobs, lsfOptions=lsfOptions, onGrid=onGrid)
+
+
+def zipDownloadPath(path):
+        print 'gzipping', path
+        subprocess.check_call(['gzip', path])
+
+
+def convertTxtToOrthoXML(ds, txtPath, xmlPath):
+    '''
+    WARNING: xml files on the production roundup dataset are too big.  This step should be skipped.
+    txtPath: a orthdatas file
+    xmlPath: where to write the OrthoXML version of txtPath
+    '''
+    print txtPath, '=>', xmlPath
+    with open(xmlPath, 'w') as xmlOut:
+        convertOrthDatasToXml(ds, roundup_common.orthDatasFromFileGen(txtPath), roundup_common.orthDatasFromFileGen(txtPath), xmlOut)
+
+
+def getDownloadPaths(ds):
+    downloadDir = getDownloadDir(ds)
+    divEvalues = list(roundup_common.genDivEvalueParams())
+    txtPaths = [os.path.join(downloadDir, '{}_{}.orthologs.txt'.format(div, evalue)) for div, evalue in divEvalues]
+    xmlPaths = [re.sub('\.txt$', '.xml', path) for path in txtPaths]
+    return divEvalues, txtPaths, xmlPaths
+
+
+def makeOrthoxmlSpecies(genomeToGenes, genomeToName, genomeToTaxon, uniprotRelease):
+    speciesList = []
+    for genome in genomeToGenes:
+        genes = [orthoxml.Gene(gene, protId=gene) for gene in genomeToGenes[genome]]
+        database = orthoxml.Database("Uniprot", uniprotRelease, genes=genes, protLink="http://www.uniprot.org/uniprot/")
+        species = orthoxml.Species(genomeToName[genome], genomeToTaxon[genome], [database])
+        speciesList.append(species)
+    return speciesList
+
+
+def convertOrthDatasToXml(ds, orthDatas, orthDatasAgain, xmlOut):
+    '''
+    orthDatas: iter of orthDatas
+    orthDatasAgain: another iter of the same orthDatas.  
+    xmlOut: a stream in which to write serialized orthoxml.
+    a 2-pass method for converting orthdatas for a dataset to orthoxml
+    pass through orthologs, collecting genome to gene.
+    pass through again, writing out species, scores, groups.
+    add parameters to orthoxml notes.
+    Done this way to avoid needing to have all orthDatas in memory, in case there are millions of them.
+    '''
+    print 'getting metadata'
+    genomeToName = getGenomeToName(ds)
+    genomeToTaxon = getGenomeToTaxon(ds)
+    uniprotRelease = getUniprotRelease(ds)
+    
+    print 'pass 1: collecting genes'
+    genomeToGenes = collections.defaultdict(set)
+    for params, orthologs in orthDatas:
+        qdb, sdb, div, evalue = params
+        for qid, sid, dist in orthologs:
+            genomeToGenes[qdb].add(qid)
+            genomeToGenes[sdb].add(sid)
         
-        
+    print 'making species'
+    speciesList = makeOrthoxmlSpecies(genomeToGenes, genomeToName, genomeToTaxon, uniprotRelease)    
+
+    scoreDef = orthoxml.ScoreDef('dist', 'Maximum likelihood evolutionary distance')
+
+    print 'pass 2: writing xml'
+    def groupGen():
+        for params, orthologs in orthDatasAgain:
+            qdb, sdb, div, evalue = params
+            for qid, sid, dist in orthologs:
+                qGeneRef = orthoxml.GeneRef(qid)
+                sGeneRef = orthoxml.GeneRef(sid)
+                group = orthoxml.OrthologGroup([qGeneRef, sGeneRef], scores=[orthoxml.Score(scoreDef.id, dist)])
+                yield group
+
+    notes = orthoxml.Notes('These orthologs were computed using the following Reciprocal Smallest Distance (RSD) parameters: divergence={} and evalue={}.  See http://roundup.hms.harvard.edu for more information about Roundup and RSD.'.format(div, evalue))
+    for xmlText in orthoxml.toOrthoXML('roundup', getReleaseName(ds), speciesList, groupGen(), scoreDefs=[scoreDef], notes=notes):
+        xmlOut.write(xmlText)
+
+
+def convertOrthGroupsToXml(ds, groups, genomeToGenes, div, evalue, xmlOut):
+    '''
+    groups: a iterable of tuples of (genes, avgDist) for a group of orthologous genes.  avgDist is the mean distance of all orthologous pairs in the group.
+    genomeToGenes: a dict from genome to the genes in that genome.
+    div: the divergence threshold used to compute the orthologs in groups
+    evalue: the evalue threshold used to compute the orthologs in groups
+    xmlOut: a stream (e.g. filehandle) that the orthoxml is written to.
+    '''
+    print 'getting metadata'
+    genomeToName = getGenomeToName(ds)
+    genomeToTaxon = getGenomeToTaxon(ds)
+    uniprotRelease = getUniprotRelease(ds)
+    roundupRelease = getReleaseName(ds)
+    
+    print 'making species'
+    speciesList = makeOrthoxmlSpecies(genomeToGenes, genomeToName, genomeToTaxon, uniprotRelease)    
+
+    scoreDef = orthoxml.ScoreDef('avgdist', 'Mean maximum likelihood evolutionary distance of all orthologous pairs in a group')
+
+    print 'writing xml'
+    def groupGen():
+       for genes, avgDist in groups:
+           geneRefs = [orthoxml.GeneRef(gene) for gene in genes]
+           score = orthoxml.Score(scoreDef.id, str(avgDist))
+           group = orthoxml.OrthologGroup(geneRefs, scores=[score])
+           yield group
+
+    notes = orthoxml.Notes('These orthologs were computed using the following Reciprocal Smallest Distance (RSD) parameters: divergence={} and evalue={}.  See http://roundup.hms.harvard.edu for more information about Roundup and RSD.'.format(div, evalue))
+    for xmlText in orthoxml.toOrthoXML('roundup', roundupRelease, speciesList, groupGen(), scoreDefs=[scoreDef], notes=notes):
+        xmlOut.write(xmlText)
+
+
 ###############
 # DATASET STUFF
 ###############
@@ -713,6 +898,10 @@ def getOrthologsDir(ds):
     
 def getSourcesDir(ds):
     return os.path.join(ds, 'sources')
+
+
+def getDownloadDir(ds):
+    return os.path.join(ds, 'download')
 
 
 ###################

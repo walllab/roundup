@@ -28,9 +28,9 @@ def exampleFunc(msg='hello world'):
     print msg
     
 
-def testRunJobs():
+def testRunJobs(onGrid=True):
     jobs = [('workflow.exampleFunc', {'msg': 'test {}'.format(i)}) for i in range(2)]
-    runJobs('test_workflow_jobs', jobs, lsfOptions=['-q shared_15m'])
+    runJobs('test_workflow_jobs', jobs, lsfOptions=['-q shared_15m'], onGrid=onGrid)
 
 
 def cleanTestRunJobs():
@@ -46,12 +46,13 @@ def cleanTestRunJobs():
 # if a job fails or exits while running, it can be restarted.
 # Only jobs which are not done or not already running will be restarted.
 
-def runJobs(ns, jobs, names=None, lsfOptions=None):
+def runJobs(ns, jobs, names=None, lsfOptions=None, onGrid=True):
     '''
     ns: a namespace to keep jobs organized.
     jobs: a list of tuples of func and keyword arguments
     names: a optional list of names for the jobs, one for each job.  Useful if you want descriptive names in the dones table.
     lsfOptions: a list of lsf options.  '-J <job_name>' and '-o /dev/null' are appended to the list.
+    onGrid: if True, jobs are distributed on lsf.  Otherwise, jobs are executed serially in the current process.  defaults to True.
     An lsf job is run for each job.
     Tracks which jobs are done and are already running, so runJobs() can be rerun without rerunning finished or running jobs.
     This is useful if jobs fail and need to be rerun.  Does that ever happen? ;-)
@@ -67,15 +68,18 @@ def runJobs(ns, jobs, names=None, lsfOptions=None):
         lsfJobName = '{}_{}'.format(ns, name)
         if isDone(ns, name):
             print 'already done job:', ns, name
-        elif lsf.isJobNameOn(lsfJobName):
-            print 'already running job:', ns, name
+        elif onGrid:
+            if lsf.isJobNameOn(lsfJobName):
+                print 'already running job:', ns, name
+            else:
+                print 'starting job:', ns, name
+                func = 'workflow.runJob'
+                kw = {'ns': ns, 'job': job, 'name': name}
+                lsfOptions += [' -o /dev/null', '-J {}'.format(lsfJobName)]
+                print lsfdispatch.dispatch(func, keywords=kw, lsfOptions=lsfOptions)
         else:
-            print 'starting job:', ns, name
-            func = 'workflow.runJob'
-            kw = {'ns': ns, 'job': job, 'name': name}
-            lsfOptions += [' -o /dev/null', '-J {}'.format(lsfJobName)]
-            print lsfdispatch.dispatch(func, keywords=kw, lsfOptions=lsfOptions)
-
+            runJob(ns, job, name)
+            
 
 def runJob(ns, job, name):
     '''

@@ -8,6 +8,8 @@
 <h2>Browse the Roundup Orthology Database</h2> 
 <p>
 Do you want to restrict a query by sequence id?  Are you not sure what id to use?  <a href="{% url 'home.views.lookup' %}">Lookup a Sequence Id for a FASTA Sequence</a>
+<br />
+For practical and quadratic reasons, queries with 20 or fewer genomes run quickly.  Queries with over 200 genomes might not run at all, depending on the size of the genomes.
 </p> 
 {% include 'main_form.html' %}
 </div>

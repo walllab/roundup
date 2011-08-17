@@ -1,13 +1,16 @@
 # Create your views here.
 
-import logging
-import sys
-import re
-import os
-import uuid
+# stdlib modules
 import hashlib
+import io
 import json
+import logging
+import os
+import re
+import sys
+import uuid
 
+# third party modules
 import django.http
 import django.shortcuts
 import django.forms
@@ -15,18 +18,19 @@ import django.core.exceptions
 import django.core.urlresolvers
 import django.utils.html
 
+# our modules
 sys.path.append('..')
+import BioUtilities
 import config
-import sendmail
+import lsf
 import models
-import roundup_common
-import roundup_util
 import orthquery
 import orthresult
-import BioUtilities
-import roundup_db
+import roundup_common
 import roundup_dataset
-import lsf
+import roundup_db
+import roundup_util
+import sendmail
 
 
 USE_CACHE = True
@@ -49,6 +53,13 @@ DISPLAY_NAME_MAP = {'fasta': 'FASTA Sequence', 'genome': 'Genome',
                     'identifier': 'Identifier', 'identifier_type': 'Identifier Type', 'gene_name_type': 'Gene Name', 'seq_id_type': 'Sequence Id',
                     'seq_ids': 'Sequence Identifiers',
                     'contains': 'Contain', 'equals': 'Equal', 'starts_with': 'Start With', 'ends_with': 'End With', 'substring': 'Text Substring'}
+
+CT_XML = 'xml'
+CT_TXT = 'txt'
+RAW_CONTENT_TYPE_CHOICES = [('', 'Foo'), (CT_TXT, 'Text'), (CT_XML, 'OrthoXML')]
+RAW_CONTENT_TYPE_TO_NAME = dict(RAW_CONTENT_TYPE_CHOICES)
+RAW_CONTENT_TYPES = RAW_CONTENT_TYPE_TO_NAME.keys()
+
 DIST_LIMIT_HELP = 'from 0.0 to 19.0'
 
 def displayName(key, nameMap=DISPLAY_NAME_MAP):
@@ -146,7 +157,19 @@ class RawForm(django.forms.Form):
     second_genome = django.forms.ChoiceField(choices=GENOME_CHOICES)
     divergence = django.forms.ChoiceField(choices=DIVERGENCE_CHOICES)
     evalue = django.forms.ChoiceField(choices=EVALUE_CHOICES, label='BLAST E-value')
+    format = django.forms.ChoiceField(choices=RAW_CONTENT_TYPE_CHOICES, required=False)
 
+    def clean_format(self):
+        '''
+        If format is not specified, it defaults to CT_TXT.
+        '''
+        logging.debug('clean_format={}'.format(self.cleaned_data['format']))
+        data = self.cleaned_data['format']
+        if data:
+            return data
+        else:
+            return CT_TXT
+            
     def clean(self):
         first_genome = self.cleaned_data.get('first_genome')
         second_genome = self.cleaned_data.get('second_genome')
@@ -165,9 +188,10 @@ def raw(request):
         if form.is_valid(): # All validation rules pass
             logging.debug(form.cleaned_data)
             first_genome, second_genome = sorted((form.cleaned_data['first_genome'], form.cleaned_data['second_genome']))
+            contentType = form.cleaned_data['format']
             kwargs = {'first_genome': first_genome, 'second_genome': second_genome, 'divergence': form.cleaned_data['divergence'], 'evalue': form.cleaned_data['evalue']}
             # redirect the post to a get.  http://en.wikipedia.org/wiki/Post/Redirect/Get
-            return django.shortcuts.redirect(django.core.urlresolvers.reverse(raw_download, kwargs=kwargs))
+            return django.shortcuts.redirect(django.core.urlresolvers.reverse(raw_download, kwargs=kwargs)+'?ct={}'.format(contentType))
     else:
         form = RawForm() # An unbound form
 
@@ -182,12 +206,13 @@ def raw_download(request, first_genome, second_genome, divergence, evalue):
     '''
 
     # validate parameters
+    contentType = request.GET.get('ct', CT_TXT)
     kw = {'first_genome': first_genome, 'second_genome': second_genome, 'divergence': divergence, 'evalue': evalue}
     form = RawForm(kw)
-    if form.is_valid():
-        desc = 'Downloading orthologs for:<ul><li>First genome: {}</li><li>Second genome: {}</li><li>Divergence: {}</li><li>BLAST E-value: {}</li></ul>'
-        desc = desc.format(first_genome, second_genome, divergence, evalue)
-        data = {'desc': desc, 'download_url': django.core.urlresolvers.reverse(api_raw_download, kwargs=kw)}
+    if form.is_valid() and contentType in RAW_CONTENT_TYPES:
+        desc = 'Downloading orthologs for:<ul><li>First genome: {}</li><li>Second genome: {}</li><li>Divergence: {}</li><li>BLAST E-value: {}</li><li>Format: {}</li></ul>'
+        desc = desc.format(GENOME_TO_NAME[first_genome], GENOME_TO_NAME[second_genome], divergence, evalue, RAW_CONTENT_TYPE_TO_NAME[contentType])
+        data = {'desc': desc, 'download_url': django.core.urlresolvers.reverse(api_raw_download, kwargs=kw)+'?ct={}'.format(contentType)}
         return django.shortcuts.render(request, 'download.html', data)
     else:
         raise django.http.Http404
@@ -198,16 +223,23 @@ def api_raw_download(request, first_genome, second_genome, divergence, evalue):
     get: send orthologs for a pair of genomes as a file download.
     '''
     # validate parameters
+    contentType = request.GET.get('ct', CT_TXT)
     kw = {'first_genome': first_genome, 'second_genome': second_genome, 'divergence': divergence, 'evalue': evalue}
     form = RawForm(kw)
-    if form.is_valid():
-        # get data
-        orthologs = roundup_util.getRawResults((first_genome, second_genome, divergence, evalue))
-        # send data to requestor
-        contentType = request.GET.get('ct', 'txt')
-        response = django.http.HttpResponse(orthologs, content_type='text/plain')
-        response['Content-Disposition'] = 'attachment; filename={}_{}_{}_{}.txt'.format(first_genome, second_genome, divergence, evalue)
-        return response
+    if form.is_valid() and contentType in RAW_CONTENT_TYPES:
+        if contentType == CT_TXT:
+            orthologsTxt = roundup_util.getRawResults((first_genome, second_genome, divergence, evalue))
+            response = django.http.HttpResponse(orthologsTxt, content_type='text/plain')
+            response['Content-Disposition'] = 'attachment; filename={}_{}_{}_{}.txt'.format(first_genome, second_genome, divergence, evalue)
+            return response
+        elif contentType == CT_XML:
+            orthData = roundup_util.getOrthData((first_genome, second_genome, divergence, evalue))
+            with io.BytesIO() as handle:
+                roundup_dataset.convertOrthDatasToXml(config.CURRENT_DATASET, [orthData], [orthData], handle)
+                orthologsXml = handle.getvalue()
+            response = django.http.HttpResponse(orthologsXml, content_type='text/xml')
+            response['Content-Disposition'] = 'attachment; filename={}_{}_{}_{}.xml'.format(first_genome, second_genome, divergence, evalue)
+            return response
     else:
         raise django.http.Http404
 
@@ -326,7 +358,7 @@ class BrowseForm(django.forms.Form):
     primary_genome = django.forms.ChoiceField(choices=GENOME_CHOICES)
     identifier_type = django.forms.ChoiceField(choices=IDENTIFIER_TYPE_CHOICES)
     identifier = django.forms.CharField(required=False, max_length=100, widget=django.forms.TextInput(attrs={'size': '60'}))
-    secondary_genomes = django.forms.MultipleChoiceField(required=False, choices=GENOME_CHOICES)
+    secondary_genomes = django.forms.MultipleChoiceField(choices=GENOME_CHOICES)
     divergence = django.forms.ChoiceField(choices=DIVERGENCE_CHOICES)
     evalue = django.forms.ChoiceField(choices=EVALUE_CHOICES, label='BLAST E-value')
     distance_lower_limit = django.forms.FloatField(help_text=DIST_LIMIT_HELP, required=False, max_value=19.0, min_value=0.0)
@@ -557,6 +589,10 @@ def orth_result(request, resultId):
         elif templateType == orthresult.DOWNLOAD_TEMPLATE:
             response = django.http.HttpResponse(page, content_type='text/plain')
             response['Content-Disposition'] = 'attachment; filename=roundup_result_{}_{}.txt'.format(resultType, resultId)
+            return response
+        elif templateType == orthresult.DOWNLOAD_XML_TEMPLATE:
+            response = django.http.HttpResponse(page, content_type='text/xml')
+            response['Content-Disposition'] = 'attachment; filename=roundup_result_{}_{}.xml'.format(resultType, resultId)
             return response
     else:
         raise django.http.Http404
