@@ -14,7 +14,6 @@
 * Completes: track which stages of creating a dataset or running a computation have been completed.  There are two completes, one in the database that is concurrency-safe
   and scalable to millions of entries (useful for tracking complete pairs), and one on the filesystem, which is human editable and stored with the dataset so it is not
   sensitive to which code (dev or prod) is run.
-* Database: 
 
 
 # prepare a computation for various small Mycoplasma and Mycobacterium.
@@ -55,6 +54,7 @@ import datetime
 import logging
 import os
 import random
+import re
 import shutil
 import subprocess
 import time
@@ -63,15 +63,16 @@ import uuid
 # our modules
 import config
 import fasta
-import LSF
-import nested
 import kvstore
-import roundup_common
-import util
-import roundup_db
+import lsf
 import lsfdispatch
+import nested
+import orthoxml
+import roundup_common
+import roundup_db
 import rsd
-import orthologs
+import util
+import workflow
 
 
 MIN_GENOME_SIZE = 200 # ignore genomes with fewer sequences
@@ -101,32 +102,8 @@ RSD_STATS = 'rsd_stats'
 
 def main(ds):
     '''
-    this function is half functional and half documentation of the steps required to make and compute a dataset
     '''
-    steps = [(prepareDataset, 'prepare dataset'),
-             (downloadSources, 'download sources'),
-             (processSources, 'process taxon sources'),
-             (splitUniprotIntoGenomes, 'split sources into fasta genomes'),
-             (formatGenomes, 'format genomes'),
-             (extractFromFasta, 'extract from fasta'),
-             (extractFromIdMapping, 'extract from id mapping'),
-             (extractTaxonData, 'extract taxon data'),
-             (extractFromGeneOntology, 'extract from gene ontology'),
-             (extractUniprotRelease, 'extract uniprot release'),
-             (findMissingTaxonToData, ''), # check that we have taxon data for every genome
-             (setMissingTaxonToData, ''), # update the taxon data if necessary
-             (setSourcesHtml, 'set sources html'),
-             (prepareComputation, 'prepare computation'),
-             (computeJobs, 'compute jobs'),
-             (extractDatasetStats, 'extract dataset stats'), # cache the number of orthologs
-             (extractPerformanceStats, 'extract performance stats'), # cache the times it took to run the blast and rsd jobs for all pairs.
-             (setReleaseDate, 'set release date'), # do this on the day you release to production
-             ]
-
-    for func, tag in steps:
-        if not isStepComplete(ds, tag):
-            func(ds)
-            markStepComplete(ds, tag)
+    print 'See commands.txt for details on how to make a dataset.'
             
 
         
@@ -139,9 +116,9 @@ def prepareDataset(ds):
     '''
     Make the directory structure, tables, etc., a new dataset needs.
     '''
-    resetCompletes(ds)
-    resetStats(ds)
-    for path in (ds, getGenomesDir(ds), getOrthologsDir(ds), getJobsDir(ds), getSourcesDir(ds)):
+    resetCompletes(ds) # make an empty db table for dones
+    resetStats(ds) # make an empty db table for stats
+    for path in (ds, getGenomesDir(ds), getOrthologsDir(ds), getJobsDir(ds), getSourcesDir(ds), getDownloadDir(ds)):
         if not os.path.exists(path):
             os.makedirs(path, DIR_MODE)
     setMetadata(ds, {}) # initialize a blank metadata for the dataset
@@ -154,13 +131,13 @@ def downloadSource(ds, url, dest):
     if not os.path.exists(os.path.dirname(dest)):
         os.makedirs(os.path.dirname(dest), DIR_MODE)
     print 'downloading {} to {}...'.format(url, dest)
-    if isStepComplete(ds, 'download', url):
+    if isComplete(ds, 'download', url):
         print '...skipping because already downloaded.'
         return
     cmd = 'curl --remote-time --output '+dest+' '+url
     subprocess.check_call(cmd, shell=True)
     print
-    markStepComplete(ds, 'download', url)
+    markComplete(ds, 'download', url)
     print '...done.'
     pause = 10
     print 'pausing for {} seconds.'.format(pause)
@@ -249,7 +226,7 @@ def processSources(ds):
 
     for f in uniprotFiles + taxonFiles + goFiles:
         path = os.path.join(sourcesDir, f)
-        if isStepComplete(ds, 'process source', path):
+        if isComplete(ds, 'process source', path):
             print '...skipping processing {} because already done.'.format(path)
             continue
         print 'processing', path
@@ -259,7 +236,7 @@ def processSources(ds):
         elif path.endswith('.gz') and os.path.exists(path):
             print '...gunzip file'
             subprocess.check_call(['gunzip', path])
-        markStepComplete(ds, 'process source', path)
+        markComplete(ds, 'process source', path)
             
     print '...done'
 
@@ -635,17 +612,18 @@ def extractFromIdMapping(ds):
     setData(ds, GENE_TO_GENE_IDS, geneToGeneIds)
 
 
-def prepareComputation(ds, numJobs=4000):
+def prepareComputation(ds, numJobs=4000, pairs=None):
     '''
     ds: dataset to ready for computation
     numJobs: split computation into this many jobs.  More jobs = shorter jobs, better parallelism.
       Fewer jobs = fewer dirs and files to make isilon run slowly and overload lsf queue.
       Recommendation: <= 10000.
-
+    pairs: If None, compute orthologs for all pairs of genomes.  If not None, only compute these pairs.  useful for testing.  
     '''
     print 'prepare computation for {}'.format(ds)
 
-    pairs = getPairs(ds)
+    if pairs is None:
+        pairs = getPairs(ds)
     print 'pair count:', len(pairs)
 
     # create up to N jobs for the pairs to be computed.
@@ -666,47 +644,6 @@ def prepareComputation(ds, numJobs=4000):
 
     getJobs(ds, refresh=True) # refresh the cached metadata
     
-
-def getSourcesHtml(ds):
-    '''
-    returns an html div describing the data sources for this version of the roundup dataset.  This fragment is stored in the dataset metadata.
-    '''
-    return getMetadata(ds)['sources_html']
-
-
-def setSourcesHtml(ds):
-    '''
-    generate the sources page html div, and store it in the metadata.
-    '''
-    html = '''<div id="sources">
-<p id="sources_desc">
-Roundup Release {} uses the following sources:
-<ul>
-<li>
-<a href="http://www.uniprot.org">UniProt</a>, specifically UniProtKB/Swiss-Prot and UniProtKB/TrEMBL from Release {}, is used as a source for protein sequences from complete genomes, for sequence annotations, and for genome annotations.
-</li>
-<li>
-<a href="http://www.ncbi.nlm.nih.gov/taxonomy">The NCBI Taxonomy database</a> is used as a source for genome annotations.
-</li>
-<li>
-<a href="http://geneontology.org/">Gene Ontology</a> is used for sequence annotations.
-</li>
-</ul>
-</p>
-<p id="source_urls">
-The following is a comprehensive list of files that were downloaded for this Roundup release.  All sources are publicly available.
-<ul>
-'''.format(getReleaseName(ds), extractUniprotRelease(ds))
-    for url, dest in getMetadata(ds)['sources']:
-        html += '<li><a href="{}">{}</a></li>\n'.format(url, url)
-    html += '''
-</ul>
-</p>
-</div>
-'''
-    updateMetadata(ds, {'sources_html': html})
-    return html
-
 
 def findMissingTaxonToData(ds):
     '''
@@ -737,12 +674,205 @@ def findMissingTaxonToData(ds):
 def setMissingTaxonToData(ds, missingTaxonToData):
     '''
     update taxonToData with data for the genome taxons that were missing data.
+# example of updating taxonToData with missing taxon data
+cd /www/dev.roundup.hms.harvard.edu/webapp && time python -c "import roundup_dataset;
+ds = '/groups/cbi/roundup/datasets/2011_01'
+missingTaxonToData = {'272994': {roundup_dataset.CAT_CODE: 'B', roundup_dataset.CAT_NAME: 'Bacteria', roundup_dataset.DIV_CODE: 'BCT', roundup_dataset.DIV_NAME: 'Bacteria'},
+'587201': {roundup_dataset.CAT_CODE: 'V', roundup_dataset.CAT_NAME: 'Viruses and Viroids', roundup_dataset.DIV_CODE: 'VRL', roundup_dataset.DIV_NAME: 'Viruses'},
+'587202': {roundup_dataset.CAT_CODE: 'V', roundup_dataset.CAT_NAME: 'Viruses and Viroids', roundup_dataset.DIV_CODE: 'VRL', roundup_dataset.DIV_NAME: 'Viruses'},
+'587203': {roundup_dataset.CAT_CODE: 'V', roundup_dataset.CAT_NAME: 'Viruses and Viroids', roundup_dataset.DIV_CODE: 'VRL', roundup_dataset.DIV_NAME: 'Viruses'},
+}
+roundup_dataset.setMissingTaxonToData(ds, missingTaxonToData)
+"
     '''
     taxonToData = getTaxonToData(ds)
     taxonToData.update(missingTaxonToData)
     setData(ds, TAXON_TO_DATA, taxonToData)
+
+
+#################################
+# DOWNLOAD AND ORTHOXML FUNCTIONS
+#################################
+
+def processGenomesForDownload(ds):
+    '''
+    copy genome fasta files into a dir under download dir, then tar.gz the dir.
+    '''
+    downloadDir = getDownloadDir(ds)
+    genomes = getGenomes(ds)
+    downloadGenomesDir = os.path.join(downloadDir, 'genomes')
+    if not os.path.exists(downloadGenomesDir):
+        os.mkdir(downloadGenomesDir, DIR_MODE)
+    for genome in genomes:
+        print genome
+        shutil.copy(getGenomeFastaPath(ds, genome), downloadGenomesDir)
+
+    print 'tarring dir'
+    subprocess.check_call(['tar', '-czf', 'genomes.tar.gz', 'genomes'], cwd=downloadDir)
+    print 'deleting dir'
+    shutil.rmtree(downloadGenomesDir)
+
+
+def collateOrthologs(ds):
+    '''
+    collate orthologs from jobs files into files for each parameter combination in the download dir.
+    '''
+
+    divEvalues, txtPaths, xmlPaths = getDownloadPaths(ds)
+    # open files
+    divEvalueToFH = dict([(divEvalue, open(path, 'w')) for divEvalue, path in zip(divEvalues, txtPaths)])
+    try:
+        print 'collating orthologs'
+        for orthData in roundup_common.orthDatasFromFilesGen(getOrthologsFiles(ds)):
+            params, orthologs = orthData
+            qdb, sdb, div, evalue = params
+            roundup_common.orthDatasToStream([orthData], divEvalueToFH[(div, evalue)])
+    finally:
+        for fh in divEvalueToFH.values():
+            fh.close()
+
+
+def convertToOrthoXML(ds, onGrid=True, clean=False):
+    '''
+    convert collated orthologs files to orthoxml format.
+    clean: if True, will delete the xml files if they already exist, and also clean the dones for these jobs
+    onGrid: if True, will convert txt files to xml in parallel on lsf.  Otherwise, will run serially in this process.
+    '''
+    divEvalues, txtPaths, xmlPaths = getDownloadPaths(ds)
+    ns = getDatasetId(ds) + '_to_orthoxml'
+    jobs = [('roundup_dataset.convertTxtToOrthoXML', {'ds': ds, 'txtPath': txtPath, 'xmlPath': xmlPath}) for txtPath, xmlPath in zip(txtPaths, xmlPaths)]
+    lsfOptions = ['-q '+roundup_common.LSF_LONG_QUEUE]
+    if clean:
+        for xmlPath in xmlPaths:
+            if os.path.exists(xmlPath):
+                os.remove(xmlPath)
+        workflow.dropDones(ns)
+    workflow.runJobs(ns, jobs, lsfOptions=lsfOptions, onGrid=onGrid)
+
+
+def zipDownloadPaths(ds, onGrid=True, clean=False):
+    '''
+    after orthologs have been collated and converted to orthoxml, zip the files
+    '''
+    divEvalues, txtPaths, xmlPaths = getDownloadPaths(ds)
+    ns = getDatasetId(ds) + '_zip_download'
+    jobs = [('roundup_dataset.zipDownloadPath', {'path': path}) for path in txtPaths + xmlPaths if os.path.exists(path)]
+    lsfOptions = ['-q '+roundup_common.LSF_LONG_QUEUE]
+    if clean:
+        workflow.dropDones(ns)
+    workflow.runJobs(ns, jobs, lsfOptions=lsfOptions, onGrid=onGrid)
+
+
+def zipDownloadPath(path):
+        print 'gzipping', path
+        subprocess.check_call(['gzip', path])
+
+
+def convertTxtToOrthoXML(ds, txtPath, xmlPath):
+    '''
+    WARNING: xml files on the production roundup dataset are too big.  This step should be skipped.
+    txtPath: a orthdatas file
+    xmlPath: where to write the OrthoXML version of txtPath
+    '''
+    print txtPath, '=>', xmlPath
+    with open(xmlPath, 'w') as xmlOut:
+        convertOrthDatasToXml(ds, roundup_common.orthDatasFromFileGen(txtPath), roundup_common.orthDatasFromFileGen(txtPath), xmlOut)
+
+
+def getDownloadPaths(ds):
+    downloadDir = getDownloadDir(ds)
+    divEvalues = list(roundup_common.genDivEvalueParams())
+    txtPaths = [os.path.join(downloadDir, '{}_{}.orthologs.txt'.format(div, evalue)) for div, evalue in divEvalues]
+    xmlPaths = [re.sub('\.txt$', '.xml', path) for path in txtPaths]
+    return divEvalues, txtPaths, xmlPaths
+
+
+def makeOrthoxmlSpecies(genomeToGenes, genomeToName, genomeToTaxon, uniprotRelease):
+    speciesList = []
+    for genome in genomeToGenes:
+        genes = [orthoxml.Gene(gene, protId=gene) for gene in genomeToGenes[genome]]
+        database = orthoxml.Database("Uniprot", uniprotRelease, genes=genes, protLink="http://www.uniprot.org/uniprot/")
+        species = orthoxml.Species(genomeToName[genome], genomeToTaxon[genome], [database])
+        speciesList.append(species)
+    return speciesList
+
+
+def convertOrthDatasToXml(ds, orthDatas, orthDatasAgain, xmlOut):
+    '''
+    orthDatas: iter of orthDatas
+    orthDatasAgain: another iter of the same orthDatas.  
+    xmlOut: a stream in which to write serialized orthoxml.
+    a 2-pass method for converting orthdatas for a dataset to orthoxml
+    pass through orthologs, collecting genome to gene.
+    pass through again, writing out species, scores, groups.
+    add parameters to orthoxml notes.
+    Done this way to avoid needing to have all orthDatas in memory, in case there are millions of them.
+    '''
+    print 'getting metadata'
+    genomeToName = getGenomeToName(ds)
+    genomeToTaxon = getGenomeToTaxon(ds)
+    uniprotRelease = getUniprotRelease(ds)
+    
+    print 'pass 1: collecting genes'
+    genomeToGenes = collections.defaultdict(set)
+    for params, orthologs in orthDatas:
+        qdb, sdb, div, evalue = params
+        for qid, sid, dist in orthologs:
+            genomeToGenes[qdb].add(qid)
+            genomeToGenes[sdb].add(sid)
         
-        
+    print 'making species'
+    speciesList = makeOrthoxmlSpecies(genomeToGenes, genomeToName, genomeToTaxon, uniprotRelease)    
+
+    scoreDef = orthoxml.ScoreDef('dist', 'Maximum likelihood evolutionary distance')
+
+    print 'pass 2: writing xml'
+    def groupGen():
+        for params, orthologs in orthDatasAgain:
+            qdb, sdb, div, evalue = params
+            for qid, sid, dist in orthologs:
+                qGeneRef = orthoxml.GeneRef(qid)
+                sGeneRef = orthoxml.GeneRef(sid)
+                group = orthoxml.OrthologGroup([qGeneRef, sGeneRef], scores=[orthoxml.Score(scoreDef.id, dist)])
+                yield group
+
+    notes = orthoxml.Notes('These orthologs were computed using the following Reciprocal Smallest Distance (RSD) parameters: divergence={} and evalue={}.  See http://roundup.hms.harvard.edu for more information about Roundup and RSD.'.format(div, evalue))
+    for xmlText in orthoxml.toOrthoXML('roundup', getReleaseName(ds), speciesList, groupGen(), scoreDefs=[scoreDef], notes=notes):
+        xmlOut.write(xmlText)
+
+
+def convertOrthGroupsToXml(ds, groups, genomeToGenes, div, evalue, xmlOut):
+    '''
+    groups: a iterable of tuples of (genes, avgDist) for a group of orthologous genes.  avgDist is the mean distance of all orthologous pairs in the group.
+    genomeToGenes: a dict from genome to the genes in that genome.
+    div: the divergence threshold used to compute the orthologs in groups
+    evalue: the evalue threshold used to compute the orthologs in groups
+    xmlOut: a stream (e.g. filehandle) that the orthoxml is written to.
+    '''
+    print 'getting metadata'
+    genomeToName = getGenomeToName(ds)
+    genomeToTaxon = getGenomeToTaxon(ds)
+    uniprotRelease = getUniprotRelease(ds)
+    roundupRelease = getReleaseName(ds)
+    
+    print 'making species'
+    speciesList = makeOrthoxmlSpecies(genomeToGenes, genomeToName, genomeToTaxon, uniprotRelease)    
+
+    scoreDef = orthoxml.ScoreDef('avgdist', 'Mean maximum likelihood evolutionary distance of all orthologous pairs in a group')
+
+    print 'writing xml'
+    def groupGen():
+       for genes, avgDist in groups:
+           geneRefs = [orthoxml.GeneRef(gene) for gene in genes]
+           score = orthoxml.Score(scoreDef.id, str(avgDist))
+           group = orthoxml.OrthologGroup(geneRefs, scores=[score])
+           yield group
+
+    notes = orthoxml.Notes('These orthologs were computed using the following Reciprocal Smallest Distance (RSD) parameters: divergence={} and evalue={}.  See http://roundup.hms.harvard.edu for more information about Roundup and RSD.'.format(div, evalue))
+    for xmlText in orthoxml.toOrthoXML('roundup', roundupRelease, speciesList, groupGen(), scoreDefs=[scoreDef], notes=notes):
+        xmlOut.write(xmlText)
+
+
 ###############
 # DATASET STUFF
 ###############
@@ -768,6 +898,10 @@ def getOrthologsDir(ds):
     
 def getSourcesDir(ds):
     return os.path.join(ds, 'sources')
+
+
+def getDownloadDir(ds):
+    return os.path.join(ds, 'download')
 
 
 ###################
@@ -835,14 +969,14 @@ def computeJobs(ds):
         if isComplete(ds, 'job', job):
             print 'job is already complete:', job
             continue
-        if LSF.isJobNameRunning(getComputeJobName(ds, job)):
+        if lsf.isJobNameOn(getComputeJobName(ds, job)):
             print 'job is already running:', job
             continue
         funcName = 'roundup_dataset.computeJob'
         keywords = {'ds': ds, 'job': job}
         # reserve 500MB in /tmp for duration of job to avoid nodes where someone, not naming any names, has used too much space.
         # redirect output to /dev/null so we do not get thousands of useless emails from lsf.
-        lsfOptions = ['-R "rusage[tmp=500]"', '-q '+LSF.LSF_LONG_QUEUE, ' -o /dev/null', '-J '+getComputeJobName(ds, job)]
+        lsfOptions = ['-R "rusage[tmp=500]"', '-q '+roundup_common.LSF_LONG_QUEUE, '-o /dev/null', '-J '+getComputeJobName(ds, job)]
         jobid = lsfdispatch.dispatch(funcName, keywords=keywords, lsfOptions=lsfOptions)
         msg = 'computeJobs(): starting job on grid.  lsfjobid={}, ds={}, job={}'.format(jobid, ds, job)
         print msg
@@ -874,8 +1008,8 @@ def computeJob(ds, job):
     if not isComplete(ds, 'job_ologs_merge', job):
         jobOrthologsPath = getJobOrthologsPath(ds, job)
         pairsPaths = [os.path.join(jobDir, '{}_{}.pair.orthologs.txt'.format(*pair)) for pair in pairs]
-        orthDatasGen = orthologs.orthDatasFromFilesGen(pairsPaths)
-        orthologs.orthDatasToFile(orthDatasGen, jobOrthologsPath)
+        orthDatasGen = roundup_common.orthDatasFromFilesGen(pairsPaths)
+        roundup_common.orthDatasToFile(orthDatasGen, jobOrthologsPath)
         markComplete(ds, 'job_ologs_merge', job)
         
     # delete the individual pair olog files
@@ -929,7 +1063,7 @@ def computePair(ds, pair, workingDir, orthologsPath):
             startTime = time.time()
             divEvalueToOrthologs =  rsd.computeOrthologsUsingSavedHits(queryFastaPath, subjectFastaPath, divEvalues, forwardHitsPath, reverseHitsPath, workingDir=tmpDir)
             orthDatas = [((queryGenome, subjectGenome, div, evalue), orthologs) for (div, evalue), orthologs in divEvalueToOrthologs.items()]
-            orthologs.orthDatasToFile(orthDatas, orthologsPath)
+            roundup_common.orthDatasToFile(orthDatas, orthologsPath)
             putRsdStats(ds, queryGenome, subjectGenome, divEvalues, startTime=startTime, endTime=time.time())
             markComplete(ds, 'roundup', pair)
     # clean up files
@@ -1082,6 +1216,10 @@ def markComplete(ds, *key):
     workflow.markDone(completesNS(ds), key)
 
 
+def unmarkComplete(ds, *key):
+    workflow.unmarkDone(completesNS(ds), key)
+
+
 def resetCompletes(ds):
     return workflow.resetDones(completesNS(ds))
 
@@ -1090,25 +1228,6 @@ def completesNS(ds):
     return 'roundup_dataset_{}'.format(getDatasetId(ds))
 
 
-# isStepComplete uses a flat file in the dataset.  Used for downloading source files and other few completes executed serially.
-# pros: easy to edit completes by hand.  completes associated with the dataset, not the database environment of the code base.  
-# cons: very slow for many completes; concurrent writing of completes is unsafe.
-def isStepComplete(ds, *key):
-    stepsPath = os.path.join(ds, 'steps.complete.txt')
-    if not os.path.exists(stepsPath):
-        return False
-    keyStr = str(key)
-    with open(stepsPath) as fh:
-        completes = set(line.strip() for line in fh if line.strip())
-        return keyStr in completes
-
-    
-def markStepComplete(ds, *key):
-    stepsPath = os.path.join(ds, 'steps.complete.txt')
-    with open(stepsPath, 'a') as fh:
-        fh.write(str(key)+'\n')
-        
-        
 ##########
 # METADATA
 ##########
@@ -1240,7 +1359,7 @@ def getTaxonToData(ds):
 
 STATS_CACHE = {}
 def getStatsStore(ds):
-    if not STATS_CACHE:
+    if ds not in STATS_CACHE:
         dsId = getDatasetId(ds)
         kv = kvstore.KVStore(util.ClosingFactoryCM(config.openDbConn), ns='roundup_dataset_{}_{}'.format(dsId, 'stats'))
         STATS_CACHE[ds] = kv
@@ -1294,15 +1413,7 @@ def getRsdStats(ds, qdb, sdb):
 
     
 def putPairStats(ds, qdb, sdb, startTime, endTime):
-    qdbFastaPath = getGenomeFastaPath(ds, qdb)
-    sdbFastaPath = getGenomeFastaPath(ds, sdb)
-    qdbBytes = os.path.getsize(qdbFastaPath)
-    sdbBytes = os.path.getsize(sdbFastaPath)
-    genomeToCount = getMetadata(ds)['genomeToCount']
-    qdbSeqs = genomeToCount[qdb]
-    sdbSeqs = genomeToCount[sdb]
-    stats = {'type': 'pair', 'qdb': qdb, 'sdb': sdb, 'startTime': startTime, 'endTime': endTime,
-             'qdbBytes': qdbBytes, 'sdbBytes': sdbBytes, 'qdbSeqs': qdbSeqs, 'sdbSeqs': sdbSeqs}
+    stats = {'type': 'pair', 'qdb': qdb, 'sdb': sdb, 'startTime': startTime, 'endTime': endTime}
     key = ('pair', qdb, sdb)
     putStats(ds, key, stats)
     return stats
@@ -1320,12 +1431,49 @@ def extractDatasetStats(ds):
     numGenomes = len(getGenomes(ds))
     numPairs = len(getPairs(ds))
     numOrthologs = 0
-    for params, orthologs in orthologs.orthDatasFromFilesGen(getOrthologsFiles(ds)):
+    for params, orthologs in roundup_common.orthDatasFromFilesGen(getOrthologsFiles(ds)):
         numOrthologs += len(orthologs)
     updateMetadata(ds, {'numGenomes': numGenomes, 'numPairs': numPairs, 'numOrthologs': numOrthologs})
 
     
-def extractPerformanceStats(ds):
+def extractPerformanceStats(ds, pairs=None):
+    '''
+    pairs: default is to collect stats for all pairs.  It can be useful for testing to set pairs to a specific list of pairs.
+    '''
+    blastStats = {}
+    rsdStats = {}
+    totalTime = 0
+    totalRsdTime = 0
+    totalBlastTime = 0
+    
+    if pairs is None:
+        pairs = getPairs(ds)
+
+    def elapsedTime(stats):
+        return stats['endTime'] - stats['startTime']
+    
+    for qdb, sdb in pairs:
+        forwardTime = elapsedTime(getBlastStats(ds, qdb, sdb))
+        reverseTime = elapsedTime(getBlastStats(ds, sdb, qdb))
+        rsdTime = elapsedTime(getRsdStats(ds, qdb, sdb))
+
+        blastStats[json.dumps((qdb, sdb))] = forwardTime
+        blastStats[json.dumps((sdb, qdb))] = reverseTime
+        rsdStats[json.dumps((qdb, sdb))] = rsdTime
+
+        totalTime += forwardTime + reverseTime + rsdTime
+        totalBlastTime += forwardTime + reverseTime
+        totalRsdTime += rsdTime
+
+    print 'total time:', totalTime
+    print 'total blast time:', totalBlastTime
+    print 'total rsd time:', totalRsdTime
+    print 'saving stats'
+    setData(ds, BLAST_STATS, blastStats)
+    setData(ds, RSD_STATS, rsdStats)
+        
+
+def extractPerformanceStatsOld(ds):
     '''
     this function needs to be fixed for future data set.  it currently only works for the old stats.
     it should not dump the stats table and then use eval and json to parse it, when there are functions like getBlastStats().
@@ -1340,8 +1488,6 @@ def extractPerformanceStats(ds):
             cmd = "time echo 'select name, value from {}' | mysql --skip-column-names -h dev.mysql devroundup > {}".format(statsTable, dumpFile)
             subprocess.check_call(cmd, shell=True)
     
-        print 'getting genome to count'
-        genomeToCount = getGenomeToCount(ds)
         blastStats = {}
         rsdStats = {}
         totalTime = 0

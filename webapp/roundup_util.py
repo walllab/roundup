@@ -22,7 +22,6 @@ import roundup_common
 import roundup_db
 import roundup_dataset
 import util
-import LSF
 
 
 ##########################
@@ -30,6 +29,25 @@ import LSF
 ##########################
 
 
+def getOrthData(params):
+    qdb, sdb, div, evalue = params
+    pair = roundup_common.makePair(qdb, sdb)
+    # get orthologs from db
+    dbOrthologs = roundup_db.getOrthologs(qdb=pair[0], sdb=pair[1], divergence=div, evalue=evalue)
+    # get a map to external sequence ids
+    sequenceIds = set()
+    for ortholog in dbOrthologs:
+        sequenceIds.add(ortholog[0])
+        sequenceIds.add(ortholog[1])
+    sequenceIds = list(sequenceIds)
+    sequenceIdToSequenceDataMap = roundup_db.getSequenceIdToSequenceDataMap(sequenceIds)
+    # 
+    orthologs = [(sequenceIdToSequenceDataMap[qid][roundup_common.EXTERNAL_SEQUENCE_ID_KEY],
+                  sequenceIdToSequenceDataMap[sid][roundup_common.EXTERNAL_SEQUENCE_ID_KEY],
+                  str(dist)) for qid, sid, dist in dbOrthologs]
+    return (params, orthologs)
+
+    
 def getRawResults(params):
     '''
     params: a 4-tuple of roundup params like (qdb, sdb, div, evalue).

@@ -18,20 +18,20 @@ Below is a list detailing every genome in Roundup.  It includes the genome ident
 <tr>
 <th>Genome</th>
 <th>Name</th>
-<th>Size</th>
-<th>Taxon</th>
+<th>NCBI Taxon</th>
 <th>Category</th>
 <th>Division</th>
+<th>Number of Genes</th>
 </tr>
 {% for descs in descGroups %}
 {% for desc in descs %}
 <tr>
 <td><a href="http://www.uniprot.org/taxonomy/{{ desc.2 }}">{{ desc.0 }}</a></td>
 <td>{{ desc.1 }}</td>
-<td>{{ desc.7 }}</td>
 <td><a href="http://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?lvl=0&id={{ desc.2 }}">{{ desc.2 }}</a></td>
 <td>{{ desc.4 }}</td>
 <td>{{ desc.6 }}</td>
+<td>{{ desc.7 }}</td>
 </tr>
 {% endfor %}
 {% endfor %}

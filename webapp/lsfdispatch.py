@@ -11,7 +11,7 @@ import logging
 
 import config # configures logging
 import nested
-import LSF
+import lsf
 import util
 
 
@@ -37,7 +37,7 @@ def dispatch(fullyQualifiedFuncName=None, keywords=None, lsfOptions=None):
     util.dumpObject(keywords, inputFilename)
     cmd = _LSF_DISPATCH_CMD
     cmd += ' --input '+inputFilename+' --delete-input '+fullyQualifiedFuncName
-    return LSF.submitToLSF([cmd], ['-o /dev/null']+lsfOptions)
+    return lsf.submitToLSF([cmd], ['-o /dev/null']+lsfOptions)
 
 
 def main():

@@ -12,21 +12,22 @@ import util
 import fasta
 
 
-def findSeqIdWithFasta(fasta, subjectIndexPath):
+def findSeqIdWithFasta(fastaSeq, subjectIndexPath):
     ''' return first hit '''
     try:
         path = nested.makeTempPath()
-        util.writeToFile(fasta, path)
+        util.writeToFile(fastaSeq, path)
         cmd = 'blastp -outfmt 6 -query %s -db %s'%(path, subjectIndexPath)
         results = execute.run(cmd)
     finally:
         os.remove(path)        
-    hitName = None
+    hitId = None
     for line in results.splitlines():
-        splits = line.split()
-        hitName = splits[1] # lcl| is already removed.  go figure.  that is just how ncbi does it.
-        break
-    return hitName
+        # example line: foo sp|P39709|SEO1_YEAST 100.00 40 0 0 1 40 1 40 3e-1884.7
+        # the second field is from the hit nameline.
+        hitId = fasta.idFromName(line.split()[1])
+        break # grab the first hit
+    return hitId
 
 
 def getFastaForId(id, indexPath):

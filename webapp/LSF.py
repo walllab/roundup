@@ -32,56 +32,35 @@ JOB_NAME = 'job_name' # often corresponds to the command line being executed.
 EXIT_STATUS = 'EXIT'
 DONE_STATUS = 'DONE'
 ZOMBIE_STATUS = 'ZOMBI'
-
-CBI_LONG_QUEUE = 'cbi_unlimited'
-CBI_SHORT_QUEUE = 'cbi_15m'
-RODEO_LONG_QUEUE = 'rodeo_unlimited'
-RODEO_SHORT_QUEUE = 'rodeo_15m'
-ALL_LONG_QUEUE = 'all_unlimited'
-ALL_SHORT_QUEUE = 'all_15m'
-SHARED_LONG_QUEUE = 'shared_unlimited'
-SHARED_SHORT_QUEUE = 'shared_15m'
+OFF_STATUSES = (DONE_STATUS, EXIT_STATUS, ZOMBIE_STATUS)
 
 
-# LSF
-LSF_SHORT_QUEUE = 'shared_15m'
-if os.environ.has_key('LSF_SHORT_QUEUE'):
-    LSF_SHORT_QUEUE = os.environ['LSF_SHORT_QUEUE']
-LSF_LONG_QUEUE = 'shared_unlimited'
-if os.environ.has_key('LSF_LONG_QUEUE'):
-    LSF_LONG_QUEUE = os.environ['LSF_LONG_QUEUE']
-
-
-def isJobNameEnded(jobName, retry=False, delay=1.0):
+def isJobNameOff(jobName, retry=False, delay=1.0):
     '''
     jobName: the name of a lsf job.
-    The job is ended if there is no status for it on LSF (i.e. bjobs returns nothing for it)
+    The job is "off" lsf if there is no status for it on LSF (i.e. bjobs returns nothing for it)
     or if its status is DONE, EXIT, or ZOMBIE.
     exception raised if there are multiple jobs for the same name.
     '''
     statuses = getJobNameStatuses(jobName, retry, delay)
-    if len(statuses) > 1:
-        msg = 'isJobNameRunning: more than one LSF job for {}\nstatuses={}'.format(jobName, statuses)
+    # "on" jobs
+    onStatuses = [status for status in statuses if status not in OFF_STATUSES]
+    # too many "on" jobs?
+    if len(onStatuses) > 1:
+        msg = 'more than one LSF job is being processed for {}\nstatuses={}'.format(jobName, onStatuses)
         raise Exception(msg)
-    return bool(not statuses or isEndedStatus(statuses[0]))
+    # any "on" jobs?
+    return not onStatuses
 
 
-def isJobNameRunning(jobName, retry=False, delay=1.0):
+def isJobNameOn(jobName, retry=False, delay=1.0):
     '''
     checks if job is running, pending, suspended, or otherwise in the process of running on LSF.
-    A job is running if it exists on lsf and is not ended (i.e. DONE or EXIT)
-    returns: True if job is on LSF and has not ended.  False otherwise.
+    A job is "on" lsf if it exists on lsf and does not have an off status.
+    returns: True if job is not off.  False otherwise.
     exception raised if there are multiple jobs for the same name.
     '''
-    statuses = getJobNameStatuses(jobName, retry, delay)
-    if len(statuses) > 1:
-        msg = 'isJobNameRunning: more than one LSF job for {}\nstatuses={}'.format(jobName, statuses)
-        raise Exception(msg)
-    return bool(statuses and not isEndedStatus(statuses[0]))
-
-
-def isEndedStatus(status):
-    return status == DONE_STATUS or status == EXIT_STATUS or status == ZOMBIE_STATUS
+    return not isJobNameOff(jobName, retry, delay)
 
 
 def getJobNameStatuses(jobName, retry=False, delay=1.0):
@@ -267,7 +246,7 @@ def bsub(cmds=None, queue=None, interactive=False, outputFile=None):
     and possibly redirects the output to a file (any "%J" in the filename
     will be replaced with the lsf job id.
     '''
-    # logging.debug('in LSF.bsub()')
+    # logging.debug('in lsf.bsub()')
     if cmds==None: cmds = []
     
     if interactive: interactiveOption = '-I'

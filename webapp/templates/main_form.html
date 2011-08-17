@@ -27,8 +27,10 @@ var input_form_example_values = {{ form_example|safe }};
 {% for field in form %}
 <tr>
 <td>
+{% comment %}
 {% if form_doc_id %}<a href="javascript:docWindow2('{% url 'home.views.documentation' %}#{{ field.name }}')">{% endif %}{{ field.label_tag }}{% if form_doc_id %}</a>{% endif %}
-{% if field.help_text %} ({{ field.help_text }}){% endif %}{% if not field.field.required %} (Optional){% endif %}:</td>
+{% endcomment %}
+{{ field.label_tag }}{% if field.help_text %} ({{ field.help_text }}){% endif %}{% if not field.field.required %} (Optional){% endif %}:</td>
 <td>{{ field.errors }}{{ field }}</td>
 {% comment %}
 {% endcomment %}

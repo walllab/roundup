@@ -21,7 +21,7 @@ os.environ['ROUNDUP_DEPLOY_ENV'] = DEPLOY_ENV # put deployment env in the enviro
 WEBAPP_PATH = os.path.dirname(os.path.abspath(__file__))
 
 if DEPLOY_ENV == 'orch_prod':
-    CURRENT_DB_VERSION = '2011_01'
+    CURRENT_RELEASE = '2011_01'
     PROJ_DIR = '/groups/cbi/roundup'
     MAIL_METHOD = 'qmail'
     HTTP_HOST = 'roundup.hms.harvard.edu'
@@ -31,7 +31,7 @@ if DEPLOY_ENV == 'orch_prod':
     PROJ_BIN_DIR = '/home/td23/bin' # location of kalign
     NO_LSF = False
 elif DEPLOY_ENV == 'orch_dev': 
-    CURRENT_DB_VERSION = 'test_dataset'
+    CURRENT_RELEASE = 'test_dataset'
     PROJ_DIR = '/groups/cbi/dev.roundup'
     MAIL_METHOD = 'qmail'
     HTTP_HOST = 'dev.roundup.hms.harvard.edu'
@@ -41,7 +41,7 @@ elif DEPLOY_ENV == 'orch_dev':
     PROJ_BIN_DIR = '/home/td23/bin' # location of kalign
     NO_LSF = False
 elif DEPLOY_ENV == 'local': 
-    CURRENT_DB_VERSION = 'test_dataset'
+    CURRENT_RELEASE = 'test_dataset'
     PROJ_DIR = os.path.expanduser('~/local.roundup')
     MAIL_METHOD = '' # not sure how to get postfix working.
     HTTP_HOST = 'localhost'
@@ -51,7 +51,7 @@ elif DEPLOY_ENV == 'local':
     PROJ_BIN_DIR = '/Users/td23/bin' # location of kalign
     NO_LSF = True
 
-CURRENT_DATASET = os.path.join(PROJ_DIR, 'datasets', CURRENT_DB_VERSION)
+CURRENT_DATASET = os.path.join(PROJ_DIR, 'datasets', CURRENT_RELEASE)
 LOG_FILE = os.path.join(PROJ_DIR, 'log/app.log')
 CONFIG_DIR = os.path.join(PROJ_DIR, 'config') # contains roundup_genomes.xml genome download xml config, and codeml.ctl and jones.dat used by RoundUp.py
 RESULTS_DIR = os.path.join(PROJ_DIR, 'results')

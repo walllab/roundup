@@ -1,9 +1,12 @@
 #!/usr/bin/env python
 
-import re
+import collections
+import io
+import itertools
 import logging
 import math
 import os
+import re
 import sys
 import urllib
 import uuid
@@ -21,7 +24,8 @@ import BioUtilities
 
 WIDE_TEMPLATE = 'wide'
 DOWNLOAD_TEMPLATE = 'down'
-TEMPLATE_TYPES = (WIDE_TEMPLATE, DOWNLOAD_TEMPLATE)
+DOWNLOAD_XML_TEMPLATE = 'xml'
+TEMPLATE_TYPES = (WIDE_TEMPLATE, DOWNLOAD_TEMPLATE, DOWNLOAD_XML_TEMPLATE)
 
 # html types
 ORTH_RESULT = 'orth'
@@ -36,8 +40,9 @@ PHYLETIC_PATTERN_RESULT = 'pp'
 PHYLIP_MATRIX_RESULT = 'phylip'
 NEXUS_MATRIX_RESULT = 'nexus'
 HAMMING_RESULT = 'hamming'
+ORTHOXML_RESULT = 'orthoxml'
 RESULT_TYPES = (ORTH_RESULT, GENE_RESULT, TERM_RESULT, TEST_RESULT, GENE_SUMMARY_RESULT, TERMS_SUMMARY_RESULT, TEXT_RESULT, PHYLETIC_PATTERN_RESULT,
-                PHYLIP_MATRIX_RESULT, NEXUS_MATRIX_RESULT, HAMMING_RESULT)
+                PHYLIP_MATRIX_RESULT, NEXUS_MATRIX_RESULT, HAMMING_RESULT, ORTHOXML_RESULT)
                 
 TERM_PROMISCUITY_LIMIT = 100
 BEST_GENOMES_FOR_GENE_NAMES = ['Homo_sapiens.aa', 'Mus_musculus.aa', 'Drosophila_melanogaster.aa', 'Caenorhabditis_elegans.aa', 'Saccharomyces_cerevisiae.aa']
@@ -100,6 +105,7 @@ def renderResult(resultId, urlFunc, resultType=ORTH_RESULT, otherParams={}):
                   HAMMING_RESULT: clusterResultToHammingProfile,
                   PHYLIP_MATRIX_RESULT: clusterResultToPhylip,
                   NEXUS_MATRIX_RESULT: clusterResultToNexus,
+                  ORTHOXML_RESULT: clusterResultToOrthoxml,
                   }
     return renderFunc[resultType](resultId, urlFunc, otherParams=otherParams)
     
@@ -148,6 +154,33 @@ def clusterResultToNexus(resultId, urlFunc, otherParams={}):
 
     nexusMatrix = "#Nexus\nbegin data;\ndimensions\nntax = %s\nnchar = %s;\nformat symbols = \"01\";\nmatrix\n"%(len(genomes), numClusters) + matrix +";End;\n"
     return nexusMatrix
+
+
+def clusterResultToOrthoxml(resultId, urlFunc, otherParams={}):
+    result = getResult(resultId)
+    rows = result['rows']
+    seqIdToDataMap = result['seq_id_to_data_map']
+    genomeIdToGenomeMap = result['genome_id_to_genome_map']
+
+    groups = []
+    genomeToGenes = collections.defaultdict(set)
+    for row in result['rows']:
+        seqIds = list(itertools.chain.from_iterable(row[:-1]))
+        avgDist = row[-1]
+        genes = []
+        for seqId in seqIds:
+            gene = seqIdToDataMap[seqId][roundup_common.EXTERNAL_SEQUENCE_ID_KEY]
+            genome = genomeIdToGenomeMap[seqIdToDataMap[seqId][roundup_common.GENOME_ID_KEY]]
+            genes.append(gene)
+            genomeToGenes[genome].add(gene)
+        groups.append((genes, avgDist))
+    
+    ds = config.CURRENT_DATASET
+    div = result['divergence']
+    evalue = result['evalue']
+    with io.BytesIO() as handle:
+        roundup_dataset.convertOrthGroupsToXml(ds, groups, genomeToGenes, div, evalue, handle)
+        return handle.getvalue()
 
 
 def clusterResultToPhylip(resultId, urlFunc, otherParams={}):
@@ -516,6 +549,7 @@ def resultToAllGenesView(resultId, urlFunc, otherParams={}):
         content += ", <a href=\"" + makeResultUrl(resultId, urlFunc, resultType=TERMS_SUMMARY_RESULT, templateType=WIDE_TEMPLATE) + "\">GO Terms Summary</a>\n"
         content += "</div>"
         content += "<div>Download result as: "
+        content += "<a href=\"" + makeResultUrl(resultId, urlFunc, resultType=ORTHOXML_RESULT, templateType=DOWNLOAD_XML_TEMPLATE) + "\">OrthoXML Document</a>, \n"
         content += "<a href=\"" + makeResultUrl(resultId, urlFunc, resultType=TEXT_RESULT, templateType=DOWNLOAD_TEMPLATE) + "\">Text</a>, \n"
         content += "<a href=\"" + makeResultUrl(resultId, urlFunc, resultType=PHYLETIC_PATTERN_RESULT, templateType=DOWNLOAD_TEMPLATE) + "\">Phylogenetic Profile Matrix</a>, \n"
         content += "<a href=\"" + makeResultUrl(resultId, urlFunc, resultType=PHYLIP_MATRIX_RESULT, templateType=DOWNLOAD_TEMPLATE) + "\">PHYLIP-formatted Matrix</a>, or \n"

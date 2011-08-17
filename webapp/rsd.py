@@ -34,10 +34,6 @@ import execute
 PAML_ERROR_MSG = 'paml_error'
 FORWARD_DIRECTION = 0
 REVERSE_DIRECTION = 1
-# should correspond to $name_length in clustal2phylip.
-# roundup fasta seq name lines should not exceed this length, including the '>' at the beginning of the line, I think. [td23]
-CLUSTAL_INPUT_FILENAME = 'clustal_fasta.faa'
-CLUSTAL_ALIGNMENT_FILENAME = 'clustal_fasta.aln'
 DASHLEN_RE = re.compile('^(-*)(.*?)(-*)$')
 
 JIKE_DEBUG = util.getBoolFromEnv('ROUNDUP_RSD_DEBUG', False)
@@ -46,7 +42,10 @@ MAX_HITS = 3
 MATRIX_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'jones.dat')
 CODEML_CONTROL_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'codeml.ctl')
 
+# Constants used when aligning seqs with clustalw.  Kalign does not need these.
 USE_CLUSTALW = util.getBoolFromEnv('RSD_USE_CLUSTALW', False)
+CLUSTAL_INPUT_FILENAME = 'clustal_fasta.faa'
+CLUSTAL_ALIGNMENT_FILENAME = 'clustal_fasta.aln'
 
 
 #################
@@ -202,7 +201,7 @@ def alignFastaKalign(input):
     Returns: fasta-formatted aligned sequences
     '''
     alignedFasta = execute.run('kalign -f fasta', input) # output clustalw format
-    return alignedFasta.replace('\n\n', '\n')
+    return alignedFasta.replace('\n\n', '\n') # replace fixes a bug in Kalign version 2.04, where if a seq is exactly 60 chars long, an extra newline is output.
     
 
 def alignFastaClustalw(input, path):

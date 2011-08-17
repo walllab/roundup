@@ -189,8 +189,8 @@ function inArray(obj, arr) {
 <div id="sitenav" class="nav">
 <ul>
 <li><a href="{% url 'home.views.home' %}"{% if nav_id == 'home' %} class="thisPage"{% endif %}>Home</a></li>
-<li><a href="{% url 'home.views.browse' %}"{% if nav_id == 'browse' %} class="thisPage"{% endif %}>Browse</a></li>
 <li><a href="{% url 'home.views.cluster' %}"{% if nav_id == 'cluster' %} class="thisPage"{% endif %}>Retrieve</a></li>
+<li><a href="{% url 'home.views.browse' %}"{% if nav_id == 'browse' %} class="thisPage"{% endif %}>Browse</a></li>
 <li><a href="{% url 'home.views.raw' %}"{% if nav_id == 'raw' %} class="thisPage"{% endif %}>Download</a></li>
 <li><a href="{% url 'home.views.genomes' %}"{% if nav_id == 'genomes' %} class="thisPage"{% endif %}>Genomes</a></li>
 <li><a href="{% url 'home.views.sources' %}"{% if nav_id == 'sources' %} class="thisPage"{% endif %}>Sources</a></li>

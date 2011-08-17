@@ -70,8 +70,7 @@ class SimpleEdgeClusterer:
 
 class EdgeClusterer:
     '''
-    Clusters nodes based on edges.  It performs single-linkage clustering of undirected edges.
-    It also keeps statistics on distances of edges in clusters.  Also keeps track of the classes of nodes in clusters,
+    Clusters nodes based on edges.  Also keeps statistics on distances of edges in clusters.  Also keeps track of the classes of nodes in clusters,
     if a classification function is given.
     '''
     def __init__(self, classifyNodeFunc=returnOneClass, storeEdges=False):
@@ -84,6 +83,8 @@ class EdgeClusterer:
         self.classifyNode = classifyNodeFunc
         self.storeEdges = storeEdges
         self.clusterIdToEdges = {}
+
+        self.clusterIdToSeedId = {} #added by Jike
 
     def cluster(self, edge):
         '''
@@ -176,8 +177,120 @@ class EdgeClusterer:
             if self.storeEdges:
                 self.clusterIdToEdges[largerClusterId].extend(self.clusterIdToEdges[smallerClusterId])
 
+    def cluster_2(self, edge):
+        '''
+        edge: seq of (fromNodeId, toNodeId). To save space, distance is removed.
+        returns: nothing. The genome of fromNode is alphabatically smaller than
+        that of toNode.
 
-def _testGeneToGenome(gene):
+        Clustering principle:
+        Each cluster is centered around one fromNode, corresponding to one row
+        in the phylogenetic matrix.
+        Any fromNode should have an entry in the matrix IF it never is a toNode
+        in an orthologous pair.
+
+        Algorithm:
+        if fromNode not in current cluster, create a cluster with edge
+        else if fromNode is the seed of cluster X and toNode is not in X, add toNode to X
+        added by Jike
+        '''
+
+        (fromNodeId, toNodeId) = edge
+
+        # get cluster ids of the nodes
+        fromNodeClusterId = None
+        toNodeClusterId = None
+        if self.nodeIdToClusterId.has_key(fromNodeId):
+            fromNodeClusterId = self.nodeIdToClusterId[fromNodeId]
+        if self.nodeIdToClusterId.has_key(toNodeId):
+            toNodeClusterId = self.nodeIdToClusterId[toNodeId]
+
+        # if fromNode not in current clusters, create a cluster with edge using fromNode as the seed.
+        if not fromNodeClusterId:
+            self.clusterIdToNodes[self.nextClusterId] = set([fromNodeId, toNodeId])
+            self.clusterIdToSeedId[self.nextClusterId] = fromNodeId
+            self.clusterIdToNodeClasses[self.nextClusterId] = set([self.classifyNode(fromNodeId), self.classifyNode(toNodeId)])
+            self.nodeIdToClusterId[fromNodeId] = self.nextClusterId
+            self.nodeIdToClusterId[toNodeId] = self.nextClusterId
+            if self.storeEdges:
+                self.clusterIdToEdges[self.nextClusterId] = [edge]
+            self.nextClusterId += 1
+
+        # else if fromNode is the seed of cluster X and toNode is not in X, add toNode to X
+        elif self.clusterIdToSeedId[fromNodeClusterId] == fromNodeId and fromNodeClusterId!=toNodeClusterId:
+            missingNodeId, presentClusterId = toNodeId, fromNodeClusterId
+            self.nodeIdToClusterId[missingNodeId] = presentClusterId
+            self.clusterIdToNodes[presentClusterId].add(missingNodeId)
+            self.clusterIdToNodeClasses[presentClusterId].add(self.classifyNode(missingNodeId))
+            #self.clusterIdToNumEdges[presentClusterId] += 1
+            if self.storeEdges:
+                self.clusterIdToEdges[presentClusterId].append(edge)
+
+def cluster_3(self, edge):
+        '''
+        edge: seq of (fromNodeId, toNodeId). To save space, distance is removed.
+        returns: nothing. The genome of fromNode is alphabatically smaller than
+        that of toNode.
+
+        Clustering principle:
+        Each cluster is centered around one fromNode, corresponding to one row
+        in the phylogenetic matrix.
+        Any fromNode should have an entry in the matrix IF it never is a toNode
+        in an orthologous pair.
+
+        Algorithm:
+        if fromNode not in current cluster, create a cluster with edge
+        else if fromNode is the seed of cluster X and toNode is not in X, add toNode to X
+        added by Jike
+        '''
+
+        (fromNodeId, toNodeId) = edge
+
+        # get cluster ids of the nodes
+        fromNodeClusterId = None
+        toNodeClusterId = None
+        if self.nodeIdToClusterId.has_key(fromNodeId):
+            fromNodeClusterId = self.nodeIdToClusterId[fromNodeId]
+        if self.nodeIdToClusterId.has_key(toNodeId):
+            toNodeClusterId = self.nodeIdToClusterId[toNodeId]
+
+        # if fromNode not in current clusters, create a cluster with edge using fromNode as the seed.
+        if not fromNodeClusterId:
+            self.clusterIdToNodes[self.nextClusterId] = set([fromNodeId, toNodeId])
+            self.clusterIdToSeedId[self.nextClusterId] = fromNodeId
+            self.clusterIdToNodeClasses[self.nextClusterId] = set([self.classifyNode(fromNodeId), self.classifyNode(toNodeId)])
+            self.nodeIdToClusterId[fromNodeId] = self.nextClusterId
+            self.nodeIdToClusterId[toNodeId] = self.nextClusterId
+            if self.storeEdges:
+                self.clusterIdToEdges[self.nextClusterId] = [edge]
+            self.nextClusterId += 1
+
+        # else if one of the Node is the seed of cluster X and the other Node is not in X, add it to X
+        else:
+            if self.clusterIdToSeedId[fromNodeClusterId] == fromNodeId and fromNodeClusterId!=toNodeClusterId:
+                missingNodeId, presentClusterId = toNodeId, fromNodeClusterId
+            elif self.clusterIdToSeedId[toNodeClusterId] == toNodeId and toNodeClusterId!=fromNodeClusterId:
+                missingNodeId, presentClusterId = fromNodeId, toNodeClusterId
+            self.nodeIdToClusterId[missingNodeId] = presentClusterId
+            self.clusterIdToNodes[presentClusterId].add(missingNodeId)
+            self.clusterIdToNodeClasses[presentClusterId].add(self.classifyNode(missingNodeId))
+            #self.clusterIdToNumEdges[presentClusterId] += 1
+            if self.storeEdges:
+                self.clusterIdToEdges[presentClusterId].append(edge)
+
+
+class EdgeFileIter:
+    def __init__(self, file):
+        self.file = file
+    def __iter__(self):
+        return self
+    def next(self):
+        line = self.file.next()
+        id1, id2, distance = line.split()
+        return id1, id2, float(distance)
+
+
+def geneToGenome(gene):
     '''
     gene: gene id from pa and Dpa files
     returns: one of the seven genomes which this gene belongs to, or None if there is no match.
@@ -207,21 +320,14 @@ def main():
     parser = optparse.OptionParser(usage='%prog [options] <args> ...')
     options, args = parser.parse_args()
 
-    def edgeGen(path):
-        ''' iterate over a file of edges '''
-        with open(path) as fh:
-            for line in fh:
-                id1, id2, distance = line.split()
-                yield id1, id2, float(distance)
-
     if args:
         sampleFreq = int(args[1])
         input = args[0]
         
-        clusterer = EdgeClusterer(classifyNodeFunc=_testGeneToGenome)
+        clusterer = EdgeClusterer(classifyNodeFunc=geneToGenome)
 
         numEdges = 0
-        for edge in edgeGen(input):
+        for edge in EdgeFileIter(open(input)):
 
             # cluster the edge
             clusterer.cluster(edge)

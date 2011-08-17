@@ -166,6 +166,8 @@ def doOrthologyQuery(query_desc=None, tc_only=False, db_cursor_read_buffer_size=
         tableDesc['headers'] = headerRow
         tableDesc['rows'] = clusterTable
         tableDesc['orthologs'] = clusterOrthologsList
+        tableDesc['divergence'] = divergence
+        tableDesc['evalue'] = evalue
         
         seqIdDataMap = dict([(id, {roundup_common.EXTERNAL_SEQUENCE_ID_KEY: sequenceIdToSequenceDataMap[id][roundup_common.EXTERNAL_SEQUENCE_ID_KEY],
                                    roundup_common.GENOME_ID_KEY: sequenceIdToSequenceDataMap[id][roundup_common.GENOME_ID_KEY]})
