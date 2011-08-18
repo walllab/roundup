@@ -8,6 +8,7 @@ import platform
 
 import logging.config
 import orchmysql
+import lsf
 
 
 ###############################################
@@ -65,6 +66,9 @@ RT_EMAIL = 'submit-cbi@rt.med.harvard.edu'
 # Configure environment to run python and blastp
 pathDirs = [BLAST_BIN_DIR, os.path.dirname(PYTHON_EXE), PROJ_BIN_DIR]
 os.environ['PATH'] = ':'.join(pathDirs + [os.environ.get('PATH', '')]) if os.environ.has_key('PATH') else pathDirs
+
+# Configure environment to run LSF commands
+lsf.setEnviron('/opt/lsf/7.0/linux2.6-glibc2.3-x86_64', '/opt/lsf/conf')
 
 
 #######################################

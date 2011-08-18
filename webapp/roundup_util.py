@@ -182,7 +182,7 @@ def lsfDispatch(fullyQualifiedFuncName=None, keywords=None, jobName=None):
     lsfOptions = ['-N', '-q shared_2h']
     if jobName:
         lsfOptions.append('-J {}'.format(jobName))
-    return lsfdispatch.dispatch(fullyQualifiedFuncName, keywords, lsfOptions)
+    return lsfdispatch.dispatch(fullyQualifiedFuncName, keywords=keywords, lsfOptions=lsfOptions)
 
 
 def lsfAndCacheDispatch(fullyQualifiedFuncName=None, keywords=None, cacheKey=None, outputPath=None, jobName=None):
