@@ -19,11 +19,12 @@ import util
 _LSF_DISPATCH_CMD = 'python2.7 '+os.path.abspath(os.path.join(os.path.dirname(__file__), 'lsfdispatch.py'))
 
 
-def dispatch(fullyQualifiedFuncName=None, keywords=None, lsfOptions=None):
+def dispatch(fullyQualifiedFuncName=None, keywords=None, lsfOptions=None, path=None):
     '''
     fullyQualifiedFuncName: function name including modules, etc., e.g. 'foo_package.gee_package.bar_module.baz_class.wiz_func'
     keywords: dict of keyword parameters passed to the function
-    Use this to asynchronously distribute a function on the lsf cluster.
+    path: seq of path components to use when dispatched function is imported.
+    Use this to asynchronously distribute a function on the lsf cluster.  Defaults to the current sys.path.
     By default '-o /dev/null' is added as an option.  Including a -o option in lsfOptions will override this default.
     returns: lsf job id of dispatched function
     '''
@@ -33,8 +34,10 @@ def dispatch(fullyQualifiedFuncName=None, keywords=None, lsfOptions=None):
         keywords = {}
     if lsfOptions is None:
         lsfOptions = []
+    if path is None:
+       path = sys.path 
     inputFilename = nested.makeTempPath(prefix='dispatch_tmp_')
-    util.dumpObject(keywords, inputFilename)
+    util.dumpObject((keywords, path), inputFilename)
     cmd = _LSF_DISPATCH_CMD
     cmd += ' --input '+inputFilename+' --delete-input '+fullyQualifiedFuncName
     return lsf.submitToLSF([cmd], ['-o /dev/null']+lsfOptions)
@@ -48,7 +51,7 @@ def main():
     writes the serialized results of the function call to an output file or stdout.
     '''
     import optparse
-    parser = optparse.OptionParser(usage='%prog [options] <python function> [<serialized_keywords>]')
+    parser = optparse.OptionParser(usage='%prog [options] <python function>')
     parser.add_option('-i', '--input', help='Input file containing serialized map of function keywords.  defaults to the commandline or stdin')
     parser.add_option('--delete-input', action='store_true', default=False, help='Any file specified with the --input option will be deleted.')
     parser.add_option('-o', '--output', help='output file to write python serialized results.  defaults to stdout.')
@@ -64,21 +67,22 @@ def main():
     fullyQualifiedFuncName = args[0]
 
     # READ AND CLEAN UP INPUT
-    if len(args) == 2:
-        serialized_keywords = args[1]
-    else:
-        input = sys.stdin
-        if options.input:
-            input = open(options.input)
-        serialized_keywords = input.read()
+    input = sys.stdin
+    if options.input:
+        input = open(options.input)
+    serialized_keywords_and_path = input.read()
     
-        if options.input:
-            input.close()
-            if options.delete_input and os.path.isfile(options.input):
-                os.remove(options.input)
+    if options.input:
+        input.close()
+        if options.delete_input and os.path.isfile(options.input):
+            os.remove(options.input)
 
-    # UNSERIALIZE KEYWORDS, EXECUTE FUNCTION, AND SERIALIZE RESULTS
-    retval = util.dispatch(fullyQualifiedFuncName, keywords=cPickle.loads(serialized_keywords))
+    # UNSERIALIZE KEYWORDS AND PATH, EXECUTE FUNCTION, AND SERIALIZE RESULTS
+    keywords, path = cPickle.loads(serialized_keywords)
+    for item in path:
+        if item not in sys.path:
+            sys.path.append(item)
+    retval = util.dispatch(fullyQualifiedFuncName, keywords=keywords)
     serialized_retval = cPickle.dumps(retval, -1)
 
     # WRITE AND CLEAN UP OUTPUT
