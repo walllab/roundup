@@ -10,6 +10,7 @@ ONLY DEPENDENCIES ON STANDARD LIBRARY MODULES ALLOWED.
 import datetime
 import math
 import hashlib # sha
+import itertools
 import tempfile
 import shutil
 import time
@@ -380,26 +381,21 @@ def stddev(nums):
 # COMBINATORICS FUNCTIONS
 #######################################
 
-def permute(set, n):
-    ''' returns a list of lists every permutation of n elements from set '''
-    if n == 0: return [[]]
-    perms = []
-    for x in set:
-        subset = set[:]
-        subset.remove(x)
-        perms.extend([p+[x] for p in permute(subset, n-1)])
-    return perms
+def permute(items, n):
+    '''
+    deprecated: use itertools.permutations()
+    returns a list of lists every permutation of n elements from items
+    '''
+    return list(itertools.permutations(items, n))
 
 
-def choose(set, n):
+def choose(items, n):
     '''
-    set: a list
-    returns: a list of lists of every combination of n elements from set
-    warning: if len(set) > 998, python recursion limit exceeded.
+    deprecated: use itertools.combinations()
+    items: a list
+    returns: a list of lists of every combination of n elements from items
     '''
-    if len(set) < n: return []
-    if n == 0: return [[]]
-    return [set[0:1] + c for c in choose(set[1:], n-1)] + choose(set[1:], n)
+    return list(itertools.combinations(items, n))
 
 
 def every(pred, seq):

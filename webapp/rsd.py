@@ -660,13 +660,14 @@ if __name__ == '__main__':
     parser.add_argument('-q', '--query-genome', required=True, help='FASTA format sequence file, with unique ids on each nameline either in the form ">id" or ">ns|id|...".')
     parser.add_argument('-s', '--subject-genome', required=True, help='FASTA format sequence file, with unique ids on each nameline either in the form ">id" or ">ns|id|...".')
     parser.add_argument('-o', '--outfile', required=True, help='File in which to write orthologs.  Orthologs are written: query_id subject_id distance.')
-    parser.add_argument('-d', '--divergence', type=float, default='0.2', help='Theshold for the maximum divergence allowed between a query and subject sequence.  A number > 0 and < 1. e.g. 0.2, or 0.5.  Default is 0.2.')
-    parser.add_argument('-e', '--evalue', type=float, default='1e-20', help='Theshold for the maximum BLAST e-value allowed between a query and subject sequence.  e.g. 1e-20, or 0.005.  Default is 1e-20.')
+    parser.add_argument('-d', '--divergence', type=float, default='0.8', help='Theshold for the maximum divergence allowed between a query and subject sequence.  A number > 0 and < 1. e.g. 0.2, or 0.5.  Default is 0.8.')
+    parser.add_argument('-e', '--evalue', type=float, default='1e-5', help='Theshold for the maximum BLAST e-value allowed between a query and subject sequence.  e.g. 1e-20, or 0.005.  Default is 1e-5.')
     parser.add_argument('--ids', help='Path to file containing seq ids (one per line) in query_genome for which to compute orthologs.  If you only have one or a few sequences of interest it can be much faster to limit computation to those sequences.  The default is to compute othologs for all sequences in query_genome.  The sequence ids in the file must correspond to ids on the fasta namelines of query_genome.')
     parser.add_argument('--no-blast-cache', default=False, action='store_true', help='If this option is given, blast hits will not be precomputed for every sequence in each genome.  Using this option Can be faster if computing orthologs for only a few sequences.  Consider using in conjunction with --ids.')
     parser.add_argument('--no-format', default=False, action='store_true', help='If this option is given, genome fasta files will not be formatted for blast.  This is useful if blast formatted indices already exist and are located in the same directory as the fasta files.')
     parser.add_argument('--workdir', default='.', help='Directory under which to work.  will create a subdirectory under this dir in which to write temporary files, etc.  This subdirectory will be removed when rsd finishes.  Default is "."')
     parser.add_argument('-v', '--verbose', default=False, action='store_true')
+
     args = parser.parse_args()
 
     assert args.divergence > 0.0 and args.divergence < 1.0
