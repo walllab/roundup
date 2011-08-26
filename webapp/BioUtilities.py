@@ -7,7 +7,6 @@ import shutil
 
 import nested
 import roundup_common
-import execute
 import util
 import fasta
 
@@ -18,7 +17,7 @@ def findSeqIdWithFasta(fastaSeq, subjectIndexPath):
         path = nested.makeTempPath()
         util.writeToFile(fastaSeq, path)
         cmd = 'blastp -outfmt 6 -query %s -db %s'%(path, subjectIndexPath)
-        results = execute.run(cmd)
+        results = util.run(cmd, shell=True)
     finally:
         os.remove(path)        
     hitId = None
@@ -40,6 +39,6 @@ def getFastaForId(id, indexPath):
     TDLRFQSSAVMALQEACEAYLVGLFEDTNLCAIHAKRVTIMPKDIQLARRIRGERA
     
     '''
-    # return execute.run('fastacmd -d %s -s "lcl|%s"'%(indexPath, id))
-    return execute.run('blastdbcmd -db %s -entry "%s"'%(indexPath, id))
+    # return util.run('fastacmd -d %s -s "lcl|%s"'%(indexPath, id), shell=True)
+    return util.run('blastdbcmd -db %s -entry "%s"'%(indexPath, id), shell=True)
 

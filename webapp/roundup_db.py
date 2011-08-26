@@ -22,7 +22,6 @@ import itertools
 
 import config
 import util
-import execute
 import roundup_common
 import dbutil
 

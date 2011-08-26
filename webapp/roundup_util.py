@@ -16,7 +16,6 @@ import config
 import cachedispatch
 import lsfdispatch
 import cacheutil
-import execute
 import orthresult
 import roundup_common
 import roundup_db

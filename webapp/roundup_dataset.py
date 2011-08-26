@@ -714,6 +714,15 @@ def processGenomesForDownload(ds):
     shutil.rmtree(downloadGenomesDir)
 
 
+def getDownloadGenomesPath(ds):
+    return os.path.join(getDownloadDir(ds), 'genomes.tar.gz')
+
+
+def getDownloadOrthologsPath(ds, div, evalue):
+    downloadDir = getDownloadDir(ds)
+    return os.path.join(downloadDir, '{}_{}.orthologs.txt.gz'.format(div, evalue))
+
+    
 def collateOrthologs(ds):
     '''
     collate orthologs from jobs files into files for each parameter combination in the download dir.

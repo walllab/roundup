@@ -31,6 +31,7 @@ import roundup_dataset
 import roundup_db
 import roundup_util
 import sendmail
+import util
 
 
 USE_CACHE = True
@@ -148,10 +149,51 @@ def contact_thanks(request):
     return django.shortcuts.render(request, 'regular.html', {'html': page, 'nav_id': 'contact'})
     
 
-##############################
-# DOWNLOAD ORTHOLOGS FUNCTIONS
-##############################
+####################
+# DOWNLOAD FUNCTIONS
+####################
     
+def download_genomes(request):
+    desc = 'Downloading archived genome fasta files.'
+    data = {'desc': desc, 'download_url': django.core.urlresolvers.reverse(api_download_genomes)}
+    return django.shortcuts.render(request, 'download_inform.html', data)
+
+
+def api_download_genomes(request):
+    path = roundup_dataset.getDownloadGenomesPath(config.CURRENT_DATASET)
+    size = os.path.getsize(path)
+    filename = os.path.basename(path)
+    response = django.http.HttpResponse(open(path, 'rb'), content_type='application/x-gzip')
+    response['Content-Disposition'] = 'attachment; filename={}'.format(filename)
+    response['Content-Length'] = str(size)
+    return response
+
+
+def download_orthologs(request, divergence, evalue):
+    # validate params
+    if divergence in roundup_common.DIVERGENCES and evalue in roundup_common.EVALUES:
+        kw = {'divergence': divergence, 'evalue': evalue}
+        desc = 'Downloading archived orthologs computed with divergence and e-value parameters of {} and {} respectively.'.format(divergence, evalue)
+        data = {'desc': desc, 'download_url': django.core.urlresolvers.reverse(api_download_orthologs, kwargs=kw)}
+        return django.shortcuts.render(request, 'download_inform.html', data)        
+    else:
+        raise django.http.Http404
+
+
+def api_download_orthologs(request, divergence, evalue):
+    # validate params
+    if divergence in roundup_common.DIVERGENCES and evalue in roundup_common.EVALUES:
+        path = roundup_dataset.getDownloadOrthologsPath(config.CURRENT_DATASET, divergence, evalue)
+        size = os.path.getsize(path)
+        filename = os.path.basename(path)
+        response = django.http.HttpResponse(open(path, 'rb'), content_type='application/x-gzip')
+        response['Content-Disposition'] = 'attachment; filename={}'.format(filename)
+        response['Content-Length'] = str(size)
+        return response
+    else:
+        raise django.http.Http404
+    
+
 class RawForm(django.forms.Form):
     first_genome = django.forms.ChoiceField(choices=GENOME_CHOICES)
     second_genome = django.forms.ChoiceField(choices=GENOME_CHOICES)
@@ -178,7 +220,7 @@ class RawForm(django.forms.Form):
         return self.cleaned_data
 
 
-def raw(request):
+def download(request):
     '''
     get: render a form for user to request orthologs for a pair of genomes.
     post: redirect to a page which will download the ortholgos.
@@ -195,9 +237,18 @@ def raw(request):
     else:
         form = RawForm() # An unbound form
 
+    genomesPath = roundup_dataset.getDownloadGenomesPath(config.CURRENT_DATASET)
+    genomesSize = util.humanBytes(os.path.getsize(genomesPath))
+    genomesFilename = os.path.basename(genomesPath)
+    divEvalues = roundup_common.genDivEvalueParams()
+    orthologsPaths = [roundup_dataset.getDownloadOrthologsPath(config.CURRENT_DATASET, div, evalue) for div, evalue in divEvalues]
+    orthologsSizes = [util.humanBytes(os.path.getsize(path)) for path in orthologsPaths]
+    orthologsFilenames = [os.path.basename(path) for path in orthologsPaths]
+    orthologsData = zip(divEvalues, orthologsFilenames, orthologsSizes)
     example = "{'first_genome': 'HUMAN', 'second_genome': 'MOUSE'}"
-    return django.shortcuts.render(request, 'raw.html', {'form': form, 'nav_id': 'raw', 'form_doc_id': 'raw',
-                                                         'form_action': django.core.urlresolvers.reverse(raw), 'form_example': example})
+    return django.shortcuts.render(request, 'download.html', {'form': form, 'nav_id': 'download', 'form_doc_id': 'download',
+                                                         'form_action': django.core.urlresolvers.reverse(download), 'form_example': example,
+                                                         'genomes_filename': genomesFilename, 'genomes_size': genomesSize, 'orthologs_data': orthologsData})
 
 
 def raw_download(request, first_genome, second_genome, divergence, evalue):
@@ -213,7 +264,7 @@ def raw_download(request, first_genome, second_genome, divergence, evalue):
         desc = 'Downloading orthologs for:<ul><li>First genome: {}</li><li>Second genome: {}</li><li>Divergence: {}</li><li>BLAST E-value: {}</li><li>Format: {}</li></ul>'
         desc = desc.format(GENOME_TO_NAME[first_genome], GENOME_TO_NAME[second_genome], divergence, evalue, RAW_CONTENT_TYPE_TO_NAME[contentType])
         data = {'desc': desc, 'download_url': django.core.urlresolvers.reverse(api_raw_download, kwargs=kw)+'?ct={}'.format(contentType)}
-        return django.shortcuts.render(request, 'download.html', data)
+        return django.shortcuts.render(request, 'download_inform.html', data)
     else:
         raise django.http.Http404
 

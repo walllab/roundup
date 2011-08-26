@@ -13,7 +13,6 @@ import shlex
 import subprocess
 import time
 
-import execute
 import logging
 
 

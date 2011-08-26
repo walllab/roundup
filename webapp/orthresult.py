@@ -15,7 +15,6 @@ import config
 import util
 import nested
 import logging
-import execute
 import roundup_common
 import roundup_dataset
 import fasta

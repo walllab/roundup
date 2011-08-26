@@ -1,34 +1,32 @@
 #!/usr/bin/env python2.7
-# THE RSD ALGORITHM
-# original author: Dennis P. Wall -- Department of Biological Sciences, Stanford University.
-# contributions by I-Hsien Wu and Todd F Deluca of the Computational Biology Initiative, Harvard Medical School
-# the purpose of this program is to detect putative orthologues between two genomes.
-# the algorithm is called the reciprocal smallest distance algorithm and works as follows:
+# RSD: The reciprocal smallest distance algorithm.
+#   Wall, D.P., Fraser, H.B. and Hirsh, A.E. (2003) Detecting putative orthologs, Bioinformatics, 19, 1710-1711.
+# Original author: Dennis P. Wall, Department of Biological Sciences, Stanford University.
+# Contributors: I-Hsien Wu, Computational Biology Initiative, Harvard Medical School
+# Maintainer: Todd F. DeLuca, Center for Biomedical Informatics, Harvard Medical School
 #
 
 # This program is written to run on linux.  It has not been tested on Windows.
 # To run this program you need to have installed on your system:
-# python 2.7
+# Python 2.7
 # NCBI BLAST 2.2.24  
 # paml 4.4
-# clustalw 2.0.9
+# Kalign 2.04 (recommended) or clustalw 2.0.9 (deprecated)
 # see README FOR FULL DETAILS
 
-import re
+import argparse
+import cStringIO
+import glob
+import logging
 import os
+import re
 import shutil
 import subprocess
-import logging
 import time
-import glob
-import argparse
-import shutil
-import cStringIO
 
-import nested
 import fasta
+import nested
 import util
-import execute
 
 
 PAML_ERROR_MSG = 'paml_error'
@@ -200,7 +198,7 @@ def alignFastaKalign(input):
     runs alignment program kalign
     Returns: fasta-formatted aligned sequences
     '''
-    alignedFasta = execute.run('kalign -f fasta', input) # output clustalw format
+    alignedFasta = util.run(['kalign', '-f', 'fasta'], input) # output clustalw format
     return alignedFasta.replace('\n\n', '\n') # replace fixes a bug in Kalign version 2.04, where if a seq is exactly 60 chars long, an extra newline is output.
     
 
