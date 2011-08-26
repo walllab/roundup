@@ -1,4 +1,9 @@
 '''
+Author: Todd F. DeLuca
+Date: 2011
+This work is licensed under a Creative Commons Attribution 3.0 Unported License.
+Please direct "pull" requests to todd_deluca@hms.harvard.edu.
+
 From http://orthoxml.org/0.3/orthoxml_doc_v0.3.html:
 OrthoXML is an XML schema designed to describe orthology relations. Orthologs are defined as genes in different species deriving from a single gene in the last common ancestor. This relationship makes them interesting, as they are likely to have the same function.
 
@@ -78,7 +83,7 @@ class ScoreDef(object):
     def __init__(self, iden, desc):
         '''
         iden: required.  used to identify this score definition in the document.
-        desc: a description of what type of score this is.
+        desc: a description of what type of score this is, e.g. BLAST E-value.
         '''
         self.id = iden
         self.desc = desc
