@@ -68,6 +68,7 @@ import lsf
 import lsfdispatch
 import nested
 import orthoxml
+import orthutil
 import roundup_common
 import roundup_db
 import rsd
@@ -713,6 +714,15 @@ def processGenomesForDownload(ds):
     shutil.rmtree(downloadGenomesDir)
 
 
+def getDownloadGenomesPath(ds):
+    return os.path.join(getDownloadDir(ds), 'genomes.tar.gz')
+
+
+def getDownloadOrthologsPath(ds, div, evalue):
+    downloadDir = getDownloadDir(ds)
+    return os.path.join(downloadDir, '{}_{}.orthologs.txt.gz'.format(div, evalue))
+
+    
 def collateOrthologs(ds):
     '''
     collate orthologs from jobs files into files for each parameter combination in the download dir.
@@ -723,10 +733,10 @@ def collateOrthologs(ds):
     divEvalueToFH = dict([(divEvalue, open(path, 'w')) for divEvalue, path in zip(divEvalues, txtPaths)])
     try:
         print 'collating orthologs'
-        for orthData in roundup_common.orthDatasFromFilesGen(getOrthologsFiles(ds)):
+        for orthData in orthutil.orthDatasFromFilesGen(getOrthologsFiles(ds)):
             params, orthologs = orthData
             qdb, sdb, div, evalue = params
-            roundup_common.orthDatasToStream([orthData], divEvalueToFH[(div, evalue)])
+            orthutil.orthDatasToStream([orthData], divEvalueToFH[(div, evalue)])
     finally:
         for fh in divEvalueToFH.values():
             fh.close()
@@ -776,7 +786,7 @@ def convertTxtToOrthoXML(ds, txtPath, xmlPath):
     '''
     print txtPath, '=>', xmlPath
     with open(xmlPath, 'w') as xmlOut:
-        convertOrthDatasToXml(ds, roundup_common.orthDatasFromFileGen(txtPath), roundup_common.orthDatasFromFileGen(txtPath), xmlOut)
+        convertOrthDatasToXml(ds, orthutil.orthDatasFromFileGen(txtPath), orthutil.orthDatasFromFileGen(txtPath), xmlOut)
 
 
 def getDownloadPaths(ds):
@@ -1008,8 +1018,8 @@ def computeJob(ds, job):
     if not isComplete(ds, 'job_ologs_merge', job):
         jobOrthologsPath = getJobOrthologsPath(ds, job)
         pairsPaths = [os.path.join(jobDir, '{}_{}.pair.orthologs.txt'.format(*pair)) for pair in pairs]
-        orthDatasGen = roundup_common.orthDatasFromFilesGen(pairsPaths)
-        roundup_common.orthDatasToFile(orthDatasGen, jobOrthologsPath)
+        orthDatasGen = orthutil.orthDatasFromFilesGen(pairsPaths)
+        orthutil.orthDatasToFile(orthDatasGen, jobOrthologsPath)
         markComplete(ds, 'job_ologs_merge', job)
         
     # delete the individual pair olog files
@@ -1063,7 +1073,7 @@ def computePair(ds, pair, workingDir, orthologsPath):
             startTime = time.time()
             divEvalueToOrthologs =  rsd.computeOrthologsUsingSavedHits(queryFastaPath, subjectFastaPath, divEvalues, forwardHitsPath, reverseHitsPath, workingDir=tmpDir)
             orthDatas = [((queryGenome, subjectGenome, div, evalue), orthologs) for (div, evalue), orthologs in divEvalueToOrthologs.items()]
-            roundup_common.orthDatasToFile(orthDatas, orthologsPath)
+            orthutil.orthDatasToFile(orthDatas, orthologsPath)
             putRsdStats(ds, queryGenome, subjectGenome, divEvalues, startTime=startTime, endTime=time.time())
             markComplete(ds, 'roundup', pair)
     # clean up files
@@ -1431,7 +1441,7 @@ def extractDatasetStats(ds):
     numGenomes = len(getGenomes(ds))
     numPairs = len(getPairs(ds))
     numOrthologs = 0
-    for params, orthologs in roundup_common.orthDatasFromFilesGen(getOrthologsFiles(ds)):
+    for params, orthologs in orthutil.orthDatasFromFilesGen(getOrthologsFiles(ds)):
         numOrthologs += len(orthologs)
     updateMetadata(ds, {'numGenomes': numGenomes, 'numPairs': numPairs, 'numOrthologs': numOrthologs})
 

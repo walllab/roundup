@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% load url from future %}
+{% comment %}
+params:
+  desc: an html snippet describing what is being downloaded.
+  url: a url which should download the data if the user clicks it.
+Displays Give user the description and after a brief pause downloads the file.
+Also give user a direct link, in case the javascript download fails.
+{% endcomment %}
+
+{% block content %}
+<div id="mainpage"> 
+<h2>Download Roundup Data</h2> 
+<p>
+{{ desc|safe }}
+</p>
+<p class="countdown">Downloading will begin shortly...</p>
+<p>
+Problems with the download?  Please try this <a href="{{ download_url }}">direct link</a> or <a href="{% url 'home.views.contact' %}">contact us</a>.
+</p>
+</div>
+<!-- download url in the background after a delay -->
+<script type="text/javascript">
+$(function(){
+  countdownAction(3, 1000, function(){$("p.countdown").html("Downloading now..."); window.location = "{{ download_url }}";}, 
+    function(remaining){$("p.countdown").html("Downloading in " + remaining + " seconds...");});
+});
+</script>
+
+{% endblock content %}
+

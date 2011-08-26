@@ -15,7 +15,6 @@ import config
 import util
 import nested
 import logging
-import execute
 import roundup_common
 import roundup_dataset
 import fasta
@@ -207,24 +206,33 @@ def clusterResultToPhylogeneticProfile(resultId, urlFunc, otherParams={}):
     profile = ''
     headers = result['headers']
     newHeaders = headers[:-1]
-    newHeaders.append('Cluster Info')
+    newHeaders.append('Cluster_Info=gene, ids; per; genome | gene, names | go, terms')
     profile += '\t'.join(newHeaders) + '\n'
     
-    if result['type'] == 'clusters':
-        for row in result['rows']:
-            arr = []
-            for seqIds in row[:-1]:
-                if seqIds:
-                    arr.append('1')
-                else:
-                    arr.append('0')
-            clusterInfo = ['', '', '']
-            for seqIds in row:
-                for seqId in seqIds:
-                    newClusterInfo = makePhyleticClusterInfo(seqId, seqIdToDataMap, termMap)
-                    clusterInfo = chooseBetterPhyleticClusterInfo(clusterInfo, newClusterInfo)
-            arr.append(','.join(clusterInfo))
-            profile += '\t'.join(arr) + '\n'
+    for row in result['rows']:
+        rowIds = []
+        rowNames = set()
+        rowTerms = set()
+        arr = []
+        for seqIds in row[:-1]:
+            if seqIds:
+                arr.append('1')
+            else:
+                arr.append('0')
+            accs = []
+            for seqId in seqIds:
+                data = seqIdToDataMap[seqId]
+                accs.append(data[roundup_common.EXTERNAL_SEQUENCE_ID_KEY])
+                geneName = data.get(roundup_common.GENE_NAME_KEY)
+                terms = data.get(roundup_common.TERMS_KEY)
+                if geneName:
+                    rowNames.add(geneName)
+                if terms:
+                    rowTerms.update([termMap[t] for t in terms])
+            rowIds.append(', '.join(accs)) # comma separated accessions for the genes in each genome
+        # append a column containing gene accessions (separated by commas within genome and semi-colons between genomes), gene names, and go terms
+        arr.append(' | '.join(('; '.join(rowIds), ', '.join(rowNames), ', '.join(rowTerms))))
+        profile += '\t'.join(arr) + '\n'
     return profile
 
 

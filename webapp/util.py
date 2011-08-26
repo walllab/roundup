@@ -10,6 +10,7 @@ ONLY DEPENDENCIES ON STANDARD LIBRARY MODULES ALLOWED.
 import datetime
 import math
 import hashlib # sha
+import itertools
 import tempfile
 import shutil
 import time
@@ -18,16 +19,30 @@ import sys
 import subprocess
 
 
-def run(args, stdin=None, shell=True):
+def humanBytes(num):
+    '''
+    http://blogmag.net/blog/read/38/Print_human_readable_file_size
+    num: a number of bytes.
+    returns a human-readable version of the number of bytes
+    Byte (B), Kilobyte (KB), Megabyte (MB), Gigabyte (GB), Terabyte (TB), Petabyte (PB), Exabyte (EB), Zettabyte (ZB), Yottabyte (YB)
+    '''
+    for x in ['B', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB']:
+        if num < 1024.0:
+            return "%3.1f%s" % (num, x)
+        num /= 1024.0
+
+
+def run(args, stdin=None, shell=False):
     '''
     for python 2.7 and above, consider using subprocess.check_output().
     
     args: commandline string treated as a one element list, or list containing command and arguments.
     stdin: string to be sent to stdin of command.
-
-    Basically, if you want to run a command line, pass it as a string via args, and let shell=True.
+    shell: defaults to False to avoid shell injection attacks
+    
+    Basically, if you want to run a command line, pass it as a string via args, and set shell=True.
     e.g. 'ls databases/fasta'
-    If you do not want shell interpretation, break up the commandline and args into a list and let shell=False.
+    If you do not want shell interpretation, break up the commandline and args into a list and set shell=False.
     e.g. ['ls', 'databases/fasta']
     Runs command, sending stdin to command (if any is given).  If shell=True, executes command through shell,
     interpreting shell characters in command and arguments.  If args is a string, runs args like a command line run
@@ -380,26 +395,21 @@ def stddev(nums):
 # COMBINATORICS FUNCTIONS
 #######################################
 
-def permute(set, n):
-    ''' returns a list of lists every permutation of n elements from set '''
-    if n == 0: return [[]]
-    perms = []
-    for x in set:
-        subset = set[:]
-        subset.remove(x)
-        perms.extend([p+[x] for p in permute(subset, n-1)])
-    return perms
+def permute(items, n):
+    '''
+    deprecated: use itertools.permutations()
+    returns a list of lists every permutation of n elements from items
+    '''
+    return list(itertools.permutations(items, n))
 
 
-def choose(set, n):
+def choose(items, n):
     '''
-    set: a list
-    returns: a list of lists of every combination of n elements from set
-    warning: if len(set) > 998, python recursion limit exceeded.
+    deprecated: use itertools.combinations()
+    items: a list
+    returns: a list of lists of every combination of n elements from items
     '''
-    if len(set) < n: return []
-    if n == 0: return [[]]
-    return [set[0:1] + c for c in choose(set[1:], n-1)] + choose(set[1:], n)
+    return list(itertools.combinations(items, n))
 
 
 def every(pred, seq):

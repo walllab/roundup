@@ -1,31 +1,41 @@
 {% extends "base.html" %}
 {% load url from future %}
 {% comment %}
-params:
-  desc: an html snippet describing what is being downloaded.
-  url: a url which should download the data if the user clicks it.
-Displays Give user the description and after a brief pause downloads the file.
-Also give user a direct link, in case the javascript download fails.
 {% endcomment %}
 
 {% block content %}
 <div id="mainpage"> 
-<h2>Download Roundup Data</h2> 
+<h2>Download Orthologs for a Pair of Genomes</h2> 
+{% include 'main_form.html' %}
+<h2>Download Archived Genomes</h2>
 <p>
-{{ desc|safe }}
+Download an compressed archive containing a FASTA file for every genome in Roundup:
+<ul>
+<li><a href="{% url 'home.views.download_genomes' %}">{{ genomes_filename }}</a> ({{ genomes_size }})</li>
+</ul>
 </p>
-<p class="countdown">Downloading will begin shortly...</p>
+<h2>Download Archived Orthologs</h2>
 <p>
-Problems with the download?  Please try this <a href="{{ download_url }}">direct link</a> or <a href="{% url 'home.views.contact' %}">contact us</a>.
+Download a compressed file containing all the orthologs for a given combination of divergence and e-value parameters:
+<ul>
+{% for div_evalue, filename, size in orthologs_data %}
+<li><a href="{% url 'home.views.download_orthologs' div_evalue.0 div_evalue.1 %}">{{ filename }}</a> ({{ size }})</li>
+{% endfor %}
+</ul>
+</p>
+<h2>Download Software</h2>
+<p>
+Need orthologs for a genome not in Roundup?  Download and run the RSD algorithm on your computer:
+<ul>
+<li><a href="http://wall.hms.harvard.edu/sites/default/files/rsd_standalone.tar.gz">rsd_standalone.tar.gz</a></li>
+</ul>
+</p>
+<p>
+For those interested in the how the Roundup website or computational pipeline works, the code for Roundup is available:
+<ul>
+<li><a href="http://wall.hms.harvard.edu/sites/default/files/roundup.tar.gz">roundup.tar.gz</a></li>
+</ul>
 </p>
 </div>
-<!-- download url in the background after a delay -->
-<script type="text/javascript">
-$(function(){
-  countdownAction(3, 1000, function(){$("p.countdown").html("Downloading now..."); window.location = "{{ download_url }}";}, 
-    function(remaining){$("p.countdown").html("Downloading in " + remaining + " seconds...");});
-});
-</script>
-
 {% endblock content %}
 

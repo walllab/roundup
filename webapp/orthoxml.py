@@ -269,8 +269,9 @@ def toOrthoXML(origin, originVersion, species, groups, scoreDefs=None, notes=Non
     origin: the source of these ortholog groups.  e.g. inparanoid, roundup, omabrowser.
     originVersion: the version or release of the source database.  e.g 7.0, 2011_01, 11.
     species: a iterable of Species objects.  These species contain the databases which contain the genes that are referred to within the groups.
-    groups: an iterable of one or more OrthologGroup objects.  This is the heart of the orthoxml document.
-    scoreDefs: optional. a iterable of zero or more ScoreDef objects.  These are referred to by the Score elements of groups and gene refs.
+    Iterable so items can be generated on the fly to avoid memory issues.
+    groups: an iterable of one or more OrthologGroup objects.  Iterable so items can be generated on the fly to avoid memory issues.
+    scoreDefs: optional. a seq of zero or more ScoreDef objects.  These are referred to by the Score elements of groups and gene refs.
     notes: an optional notes object describing the origin and other details about these orthologs.
     To avoid constructing the entire document in memory or holding all groups in memory, this function takes an iterable groups and yields string pieces of the xml
     document.  Useful for writing to a file, a network socket, etc.

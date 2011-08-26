@@ -7,12 +7,12 @@ Also sets up a user environment to use LSF.  Originially created to configure th
 but can set up any user, I think.  Simply importing this module will configure the environment.
 '''
 
-import re
 import os
+import re
+import shlex
 import subprocess
 import time
 
-import execute
 import logging
 
 
@@ -34,6 +34,10 @@ DONE_STATUS = 'DONE'
 ZOMBIE_STATUS = 'ZOMBI'
 OFF_STATUSES = (DONE_STATUS, EXIT_STATUS, ZOMBIE_STATUS)
 
+
+##########################
+# JOB MONITORING FUNCTIONS
+##########################
 
 def isJobNameOff(jobName, retry=False, delay=1.0):
     '''
@@ -140,9 +144,119 @@ def getJobInfosSub(args):
     
     
 
-####################################################################################
-# FUNCTIONS TO SUBMIT COMMANDS TO LSF INCLUDING DEPENDENCIES AND ERROR HANDLING JOBS
-####################################################################################
+##########################
+# JOB SUBMISSION FUNCTIONS
+##########################
+
+# def submitToLSF(cmds, bsubOptions=None):
+def bsub(cmd, options=None):
+    '''
+    This function runs a command on lsf.
+    Bsub, the options tokens, and the cmd tokens are run via the subprocess module with shell=False to avoid some kinds of shell injection attacks.
+    e.g cmd = 'echo "hi world"', options = ['-J', 'myjob'] -> ['bsub', '-J', 'myjob', 'echo', '"hi world"']
+    However see the security warning below.
+
+    WARNING: Not secure against shell injection attacks.  Untrusted commands must have dangerous characters removed despite being run without a shell
+    because of how bsub reassembles tokens into a command to run.
+    Examples showing how bsub dangerously assembles a command from tokens:
+    python -c 'import subprocess; subprocess.check_output(["bsub", "-q", "shared_15m", "cat", "foo.txt;", "rm", "foo.txt"])'
+    823087  td23    PEND  shared_15m balcony.orchestra    -        cat foo.txt; rm foo.txt Aug 18 13:37
+    python -c 'import subprocess; subprocess.check_output(["bsub", "-q", "shared_15m", "cat", "foo.txt; rm foo.txt"])'
+    823126  td23    PEND  shared_15m balcony.orchestra    -        cat "foo.txt; rm foo.txt" Aug 18 13:39
+    python -c 'import subprocess; subprocess.check_output(["bsub", "-q", "shared_15m", "cat foo.txt; rm foo.txt"])'
+    823151  td23    PEND  shared_15m balcony.orchestra    -        cat foo.txt; rm foo.txt Aug 18 13:40
+
+    cmd: the command to submit to lsf, either as a string or list of tokens.  If cmd is a string, it will be tokenized with shlex.split().
+    options: list of options for the bsub command.  These should be tokenized.  e.g. ['-q', 'shared_2h', '-o', '/dev/null', '-J', 'myjob']
+    returns: job id of the bsub submission
+    raises: exception if the bsub submission fails.
+    '''
+    if options is None:
+        options = []
+    if isinstance(cmd, basestring):
+        cmd = shlex.split(cmd)
+    bsubCmd = ['bsub'] + list(options) + list(cmd)
+
+    logging.debug('bsub(): bsubCmd: {}'.format(bsubCmd))
+    output = subprocess.check_output(bsubCmd)
+
+    # get job id from bsub output
+    m = re.search('<(\d+)>', output)
+    if m:
+        jobid = m.group(1)
+    else:
+        raise Exception('bsub(): failed to find job id for submitted job.  submission output='+str(output))
+
+    return jobid
+
+
+
+#############################
+# LSF CONFIGURATION FUNCTIONS
+#############################
+
+def setEnviron(lsfDir, confDir):
+    '''
+    Sets the environment variables to run LSF commands.
+    lsfDir: e.g. '/opt/lsf/7.0/linux2.6-glibc2.3-x86_64'
+    confDir: e.g. '/opt/lsf/conf'
+    '''
+    binDir = os.path.join(lsfDir, 'bin')
+    os.environ['LSF_BINDIR'] = binDir
+    os.environ['LSF_ENVDIR'] = confDir
+    os.environ['LSF_LIBDIR'] = libDir = os.path.join(lsfDir, 'lib')
+    os.environ['LSF_SERVERDIR'] = os.path.join(lsfDir, 'etc')
+    os.environ['XLSF_UIDDIR'] = os.path.join(lsfDir, 'lib', 'uid')
+    if not os.environ.has_key('PATH'):
+        os.environ['PATH'] = binDir
+    elif binDir not in os.environ['PATH'].split(os.pathsep):
+        os.environ['PATH'] = os.environ['PATH'] + os.pathsep + binDir
+
+
+################
+# MAIN MAIN MAIN
+################
+
+
+if __name__ == '__main__':
+    pass
+
+
+#################
+# DEPRECATED CODE
+#################
+
+
+def bsubOld(cmds=None, queue=None, interactive=False, outputFile=None):
+    '''
+    executes the list of cmds on the queue, possibly interactively,
+    and possibly redirects the output to a file (any "%J" in the filename
+    will be replaced with the lsf job id.
+    # The lsf job exits with the exit code of the last command run.  So if all the commands have non-zero exit codes except the last,
+    # the job status will be DONE.  Try cmds = [cmd+' || exit' for cmd in cmds] to make the job end with EXIT after the first non-zero exit code.
+    '''
+    # logging.debug('in lsf.bsub()')
+    if cmds==None: cmds = []
+    
+    if interactive: interactiveOption = '-I'
+    else: interactiveOption = ''
+
+    if outputFile: outputOption = '-o '+outputFile
+    else: outputOption = ''
+
+    if queue: queueOption = ' -q '+queue
+    else: queueOption = ''
+    
+    bsubcmd = 'bsub '+interactiveOption+' '+queueOption+' '+outputOption
+
+    pin, pout = os.popen2(bsubcmd)
+    for cmd in cmds:
+        pin.write(cmd+'\n')
+    pin.close()
+    cmdout = pout.read()
+    exitcode = pout.close()
+    return exitcode
+
 
 def waitForJobsOption(jobIds):
     '''
@@ -198,131 +312,3 @@ def makeDependencyExpression(condition, jobids, booleanOperator):
     return " -w '%s' " % joinedConds
 
 
-def submitToLSF(cmds, bsubOptions=None):
-    '''
-    cmds: seq of command lines to be submitted to lsf via bsub.  I think they run in a shell.
-    The lsf job exits with the exit code of the last command run.  So if all the commands have non-zero exit codes except the last,
-    the job status will be DONE.  Try cmds = [cmd+' || exit' for cmd in cmds] to make the job end with EXIT after the first non-zero exit code.
-    bsubOptions: an optional list of options to bsub command.
-    Runs one bsub command and pipes each command in cmds to the bsub command.
-    returns: job id of the bsub submission
-    throws: exception if the bsub submission fails.
-    warning: may not work with synchronous/interactive bsub commands (e.g. with -K or -I options.)
-    example:
-    queueOption = '-q shared_15m'
-    jobName = 'exit'+jobid
-    jobNameOption = '-J '+jobName
-    emailOption = '-N'
-    cmds = ['mycommand']
-    jobId = LSF.submitToLSF(cmds, [queueOption, emailOption, jobNameOption, ' -o /dev/null'])
-    '''
-
-    if bsubOptions is None:
-        bsubOptions = []
-    
-    # new way: raise exception when bsub command fails
-    opts = ' '.join(bsubOptions)
-    cmd = 'bsub '+opts
-    stdin = '\n'.join(cmds)
-    logging.debug('submitToLSF(): cmd: %s'%cmd)
-    logging.debug('submitToLSF(): stdin: %s'%stdin)
-    output = execute.run(cmd, stdin)
-
-    # get job id from bsub output
-    m = re.search('<(\d+)>', output)
-    if m:
-        jobid = m.group(1)
-        # logging.debug('[bsub]  '+str(bsubOptions)+' '+str(cmds))
-        # logging.debug('[bsub] results in %s.out' % jobid)
-    else:
-        raise Exception('submitToLSF: failed to find job id for submitted job.  submission output='+str(output))
-
-    return jobid
-
-
-def bsub(cmds=None, queue=None, interactive=False, outputFile=None):
-    '''
-    executes the list of cmds on the queue, possibly interactively,
-    and possibly redirects the output to a file (any "%J" in the filename
-    will be replaced with the lsf job id.
-    '''
-    # logging.debug('in lsf.bsub()')
-    if cmds==None: cmds = []
-    
-    if interactive: interactiveOption = '-I'
-    else: interactiveOption = ''
-
-    if outputFile: outputOption = '-o '+outputFile
-    else: outputOption = ''
-
-    if queue: queueOption = ' -q '+queue
-    else: queueOption = ''
-    
-    bsubcmd = 'bsub '+interactiveOption+' '+queueOption+' '+outputOption
-
-    pin, pout = os.popen2(bsubcmd)
-    for cmd in cmds:
-        pin.write(cmd+'\n')
-    pin.close()
-    cmdout = pout.read()
-    exitcode = pout.close()
-    return exitcode
-
-
-
-########################################
-# SETTING UP USER ENVIRONMENT TO USE LSF
-########################################
-
-def setEnviron():
-    LSF_DIR = '/opt/lsf/7.0/linux2.6-glibc2.3-x86_64' # '/opt/lsf/6.0/linux2.4-glibc2.3-x86'
-    BIN_DIR = os.path.join(LSF_DIR, 'bin')
-    CONF_DIR = '/opt/lsf/conf'
-    LIB_DIR = os.path.join(LSF_DIR, 'lib')
-    SERVER_DIR = os.path.join(LSF_DIR, 'etc')
-
-    os.environ['LSF_BINDIR'] = BIN_DIR
-    os.environ['LSF_ENVDIR'] = CONF_DIR
-    os.environ['LSF_LIBDIR'] = LIB_DIR
-    os.environ['LSF_SERVERDIR'] = SERVER_DIR
-    if os.environ.has_key('PATH'):
-        os.environ['PATH'] = os.environ['PATH'] + os.pathsep + BIN_DIR
-    else:
-        os.environ['PATH'] = BIN_DIR
-    return
-
-
-setEnviron()
-
-
-
-################
-# MAIN MAIN MAIN
-################
-
-
-def main():
-    import sys, time
-    
-    # use job name to keep track of a logical group of commands
-    jobName = str(time.time())
-    
-    # run commands in parallel on lsf, sending their output to a file
-    cmds = [l.strip() for l in sys.stdin.readlines()]   
-    num = 0 # to name output files (jblast already has a better way of doing this, I think)
-    for cmd in cmds:
-        bsub = 'bsub -q rodeo_unlimited -N -o foo'+str(num)+' -J "'+jobName+'" '+cmd
-        num += 1
-        os.system(bsub)
-        
-    # run cmd to concatenate all output files of cmds above.
-    # if there are hundreds of files, this simple approach might fail
-    cmd = 'cat '+' '.join(['foo'+str(n) for n in range(num)])
-    bsub = 'bsub -K -q rodeo_15m -w \'ended("'+jobName+'")\' '+cmd
-    os.sytem(bsub)
-      
-   
-
-if __name__ == '__main__':
-    
-    main()

@@ -10,6 +10,7 @@ ONLY DEPENDENCIES ON STANDARD LIBRARY MODULES ALLOWED.
 import datetime
 import math
 import hashlib # sha
+import itertools
 import tempfile
 import shutil
 import time
@@ -18,16 +19,30 @@ import sys
 import subprocess
 
 
-def run(args, stdin=None, shell=True):
+def humanBytes(num):
+    '''
+    http://blogmag.net/blog/read/38/Print_human_readable_file_size
+    num: a number of bytes.
+    returns a human-readable version of the number of bytes
+    Byte (B), Kilobyte (KB), Megabyte (MB), Gigabyte (GB), Terabyte (TB), Petabyte (PB), Exabyte (EB), Zettabyte (ZB), Yottabyte (YB)
+    '''
+    for x in ['B', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB']:
+        if num < 1024.0:
+            return "%3.1f%s" % (num, x)
+        num /= 1024.0
+
+
+def run(args, stdin=None, shell=False):
     '''
     for python 2.7 and above, consider using subprocess.check_output().
     
     args: commandline string treated as a one element list, or list containing command and arguments.
     stdin: string to be sent to stdin of command.
-
-    Basically, if you want to run a command line, pass it as a string via args, and let shell=True.
+    shell: defaults to False to avoid shell injection attacks
+    
+    Basically, if you want to run a command line, pass it as a string via args, and set shell=True.
     e.g. 'ls databases/fasta'
-    If you do not want shell interpretation, break up the commandline and args into a list and let shell=False.
+    If you do not want shell interpretation, break up the commandline and args into a list and set shell=False.
     e.g. ['ls', 'databases/fasta']
     Runs command, sending stdin to command (if any is given).  If shell=True, executes command through shell,
     interpreting shell characters in command and arguments.  If args is a string, runs args like a command line run
@@ -52,6 +67,7 @@ def run(args, stdin=None, shell=True):
 def dispatch(name, args=None, keywords=None):
     '''
     name: name of callable/function including modules, etc., e.g. 'foo_package.gee_package.bar_module.wiz_func'
+    that can be imported from the current sys.path
     args: a list of arguments for the callable/function.
     keywords: a dict of keyword parameters for the callable/function.
     using the fully qualifed name, loads module, finds and calls function with the given args and keywords
@@ -79,7 +95,7 @@ def strToBool(value):
     An arbitrary set of human-readable strings is mapped to False.  Everything else is true.
     What is false? Ingoring case, 'F', 'FALSE', '0', '0.0', 'None'
     '''
-    return str(value).upper() not in ('F', 'FALSE', '0', '0.0', 'NO', 'N', 'None')
+    return str(value).upper() not in ('F', 'FALSE', '0', '0.0', 'NO', 'N', 'NONE')
 
 
 def getBoolFromEnv(key, default=True):
@@ -100,7 +116,9 @@ def getBoolFromEnv(key, default=True):
 
 class ClosingFactoryCM(object):
     '''
-    context manager for creating a new obj from a factory function and closing the obj when done.  e.g. creating and closing a db connection each time.
+    context manager for creating a new obj from a factory function when entering a context an closing the obj when exiting a context.
+    useful, for example, for creating and closing a db connection each time.
+    Calls obj.close() when the context manager exits.
     '''
     def __init__(self, factory):
         self.factory = factory
@@ -284,7 +302,37 @@ def groupsOfN(iterable, n):
     except StopIteration:
         if seq:
             yield seq
+
+
+def splitIntoN(input, n, exact=False):
+    '''
+    input: a sequence
+    n: the number of evenly-sized groups to split input into.  must be an integer > 0.
+    exact: if True, returns exactly n sequences, even if some of them must be empty.
+      if False, will not return empty sequences, so will return < n sequences when n > len(input).
+    split input into n evenly sized sequences.  some sequences might have one less element than other sequences.
+    first sequences returned have more elements than later sequences.
     
+    e.g. if input had 11 elements, [1,2,3,4,5,6,7,8,9,10,11] and n=3, input would be split into these sequences: [1,2,3,4],[5,6,7,8],[9,10,11]
+    e.g. if input had 2 elements, [1,2] and n=3, input would be split into these sequences: [1], [2], []
+    e.g. if input had 0 elements, [] and n=3, input would be split into these sequences: [], [], []
+    e.g. if exact=False and input had 2 elements, [1,2] and n=3, input would be split into these sequences: [1], [2]
+    e.g. if exact=False and input had 0 elements, [] and n=3, input would be split into no sequences.  I.e. no sequences would be yielded.
+    yields: n evenly sized sequences, or if exact=False, up to n evenly sized, non-empty sequences.
+    '''
+    size = len(input) // n
+    numExtra = len(input) % n
+    start = 0
+    end = size
+    for i in range(n):
+        if i < numExtra:
+            end += 1
+        if not exact and start == end: # only empty sequences left, so exit early.
+            break
+        yield input[start:end]
+        start = end
+        end = end + size
+
 
 def isInteger(num):
     '''
@@ -347,26 +395,21 @@ def stddev(nums):
 # COMBINATORICS FUNCTIONS
 #######################################
 
-def permute(set, n):
-    ''' returns a list of lists every permutation of n elements from set '''
-    if n == 0: return [[]]
-    perms = []
-    for x in set:
-        subset = set[:]
-        subset.remove(x)
-        perms.extend([p+[x] for p in permute(subset, n-1)])
-    return perms
+def permute(items, n):
+    '''
+    deprecated: use itertools.permutations()
+    returns a list of lists every permutation of n elements from items
+    '''
+    return list(itertools.permutations(items, n))
 
 
-def choose(set, n):
+def choose(items, n):
     '''
-    set: a list
-    returns: a list of lists of every combination of n elements from set
-    warning: if len(set) > 998, python recursion limit exceeded.
+    deprecated: use itertools.combinations()
+    items: a list
+    returns: a list of lists of every combination of n elements from items
     '''
-    if len(set) < n: return []
-    if n == 0: return [[]]
-    return [set[0:1] + c for c in choose(set[1:], n-1)] + choose(set[1:], n)
+    return list(itertools.combinations(items, n))
 
 
 def every(pred, seq):

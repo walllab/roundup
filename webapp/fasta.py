@@ -8,7 +8,7 @@ This module follows the NCBI conventions: http://blast.ncbi.nlm.nih.gov/blastcgi
 import cStringIO
 import re
 import math
-import subprocess
+
 
 TEST_FASTA = {'GOOD_TEST': '''>ns|id|a long description
 CTGACTGACTGACTGACTGACTGACTGACTGACTGACTGACTGACTGACTGA
@@ -130,7 +130,12 @@ def prettySeq(seq, n=60):
 
 
 def numSeqsInFastaDb(path):
-    return int(subprocess.check_output('grep  ">" %s | wc -l'%path, shell=True))
+    num = 0
+    with open(path) as fh:
+        for line in fh:
+            if line.startswith('>'):
+                num += 1
+    return num
 
 
 def readIds(fastaFile, strict=True):
