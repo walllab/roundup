@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 '''
-## CONCEPTS TO LEARN
+## CONCEPTS YOU NEED TO KNOW TO UNDERSTAND THIS CODE
 * Dataset: ds, the id of a dataset.  also happens to be a directory path, but that is an implementation detail. 
 * Sources: a dir containing all the files needed to create the genomes and the metadata about those genomes: gene names, go terms, gene descriptions, genome names, etc.
 * Genomes: A dir containing dirs named after each genome and containing a fasta file and blast indexes named after the genome.
@@ -986,8 +986,8 @@ def computeJobs(ds):
         keywords = {'ds': ds, 'job': job}
         # reserve 500MB in /tmp for duration of job to avoid nodes where someone, not naming any names, has used too much space.
         # redirect output to /dev/null so we do not get thousands of useless emails from lsf.
-        lsfOptions = ['-R "rusage[tmp=500]"', '-q '+roundup_common.LSF_LONG_QUEUE, '-o /dev/null', '-J '+getComputeJobName(ds, job)]
-        jobid = lsfdispatch.dispatch(funcName, keywords=keywords, lsfOptions=lsfOptions)
+        lsfOptions = ['-R', '"rusage[tmp=500]"', '-q', roundup_common.LSF_LONG_QUEUE, '-J', getComputeJobName(ds, job)]
+        jobid = lsfdispatch.dispatch(funcName, keywords=keywords, lsfOptions=lsfOptions, devnull=True)
         msg = 'computeJobs(): starting job on grid.  lsfjobid={}, ds={}, job={}'.format(jobid, ds, job)
         print msg
         logging.log(roundup_common.ROUNDUP_LOG_LEVEL, msg)

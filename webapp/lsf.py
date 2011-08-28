@@ -1,10 +1,7 @@
 #!/usr/bin/env python
 
 '''
-Helpful functions for interacting with LSF using python.
-
-Also sets up a user environment to use LSF.  Originially created to configure the web user, www-data,
-but can set up any user, I think.  Simply importing this module will configure the environment.
+Helpful functions for interacting with LSF using python, and for setting up an environment for lsf.
 '''
 
 import os

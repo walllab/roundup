@@ -75,8 +75,7 @@ def runJobs(ns, jobs, names=None, lsfOptions=None, onGrid=True):
                 print 'starting job:', ns, name
                 func = 'workflow.runJob'
                 kw = {'ns': ns, 'job': job, 'name': name}
-                lsfOptions += [' -o /dev/null', '-J {}'.format(lsfJobName)]
-                print lsfdispatch.dispatch(func, keywords=kw, lsfOptions=lsfOptions)
+                print lsfdispatch.dispatch(func, keywords=kw, lsfOptions=list(lsfOptions)+['-J', lsfJobName], devnull=True)
         else:
             runJob(ns, job, name)
             

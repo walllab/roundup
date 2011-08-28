@@ -71,7 +71,7 @@ var waitOnJob = function(job, url) {
   // waits, then checks to see if a lsf job is finished.  if so it forwards the browser to url.  otherwise it waits and checks again.
   // while waiting it makes little tickmarks so the user feels like something is happening.
   var msg = $("p#wait_msg").html();
-  countdownAction(5, 1000, 
+  countdownAction(10, 1000, 
                   function() {
                     $.ajax({ "url": "{% url 'home.views.job_ready' %}",
                              data: {"job": job},
