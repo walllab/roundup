@@ -1,15 +1,14 @@
-# Can ignore specific files
+# Ignore Mac OS X metadata files
 .DS_Store
 
-# Use wildcards as well
+# Ignore backups and compiled files
 *~
-*.pyc
-*.pyo
+*.py[co]
 *.old
 *.class
 #*#
 
-# Can also ignore all directories and files in a directory.
+# Ignore all tmp dirs and everything in them
 tmp/*
 tmp/**/*
 **/tmp/*

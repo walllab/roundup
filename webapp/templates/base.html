@@ -22,6 +22,8 @@ div.panel-flexible div.panel-row-3 div.panel-col-1 { width: 98%; }
 <link rel="shortcut icon" href="/static/images/bluebird_favicon.ico" type="image/x-icon">
 -->
 <link type="text/css" rel="stylesheet" media="all" href="/static/css/style.css">
+<link rel="stylesheet" media="all" href="/static/css/chosen-0.9.1/chosen.css" />
+
 
 <!--
 <link type="text/css" rel="stylesheet" media="all" href="/static/css/defaults.css">
@@ -37,6 +39,8 @@ div.panel-flexible div.panel-row-3 div.panel-col-1 { width: 98%; }
 -->
 <script type="text/javascript" src="/static/js/jquery.1.6.1.min.js"></script>
 <script type="text/javascript" src="/static/js/sortable.js"></script> 
+<script type="text/javascript" src="/static/js/chosen-0.9.1/chosen.jquery.min.js"></script>
+
 <!--
 <script type="text/javascript" src="/static/js/roundup.js"></script>
 <script type="text/javascript" src="/static/js/drupal.js"></script>
@@ -235,5 +239,9 @@ function inArray(obj, arr) {
 <!-- end footer -->
 
 </div> <!-- end wrap -->
+
+<!-- activate select elements using chosen -->
+<script type="text/javascript"> $(".chzn-select").chosen(); </script>
+
 </body>
 </html>

@@ -124,7 +124,7 @@ def dropDones(ns):
 
 
 def resetDones(ns):
-    getDonesStore(ns).drop().create()
+    getDonesStore(ns).reset()
 
 
 DONES_CACHE = {}

@@ -7,19 +7,12 @@ form_method: defaults to 'post'.
 {% endcomment %}
 {% if form_doc_id or form_example %}
 <p>
-{% if form_doc_id %}
-<a href="javascript:docWindow2('{% url 'home.views.documentation' %}#{{ form_doc_id }}')">Documentation</a>
-{% endif %}
+{% if form_doc_id %}<a href="javascript:docWindow2('{% url 'home.views.documentation' %}#{{ form_doc_id }}')">Documentation</a>{% endif %}
 {% if form_doc_id and form_example %} and {% endif %}
-{% if form_example %}
-<script><!--
-var input_form_example_values = {{ form_example|safe }};
-// -->
-</script>
-<a href="javascript:setFormValues(document.getElementById('{{ form_id|default:"input_form" }}'), input_form_example_values);">Example</a> 
-{% endif %}
+{% if form_example %}<a id="input_form_example_link" href="javascript:void(0)">Example</a>{% endif %}
 </p>
 {% endif %}
+
 <form id="{{ form_id|default:"input_form" }}" class="plain_table" action="{{ form_action }}" method="{{ form_method|default:"post" }}">
 {% csrf_token %}
 {{ form.non_field_errors }}
@@ -42,3 +35,16 @@ var input_form_example_values = {{ form_example|safe }};
 <input type="reset" value="Reset" />
 {% endcomment %}
 </form>
+
+{% if form_example %}
+<script><!--
+var input_form_example_values = {{ form_example|safe }};
+$('#input_form_example_link').click(function() {
+  setFormValues(document.getElementById('{{ form_id|default:"input_form" }}'), input_form_example_values);
+{% for chosen_id in chosen_ids %}
+  $('#{{ chosen_id }}').trigger("liszt:updated");
+{% endfor %}
+});
+// -->
+</script>
+{% endif %}

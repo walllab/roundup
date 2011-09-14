@@ -196,10 +196,13 @@ def writeLookupTable(items, itemToId, itemsFile):
 # LOAD ORTHDATAS FUNCTIONS
 ########################
 
+def workflowDonesNamespace(release):
+    return 'roundup_{}'.format(release)
+
+    
 def cleanOrthDatasDones(ds):
     release = roundup_dataset.getDatasetId(ds)
-    ns = 'roundup_load_{}'.format(release)
-    workflow.dropDones(ns)
+    workflow.dropDones(workflowDonesNamespace(release))
 
     
 def initLoadOrthDatas(ds):
@@ -208,16 +211,14 @@ def initLoadOrthDatas(ds):
     roundup_db.dropReleaseResults(release)
     roundup_db.createReleaseResults(release)
     print 'resetting dones'
-    ns = 'roundup_load_{}'.format(release)
-    workflow.resetDones(ns)
+    workflow.resetDones(workflowDonesNamespace(release))
 
-    
+
 def loadOrthDatas(ds):
     '''
     load orthDatas serially.  takes a long time.  use dones to resume job if it dies.
     '''
     release = roundup_dataset.getDatasetId(ds)
-    ns = 'roundup_{}'.format(release)
 
     print 'getting ids'
     genomeToId = roundup_db.getGenomeToId(release)
@@ -227,12 +228,12 @@ def loadOrthDatas(ds):
 
     print 'loading orthDatas'
     for path in roundup_dataset.getOrthologsFiles(ds):
-        if workflow.isDone(ns, path):
+        if workflow.isDone(workflowDonesNamespace(release), path):
             print 'already loaded:', path
         else:
             print 'loading', path
             orthDatasGen = orthutil.orthDatasFromFileGen(path)
             roundup_db.loadReleaseResults(release, genomeToId, divToId, evalueToId, geneToId, orthDatasGen)
-            workflow.markDone(ns, path)
+            workflow.markDone(workflowDonesNamespace(release), path)
     print 'done loading all orthDatas'
 
