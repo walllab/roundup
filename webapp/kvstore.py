@@ -193,21 +193,24 @@ class KStore(object):
         '''
         readies the namespace for new marks
         '''
-        self.kv = KVStore(self.manager, ns=self.ns).create()
+        # self.kv = KVStore(self.manager, ns=self.ns).create()
+        self.kv.create()
         return self
 
     def reset(self):
         '''
         clears all marks from the namespace and readies it for new marks
         '''
-        self.kv = KVStore(self.manager, ns=self.ns).drop().create()
+        # self.kv = KVStore(self.manager, ns=self.ns).drop().create()
+        self.kv.reset()
         return self
 
     def drop(self):
         '''
         clears all marks from the namespace and cleans it up.
         '''
-        self.kv = KVStore(self.manager, ns=self.ns).drop()
+        # self.kv = KVStore(self.manager, ns=self.ns).drop()
+        self.kv.drop()
         return self
 
 

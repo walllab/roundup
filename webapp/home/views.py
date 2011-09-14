@@ -406,10 +406,12 @@ def search_gene_names_result(request, key):
 ##################
 
 class BrowseForm(django.forms.Form):
-    primary_genome = django.forms.ChoiceField(choices=GENOME_CHOICES)
+    primary_genome = django.forms.ChoiceField(choices=GENOME_CHOICES,
+                                              widget=django.forms.Select(attrs={'class': 'chzn-select'}))
     identifier_type = django.forms.ChoiceField(choices=IDENTIFIER_TYPE_CHOICES)
     identifier = django.forms.CharField(required=False, max_length=100, widget=django.forms.TextInput(attrs={'size': '60'}))
-    secondary_genomes = django.forms.MultipleChoiceField(choices=GENOME_CHOICES)
+    secondary_genomes = django.forms.MultipleChoiceField(choices=GENOME_CHOICES,
+                                              widget=django.forms.SelectMultiple(attrs={'class': 'chzn-select', 'data-placeholder': 'Select one or more'}))
     divergence = django.forms.ChoiceField(choices=DIVERGENCE_CHOICES)
     evalue = django.forms.ChoiceField(choices=EVALUE_CHOICES, label='BLAST E-value')
     distance_lower_limit = django.forms.FloatField(help_text=DIST_LIMIT_HELP, required=False, max_value=19.0, min_value=0.0)
@@ -469,9 +471,10 @@ def browse(request):
         form = BrowseForm() # An unbound form
 
     example = "{'primary_genome': 'YEAST', 'identifier': 'Q03834', 'identifier_type': 'seq_id_type', 'secondary_genomes': ['HUMAN', 'MOUSE']}" # javascript
+    # example = "{'primary_genome': 'MYCGE', 'secondary_genomes': ['MYCHH', 'MYCH1']}" # javascript
     # , 'include_gene_name': 'true', 'include_go_term': 'true'}" # javascript
     return django.shortcuts.render(request, 'browse.html',
-                                   {'form': form, 'nav_id': 'browse', 'form_doc_id': 'browse',
+                                   {'form': form, 'nav_id': 'browse', 'form_doc_id': 'browse', 'chosen_ids': ['id_primary_genome', 'id_secondary_genomes'],
                                     'form_action': django.core.urlresolvers.reverse(browse), 'form_example': example})
 
 
@@ -480,7 +483,8 @@ def browse(request):
 ###################
 
 class ClusterForm(django.forms.Form):
-    genomes = django.forms.MultipleChoiceField(choices=GENOME_CHOICES, help_text='Select two or more')
+    genomes = django.forms.MultipleChoiceField(choices=GENOME_CHOICES, help_text='Select two or more',
+                                               widget=django.forms.SelectMultiple(attrs={'class': 'chzn-select', 'data-placeholder': 'Select two or more'}))
     divergence = django.forms.ChoiceField(choices=DIVERGENCE_CHOICES)
     evalue = django.forms.ChoiceField(choices=EVALUE_CHOICES, label='BLAST E-value')
     distance_lower_limit = django.forms.FloatField(help_text=DIST_LIMIT_HELP, required=False, max_value=19.0, min_value=0.0)
@@ -514,8 +518,9 @@ def cluster(request):
         form = ClusterForm() # An unbound form
 
     example = "{'genomes': ['HUMAN', 'MOUSE', 'YEAST']}"
+    # example = "{'genomes': ['MYCGE', 'MYCHH', 'MYCHP']}"
     return django.shortcuts.render(request, 'cluster.html',
-                                   {'form': form, 'nav_id': 'cluster', 'form_doc_id': 'cluster',
+                                   {'form': form, 'nav_id': 'cluster', 'form_doc_id': 'cluster', 'chosen_ids': ['id_genomes'],
                                     'form_action': django.core.urlresolvers.reverse(cluster), 'form_example': example})
 
 

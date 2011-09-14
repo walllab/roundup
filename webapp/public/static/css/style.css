@@ -66,6 +66,17 @@ font-size : 77%;
 color : #404040; 
 }
 
+/* MAINTENANCE */
+.maintenance {
+width: 100%;
+background: #fff0f8;
+color: #000;
+font-weight: bold;
+border: 1px solid #aaa;
+margin: 10px;
+padding: 10px;
+}
+
 
 /* TWO COLUMN LAYOUT ON HOME PAGE */
 /*

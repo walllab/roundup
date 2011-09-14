@@ -1,6 +1,6 @@
-2011/08/25 Todd F. DeLuca, Scientific Programmer, Wall Laboratory, Center for Biomedical Informatics, Harvard Medical School, USA, Earth, Sol System, etc.
-http://roundup.hms.harvard.edu
-http://wall.hms.harvard.edu
+Author: Todd F. DeLuca
+Organization: Wall Laboratory, Center for Biomedical Informatics, Harvard Medical School, USA, Earth, Sol System, Orion Arm, Milky Way.
+Date: 2011/08/29
 
 This directory contains the scripts needed to run the Reciprocal Smallest Distance (RSD) ortholog detection algorithm as well as examples of input and output files.
 
@@ -10,6 +10,15 @@ fasta.py, util.py, nested.py:  modules defining a helpful functions used by rsd.
 jones.dat, codeml.ctl:  used by codeml/paml to compute the evolutionary distance between two sequences.
 examples:  a directory containing examples of inputs and outputs to rsd.py, including fasta-formatted genome sequence files, BLAST formatted index files, 
  a query sequence id file (for --ids), and an orthologs output file.
+
+
+################
+# INSTALLING RSD
+################
+
+1) Unpack rsd_standalone.tar.gz.
+2) Install Python 2.7, NCBI BLAST 2.2.24, PAML 4.4, and Kalign 2.04
+3) Add the executables for python2.7, makeblastdb, blastp, codeml, and kalign, to your PATH variable.
 
 
 ##########################

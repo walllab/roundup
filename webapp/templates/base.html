@@ -22,6 +22,8 @@ div.panel-flexible div.panel-row-3 div.panel-col-1 { width: 98%; }
 <link rel="shortcut icon" href="/static/images/bluebird_favicon.ico" type="image/x-icon">
 -->
 <link type="text/css" rel="stylesheet" media="all" href="/static/css/style.css">
+<link rel="stylesheet" media="all" href="/static/css/chosen-0.9.1/chosen.css" />
+
 
 <!--
 <link type="text/css" rel="stylesheet" media="all" href="/static/css/defaults.css">
@@ -37,6 +39,8 @@ div.panel-flexible div.panel-row-3 div.panel-col-1 { width: 98%; }
 -->
 <script type="text/javascript" src="/static/js/jquery.1.6.1.min.js"></script>
 <script type="text/javascript" src="/static/js/sortable.js"></script> 
+<script type="text/javascript" src="/static/js/chosen-0.9.1/chosen.jquery.min.js"></script>
+
 <!--
 <script type="text/javascript" src="/static/js/roundup.js"></script>
 <script type="text/javascript" src="/static/js/drupal.js"></script>
@@ -154,9 +158,20 @@ function inArray(obj, arr) {
 </script>
 
 
-<!--[if lt IE 7]>
-<style type="text/css" media="all">@import "/site/sites/all/themes/bluebird/fix-ie.css";</style>
-<![endif]-->
+<!-- gooogle analytics -->
+<script type="text/javascript">
+
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-25583103-1']);
+  _gaq.push(['_trackPageview']);
+
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+
+</script>
 
 </head>
 
@@ -223,22 +238,10 @@ function inArray(obj, arr) {
 </div>
 <!-- end footer -->
 
-<!-- gooogle analytics -->
-<script type="text/javascript">
- var _gaq = _gaq || [];
- _gaq.push(['_setAccount', 'UA-24495001-1']);
- _gaq.push(['_trackPageview']);
-
- (function() {
-   var ga = document.createElement('script'); ga.type =
-'text/javascript'; ga.async = true;
-   ga.src = ('https:' == document.location.protocol ? 'https://ssl' :
-'http://www') + '.google-analytics.com/ga.js';
-   var s = document.getElementsByTagName('script')[0];
-s.parentNode.insertBefore(ga, s);
- })();
-</script>
-
 </div> <!-- end wrap -->
+
+<!-- activate select elements using chosen -->
+<script type="text/javascript"> $(".chzn-select").chosen(); </script>
+
 </body>
 </html>

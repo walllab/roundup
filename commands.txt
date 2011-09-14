@@ -62,6 +62,9 @@ cd /www/dev.roundup.hms.harvard.edu/webapp && time python -c 'import roundup_dat
 # LOADING A DATASET INTO THE DATABASE
 #####################################
 
+# Commands show how to use ROUNDUP_MYSQL_SERVER and ROUNDUP_MYSQL_DB environment variables to make the dev code load into the prod database.
+# Merely prepend the right env vars to the command.
+
 # load genomes, divergences, evalues, sequence, and sequence_to_go_term tables into database using dev code and prod database
 cd /www/dev.roundup.hms.harvard.edu/webapp && ROUNDUP_MYSQL_SERVER=mysql.cl.med.harvard.edu ROUNDUP_MYSQL_DB=roundup time python -c "import roundup_load;
 ds = '/groups/cbi/roundup/datasets/201106_dataset'
@@ -87,8 +90,6 @@ ds = '/groups/cbi/roundup/datasets/201106_dataset'
 roundup_load.loadOrthDatas(ds)
 "
 
-# Example of how to use ROUNDUP_MYSQL_SERVER and ROUNDUP_MYSQL_DB environment variables to make the dev code load into the prod database.
-# basically prepend the env vars to the command.
 cd /www/dev.roundup.hms.harvard.edu/webapp && ROUNDUP_MYSQL_SERVER=mysql.cl.med.harvard.edu ROUNDUP_MYSQL_DB=roundup time python -c "import roundup_load;
 ds = '/groups/cbi/roundup/datasets/2010_01'
 roundup_load.loadDatabase(ds)
