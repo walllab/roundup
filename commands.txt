@@ -15,7 +15,7 @@ git commit -a
 git push
 git checkout prod
 git merge --no-ff master
-git tag -a release_2.0.2 -m 'performance enhancements for sources page and getting genomes for dropdown boxes.'
+git tag -a v2.0.2 -m 'performance enhancements for sources page and getting genomes for dropdown boxes.'
 git push
 git checkout master
 

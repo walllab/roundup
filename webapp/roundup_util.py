@@ -82,9 +82,8 @@ def getSourcesHtml(ds=config.CURRENT_DATASET):
     '''
     generate the sources page html div, and store it in the metadata.
     '''
-    html = '''<div id="sources">
-<p id="sources_desc">
-Roundup Release {} uses the following sources:
+    html = '''<p id="sources_desc">
+Roundup Release {} uses the following data sources:
 <ul>
 <li>
 <a href="http://www.uniprot.org">UniProt</a>, specifically UniProtKB/Swiss-Prot and UniProtKB/TrEMBL from Release {}, is used as a source for protein sequences from complete genomes, for sequence annotations, and for genome annotations.
@@ -106,7 +105,6 @@ The following is a comprehensive list of files that were downloaded for this Rou
     html += '''
 </ul>
 </p>
-</div>
 '''
     return html
 

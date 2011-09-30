@@ -74,7 +74,8 @@ def home(request):
 
 def about(request):
     stats = roundup_util.getDatasetStats() # keys: numGenomes, numPairs, numOrthologs
-    return django.shortcuts.render(request, 'about.html', {'nav_id': 'about', 'numGenomes': stats['numGenomes']})
+    sources_html = roundup_util.getSourcesHtml()    
+    return django.shortcuts.render(request, 'about.html', {'nav_id': 'about', 'numGenomes': stats['numGenomes'], 'sources_html': sources_html})
     
 
 def documentation(request):
@@ -93,11 +94,6 @@ def genomes(request):
     kw = {'nav_id': 'genomes', 'descGroups': [eukaryota, archaea, bacteria, viruses, unclassified], 'num_genomes': num_genomes,
           'num_eukaryota': num_eukaryota, 'num_archaea': num_archaea, 'num_bacteria': num_bacteria, 'num_viruses': num_viruses, 'num_unclassified': num_unclassified}
     return django.shortcuts.render(request, 'genomes.html', kw)
-
-
-def sources(request):
-    html = roundup_util.getSourcesHtml()
-    return django.shortcuts.render(request, 'regular.html', {'nav_id': 'sources', 'html': html})
 
 
 def updates(request):
