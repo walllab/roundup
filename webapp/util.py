@@ -313,7 +313,7 @@ def splitIntoN(input, n, exact=False):
     split input into n evenly sized sequences.  some sequences might have one less element than other sequences.
     first sequences returned have more elements than later sequences.
     
-    e.g. if input had 11 elements, [1,2,3,4,5,6,7,8,9,10,11] and n=3, input would be split into these sequences: [1,2,3,4],[5,6,7,8],[9,10,11]
+    e.g. if input had 10 elements, [1,2,3,4,5,6,7,8,9,10] and n=3, input would be split into these sequences: [1,2,3,4],[5,6,7],[8,9,10]
     e.g. if input had 2 elements, [1,2] and n=3, input would be split into these sequences: [1], [2], []
     e.g. if input had 0 elements, [] and n=3, input would be split into these sequences: [], [], []
     e.g. if exact=False and input had 2 elements, [1,2] and n=3, input would be split into these sequences: [1], [2]

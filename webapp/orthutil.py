@@ -28,14 +28,18 @@ def orthologsToStream(orthologs, handle, version=-1):
     returns: a generator that yields orthologs, which are tuples of (query_sequence_id, subject_sequence_id, distance)
     '''
     for ortholog in orthologs:
-        handle.write('{}\t{}\t{}\n'.format(*ortholog))
+        qid, sid, dist = ortholog
+        if version == 1:
+            handle.write('{}\t{}\t{}\n'.format(sid, qid, dist))
+        else:
+            handle.write('{}\t{}\t{}\n'.format(qid, sid, dist))
 
 
 #########################################
 # ORTHDATAS SERIALIZATION AND PERSISTANCE
 #########################################
 
-# orthData: a tuple of params, orthologs.
+# orthData: a tuple of params, orthologs.  i.e. ((qdb, sdb, div, evalue), ((qid1, sid1, dist1), (qid2, sid2, dist2), ...))
 # params: a tuple of query genome, subject genome, divergence, and evalue.
 # orthologs: a list of query id, subject id, and distance.
 

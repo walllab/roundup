@@ -1,7 +1,6 @@
 '''
 Code for creating nested directory structures to avoid having a single directory with millions of files.
 Code for creating nested temp files and dirs.
-NOTE: no dependencies on orchestra.  only python standard library dependencies.
 '''
 
 import os

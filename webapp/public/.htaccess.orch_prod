@@ -1,6 +1,14 @@
 # allow access to dev.* website from outside harvard.  how does this work?
 Allow from 24.61.46.150
 
+# add mime types for videos.  Apache should send this type as an HTTP Header when serving these files.
+AddType video/ogg .ogv
+AddType video/mp4 .mp4
+AddType video/webm .webm
+
+# do not gzip videos to allow seeking in videos in firefox and opera.  http://camendesign.com/code/video_for_everybody
+SetEnvIfNoCase Request_URI \.(og[gv]|mp4|m4v|webm)$ no-gzip dont-vary
+
 # passenger config only requires this one directive.
 PassengerAppRoot /www/roundup.hms.harvard.edu/webapp
 # PassengerAppRoot /www/%{HTTP_HOST}/support

@@ -25,7 +25,7 @@ Below is a list detailing every genome in Roundup.  It includes the genome ident
 </tr>
 {% for descs in descGroups %}
 {% for desc in descs %}
-<tr>
+<tr id="{{desc.0}}">
 <td><a href="http://www.uniprot.org/taxonomy/{{ desc.2 }}">{{ desc.0 }}</a></td>
 <td>{{ desc.1 }}</td>
 <td><a href="http://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?lvl=0&id={{ desc.2 }}">{{ desc.2 }}</a></td>
