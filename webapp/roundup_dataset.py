@@ -79,6 +79,9 @@ import workflow
 MIN_GENOME_SIZE = 200 # ignore genomes with fewer sequences
 DIR_MODE = 0775 # directories in this dataset are world readable and group writable.
 
+COMPLETE_PROTEOME_KW = 'Complete proteome'
+REFERENCE_PROTEOME_KW = 'Reference proteome'
+
 # keys used for termToData and taxonToData  
 NAME = 'n'
 TYPE = 'y'
@@ -181,16 +184,16 @@ def downloadSources(ds):
 
     # get as much as possible about the current uniprotkb release, in case it is needed later.
     currentUrl = 'ftp://ftp.uniprot.org/pub/databases/uniprot/current_release'
-    uniprotFiles = ['relnotes.txt',
-                    'knowledgebase/complete/README', 
+    uniprotFiles = [# 'relnotes.txt',
+                    # 'knowledgebase/complete/README', 
                     'knowledgebase/complete/reldate.txt', 
                     'knowledgebase/complete/uniprot_sprot.dat.gz', 
-                    'knowledgebase/complete/uniprot_sprot.fasta.gz', 
+                    # 'knowledgebase/complete/uniprot_sprot.fasta.gz', 
                     'knowledgebase/complete/uniprot_trembl.dat.gz', 
-                    'knowledgebase/complete/uniprot_trembl.fasta.gz', 
-                    'knowledgebase/idmapping/README', 
-                    'knowledgebase/idmapping/idmapping.dat.gz', 
-                    'knowledgebase/idmapping/idmapping_selected.tab.gz', 
+                    # 'knowledgebase/complete/uniprot_trembl.fasta.gz', 
+                    # 'knowledgebase/idmapping/README', 
+                    # 'knowledgebase/idmapping/idmapping.dat.gz', 
+                    # 'knowledgebase/idmapping/idmapping_selected.tab.gz', 
                     ]    
     uniprotUrlDests = [(currentUrl + '/' + f, os.path.join(sourcesDir, f)) for f in uniprotFiles]
 
@@ -247,8 +250,10 @@ def extractUniprotRelease(ds):
     e.g. 2011_06
     '''
     sourcesDir = getSourcesDir(ds)
-    with open(os.path.join(sourcesDir, 'relnotes.txt')) as fh:
-        release = fh.readline().strip().split()[-1]
+    with open(os.path.join(sourcesDir, 'knowledgebase/complete/reldate.txt')) as fh:
+        # e.g. UniProt Knowledgebase Release 2011_06 consists of:
+        release = re.search('(\d{4}_\d{2})', fh.readline()).group(1)
+        print 'release', release
     updateMetadata(ds, {'uniprotRelease': release})
     
 
@@ -280,7 +285,8 @@ def extractTaxonData(ds):
         taxonToData[taxon][DIV_NAME] = divData[divId][1]
 
     setData(ds, TAXON_TO_DATA, taxonToData)
-                   
+
+                                            
         
 def extractFromGeneOntology(ds):
     '''
@@ -304,193 +310,10 @@ def extractFromGeneOntology(ds):
     setData(ds, TERM_TO_DATA, termToData)
 
             
-def splitUniprotIntoGenomes(ds, writing=True, skipDirs=False, cleanDirs=False, bufSize=5000000, joinBeforeWrite=True):
-    '''
-    create separate fasta files for each complete genome in the uniprot (sprot and trembl) data.
-    do not create files for genomes that are too small.
-    also save maps from genome to ncbi taxon id, and genome to size (# of sequences).
-    iterates once through the dat files to find out which sequences/entries belong to complete proteomes (and to get taxons and sequence counts.)
-    then iterates once through fasta files to write the fasta sequences for each genome.  
-    '''
-    seqToGenome = {} # track which sequences belong to which genome.  store sequences of all complete genomes
-    genomeToTaxon = {} # maps each genome to an ncbi taxon id
-    genomeToCount = collections.defaultdict(int) # maps each genome to the number of sequences (in the dat files) for that genome.  should == num seqs in fasta files.
-    
-    # the dats have all the info needed to make fasta files, but the namelines in the uniprot fasta files are nice and hard to reconstruct from the dats.
-    dats = [os.path.join(getSourcesDir(ds), 'knowledgebase/complete/uniprot_sprot.dat'), os.path.join(getSourcesDir(ds), 'knowledgebase/complete/uniprot_trembl.dat')]
-    fastas = [os.path.join(getSourcesDir(ds), 'knowledgebase/complete/uniprot_sprot.fasta'), os.path.join(getSourcesDir(ds), 'knowledgebase/complete/uniprot_trembl.fasta')]
-    # dats = [os.path.join(getSourcesDir(ds), 'knowledgebase/complete/uniprot_sprot.dat')]
-    # fastas = [os.path.join(getSourcesDir(ds), 'knowledgebase/complete/uniprot_sprot.fasta')]
-    # dats = ['/groups/cbi/td23/roundup_uniprot/uniprot_sprot_test.dat']
-    # fastas = ['/groups/cbi/td23/roundup_uniprot/uniprot_sprot_test.fasta']
-
-    # gather which sequences belong to complete genomes, by parsing uniprot dat files.
-    # also get the ncbi taxon ids and a count of the sequences per genome.
-    print datetime.datetime.now()
-    for path in dats:
-        print 'gathering ids in {}...'.format(path), datetime.datetime.now()
-        with open(path) as fh:
-            i = 0
-            seqId = genome = taxon = None
-            complete = False
-            for line in fh:
-                code = line[:2]
-                if code == 'ID':
-                    if i % 100000 == 0: print i
-                    i += 1
-                    genome = line.split()[1].split('_')[1]
-                elif code == 'AC' and not seqId: # can be one or more AC lines
-                    # e.g. AC   Q16653; O00713; O00714; O00715; Q13054; Q13055; Q14855; Q92891;
-                    seqId = line.split()[1].split(';')[0]
-                elif code == 'OX':
-                    # e.g. OX   NCBI_TaxID=9606;
-                    taxon = line.split()[1].split('=')[1].split(';')[0]
-                elif code == 'KW' and not complete and line.find('Complete proteome') != -1: # can be zero or more KW lines
-                    complete = True
-                elif code == '//': # end of sequence
-                    if complete:
-                        seqToGenome[seqId] = genome
-                        genomeToCount[genome] += 1
-                        if genome not in genomeToTaxon:
-                            genomeToTaxon[genome] = taxon
-                        elif genomeToTaxon[genome] != taxon:
-                            with open(os.path.join(ds, 'errors.process_uniprot.txt'), 'a') as fh:
-                                fh.write('{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\n'.format(datetime.datetime.now().isoformat(), 'genome_has_two_taxons', seqId,
-                                                                                      genome, genomeToTaxon[genome], taxon, os.path.basename(path)))
-                    seqId = genome = taxon = None
-                    complete = False
-
-    # filter out genomes that are too small, and their respective sequences.
-    genomes = [genome for genome, count in genomeToCount.items() if count >= MIN_GENOME_SIZE]
-    seqToGenome = dict((seqId, genome) for seqId, genome in seqToGenome.items() if genome in genomes)
-            
-    # print a sorted list of genomes and number of sequences
-    for genome, count in sorted([(genome, genomeToCount[genome]) for genome in genomes], key=lambda x: (x[1], x[0])):
-        print genome, count
-        pass
-
-    # helper function to create genome directories for genomes not yet seen
-    dirGenomes = set()
-    def makeGenomeDir(genome):
-        if not skipDirs and genome not in dirGenomes:
-            dirGenomes.add(genome)
-            genomePath = getGenomePath(ds, genome)
-            if not os.path.exists(genomePath):
-                os.mkdir(genomePath, DIR_MODE)
-
-    # helper function to write to a genome file or a single file.  for performance testing.
-    oneFileFH = []
-    writeGenomes = set()
-    def writeToGenome(genome, data):
-        if not writing:
-            return
-        if genome not in writeGenomes: # first time writing to the genome
-            mode = 'w'
-            writeGenomes.add(genome)
-        else:
-            mode = 'a'
-        with open(getGenomeFastaPath(ds, genome), mode) as outfh:
-            if joinBeforeWrite:
-                output = ''.join(data)
-                outfh.write(output)
-            else:
-                for line in data:
-                    outfh.write(line)
-
-    # remove any pre-existing genomes.
-    if cleanDirs:
-        print 'cleaning genomes directory...', datetime.datetime.now()
-        cleanGenomes(ds)
-
-    # make a directory for each genome in which to put the fasta file.
-    print datetime.datetime.now()
-    print 'initializing {} genome directories...'.format(len(genomes))
-    for genome in genomes:
-        makeGenomeDir(genome)
-
-    # write the fasta sequences to the fasta files.  lots of caching here b/c filessystem is slow to open and close files.
-    print datetime.datetime.now()
-    for path in fastas:
-        # iterate through every line in the fasta file.
-        # when we find a nameline, check if the id is from a complete genome.
-        # if it is, check if the genome dir has been created yet and if not create it.
-        # if the genome is different from the last genome, switch files we are writing to.
-        # write every line from a complete genome to the right file.
-        print 'splitting {} into genomes'.format(path)
-        genomeToLines = collections.defaultdict(list)
-        for i, lines in enumerate(fasta.readFastaLines(path)):
-            seqId = fasta.idFromName(lines[0]) # uniprot accession
-            if seqId in seqToGenome: # write all lines from complete genomes to the fasta file
-                genomeToLines[seqToGenome[seqId]].extend(lines)
-            if i % bufSize == 0:
-                # write out collected lines to the various genome fasta files
-                print 'writing collected lines to fasta files for {} genomes...'.format(len(genomeToLines)), datetime.datetime.now()
-                for genome in genomeToLines:
-                    writeToGenome(genome, genomeToLines[genome])
-                genomeToLines.clear()
-                print 'collecting more lines...', datetime.datetime.now()
-        # done with path.
-        # write out collected lines to the various genome fasta files
-        print 'finishing writing collected lines to fasta files for {} genomes...'.format(len(genomeToLines)), datetime.datetime.now()
-        for genome in genomeToLines:
-            writeToGenome(genome, genomeToLines[genome])
-        print 'done writing collected lines.', datetime.datetime.now()
-                
-    print 'getting genomes and updating metadata...', datetime.datetime.now()
-    
-    setGenomes(ds)
-    updateMetadata(ds, {'genomeToTaxon': genomeToTaxon, 'genomeToCount': genomeToCount})
-    print 'all done.', datetime.datetime.now()
-    
-
-def formatGenomes(ds):
-    '''
-    format genomes for blast.
-    '''
-    print 'formatting genomes. {}'.format(ds)
-    genomes = getGenomes(ds)
-    for genome in genomes:
-        fastaPath = getGenomeFastaPath(ds, genome)
-        print 'format {}'.format(genome)
-        rsd.formatForBlast(fastaPath)
-    print 'done formatting genomes'
-
-
-def parseUniprotNameline(nameline):
-    '''
-    Parse uniprot nameline to get the uniprot sequence accession, gene description, gene name, organism name and
-    organism id (e.g. HUMAN or MYCGE)
-    A uniprot nameline must have: acc, orgId
-    optional: geneDesc, geneName, orgName
-    example nameline: >sp|P38398|BRCA1_HUMAN Breast cancer type 1 susceptibility protein OS=Homo sapiens GN=BRCA1 PE=1 SV=2
-    example results: acc: P38398, geneName (GN): BRCA1, orgId: HUMAN, orgName (OS): Homo sapiens, geneDesc: Breast cancer type 1 susceptibility protein
-    returns: a dict containing keys for acc, geneDesc, geneName, orgName, and orgId.  Some values 
-    '''
-    # split apart nameline into acc, orgName, and geneName.
-    # example: >sp|P38398|BRCA1_HUMAN Breast cancer type 1 susceptibility protein OS=Homo sapiens GN=BRCA1 PE=1 SV=2
-    # sometimes no gene name: >sp|P38398|BRCA1_HUMAN Breast cancer type 1 susceptibility protein OS=Homo sapiens PE=1 SV=2
-    # '>sp|P38398|BRCA1_HUMAN', 'Breast cancer type 1 susceptibility protein OS=Homo sapiens GN=BRCA1 PE=1 SV=2'
-    accAndOrgId, descOrgGNEtc = nameline.strip().split(None, 1) # None splits on whitespace.  Only do the first split.
-    # '>sp', 'P38398', 'BRCA1_HUMAN'
-    etc, acc, almostOrgId = accAndOrgId.split('|')
-    # 'BRCA1', 'HUMAN'
-    etc, orgId = almostOrgId.rsplit('_', 1) # org abbr example: HUMAN.  i.e uniprot species id
-    # 'Breast cancer type 1 susceptibility protein', 'Homo sapiens GN=BRCA1 PE=1 SV=2'
-    geneDesc, orgGNEtc = (s.strip() for s in descOrgGNEtc.split('OS=', 1))
-    # 'Homo sapiens GN=BRCA1 ', '1 SV=2'
-    orgGN, etc = orgGNEtc.split('PE=', 1)
-    if orgGN.find('GN=') == -1:
-        orgName, geneName = (s.strip() for s in (orgGN, ''))
-    else:
-        # 'Homo sapiens', 'BRCA1'
-        orgName, geneName = (s.strip() for s in orgGN.split('GN=', 1))
-
-    return {'acc': acc, 'geneDesc': geneDesc, 'geneName': geneName, 'orgName': orgName, 'orgId': orgId}
-
-
 def extractFromFasta(ds):
     '''
     parse from the namelines the uniprot fasta files the gene name, genome/organism name
+    A sequence must be encountered only once.
     The organism name The gene name is optional.
     The organism name must be the same in every nameline (for the same genome).
     There must exactly one nameline per sequence.
@@ -561,6 +384,430 @@ def extractFromFasta(ds):
     updateMetadata(ds, {'genomeToName': genomeToName})
 
 
+def formatSurprise(*args):
+    msg = datetime.datetime.now().isoformat() + '\t' + '\t'.join(str(a) for a in args)
+    return msg
+
+
+def genUniprotDatEntries(path):
+    '''
+    path: uniprot dat file
+    parses a uniprot dat file, yielding data about each entry.
+    '''
+    # http://web.expasy.org/docs/userman.html is indispensible for parsing Uniprot DAT files
+
+    # regular expressions for parsing dat lines
+    # includes 'DE   ' to avoid matching rec names from 'Includes' or 'Contains' lines.
+    # See http://web.expasy.org/docs/userman.html#DE_line.
+    descRE = re.compile('^DE   RecName: Full=([^;]+)')
+    # python -c 'import re; descRE = re.compile("RecName\: Full=([^;]+)"); print descRE.search("DE   RecName: Full=Uncharacterized protein 010R;").groups()'
+
+    # Gene Name is optional.  There can only be one.
+    # ORFNames is optional.  There can be one or more.
+    nameRE = re.compile('Name=([^;]+)')
+    orfNamesRE = re.compile('ORFNames=([^;,]+)') # match only the first ORF name.
+    # python -c "import re; nameRE = re.compile('Name=([^;]+)'); print nameRE.search('GN   Name=GRF7; OrderedLocusNames=At3g02520; ORFNames=F16B3.15;\n').groups()"
+    # python -c "import re; orfNamesRE = re.compile('ORFNames=([^;,]+)'); print orfNamesRE.search('GN   Name=BMH1; Synonyms=BMH; ORFNames=CaO19.3014, CaO19.10532;\n').groups()"
+
+    # From http://web.expasy.org/docs/userman.html#DR_line, format of the DR line is:
+    # DR   RESOURCE_ABBREVIATION; RESOURCE_IDENTIFIER; OPTIONAL_INFORMATION_1[; OPTIONAL_INFORMATION_2][; OPTIONAL_INFORMATION_3].    
+    taxonRE = re.compile('^OX   NCBI_TaxID=([^;]+)')
+    # python -c "import re; taxonRE = re.compile('NCBI_TaxID=([^;]+)'); print taxonRE.search('OX   NCBI_TaxID=390236;').group(1)"
+    
+    surprises = [] # exceptions to my assumptions about DAT format.
+    
+    # dat file entries have numerous lines describing fields in the entry.
+    # an entry always starts with one ID line and ends with one // line.
+    # some lines can occur 0 or 1 times, some 0+ times, some 1+ times, some exactly 1 time.
+    # take this into account when parsing lines.
+    print 'gathering ids in {}...'.format(path), datetime.datetime.now()
+    with open(path) as fh:
+        inEntry = False
+        entryNum = 0 # count entries
+        for i, line in enumerate(fh):
+            code = line[:2]
+            if code == 'ID': # occurs 1 time.
+                inEntry = True
+                entryNum += 1
+                if entryNum % 100000 == 0: print 'entry count:', entryNum
+
+                # initialize entry vars
+                fastaNS = '' # namespace for ids used in uniprot fasta files
+                entryId = ''
+                genome = '' # uniprot organism code. http://www.uniprot.org/docs/speclist
+                gene = '' # uniprot entry primary accession number, used as our sequence id.
+                taxon = '' # ncbi taxon id
+                evidence = ''
+                seqVersion = ''
+                geneDesc = ''
+                geneName = ''
+                osLines = []
+                complete = False # complete proteome
+                reference = False # reference proteome. should be a subset of complete proteomes. http://www.uniprot.org/faq/47
+                geneIds = []
+                goTerms = []
+                seqLines = []
+                
+                # e.g. ID   1A01_HUMAN              Reviewed;         365 AA.
+                # e.g. ID   A1XWB5_9EURY            Unreviewed;       133 AA.
+                splits = line.split()
+                fastaNS = 'sp' if splits[2] == 'Reviewed;' else 'tr' # namespace of fasta name line for this seq.
+                entryId = splits[1]
+                genome = entryId.split('_')[1]
+            elif code == 'AC' and not gene: # occurs 1+ times
+                # e.g. AC   Q16653; O00713; O00714; O00715; Q13054; Q13055; Q14855; Q92891;
+                # get first accession from first line.
+                if not gene:
+                    gene = line.split()[1].split(';')[0]
+            elif code == 'OX': # occurs exactly one time?
+                # e.g. OX   NCBI_TaxID=9606;
+                match = taxonRE.search(line)
+                if not taxon:
+                    taxon = match.group(1) if match else ''
+                else:
+                    surprises.append(formatSurprise('many_OX_lines', gene, genome, path, i, ''))
+            elif code == 'PE': # occurs exactly 1 time?
+                # e.g. PE   2: Evidence at transcript level;
+                if evidence:
+                    surprises.append(formatSurprise('many_PE_lines', gene, genome, path, i, ''))
+                evidence = line.split()[1][:-1] # remove trailing colon
+            elif code == 'DT': # occurs 3 times?
+                # e.g. DT   01-DEC-2001, sequence version 1.
+                if 'sequence version' in line:
+                    if not seqVersion:
+                        seqVersion = line.rsplit(None, 1)[1][:-1] # remove trailing period.
+                    else:
+                        surprises.append(formatSurprise('many_sequence_version_lines', gene, genome, path, i, ''))
+            elif code == 'DE': # can occur >1 times
+                # http://web.expasy.org/docs/userman.html#DE_line
+                # e.g. DE   RecName: Full=Uncharacterized protein 002R;
+                if not geneDesc and line.startswith('DE   RecName: Full='):
+                    match = descRE.search(line)
+                    geneDesc = match.group(1) if match else ''
+            elif code == 'GN': # can occur >1 times
+                if not geneName: # collect first gene name
+                    match = nameRE.search(line)
+                    geneName = match.group(1) if match else ''
+            elif code == 'OS': # can occur >1 times
+                # e.g. 1 line: OS   Homo sapiens (Human).
+                # or >1 lines: OS   Chlorobaculum parvum (strain NCIB 8327) (Chlorobium vibrioforme subsp.
+                #              OS   thiosulfatophilum (strain DSM 263 / NCIB 8327)).
+                osLines.append(line.strip())
+            elif code == 'KW': # occurs 0+ times
+                # can be zero or more KW lines, which can have multiple keywords per line
+                if COMPLETE_PROTEOME_KW in line: 
+                    complete = True
+                if REFERENCE_PROTEOME_KW in line:
+                    reference = True
+            elif code == 'DR': # occurs 0+ times
+                # e.g. DR   GO; GO:0006351; P:transcription, DNA-dependent; IEA:UniProtKB-KW.
+                # e.g. DR   GeneID; 2947774; -.
+                # e.g. DR   RefSeq; YP_654574.1; NC_008187.1.
+                if line.startswith('DR   GeneID;'):
+                    geneIds.append(line.split("; ")[1])
+                elif line.startswith('DR   GO;'):
+                    goTerms.append(line.split("; ")[1])
+            elif code == '  ': # occurs 1+ times
+                # e.g. "     MTMDKSELVQ KAKLAEQAER YDDMAAAMKA VTEQGHELSN EERNLLSVAY KNVVGARRSS\n"
+                # remove whitespace b/c uniprot fasta file does not have whitespace and b/c rsd (blast, kalign, codeml) not tested w/ whitespace
+                seqLine = ''.join(line.split())
+                if seqLine:
+                    seqLines.append(seqLine+'\n') # "MTMDKSELVQKAKLAEQAERYDDMAAAMKAVTEQGHELSNEERNLLSVAYKNVVGARRSS\n"
+                else:
+                    surprises.append(formatSurprise('empty_seq_line', gene, genome, path, i, ''))
+            elif code == '//': # occurs 1 time.  end of sequence
+                if not inEntry:
+                    surprises.append(formatSurprise('end_without_beginning', gene, genome, path, i, '// line with unmatched ID line found.'))
+                inEntry == False
+
+                genomeName = ' '.join(l.strip() for l in osLines if l.strip())
+               
+                # construct fasta nameline
+                # e.g. >sp|Q197F8|002R_IIV3 Uncharacterized protein 002R OS=Invertebrate iridescent virus 3 GN=IIV3-002R PE=4 SV=1
+                # generic: >{source}|{accession}|{entry_id} {gene_desc} OS={organism_name}[ GN={gene_name}] PE={protein_evidence} SV={seq_version}
+                nameline = '>{}|{}|{}'
+                args = [fastaNS, gene, entryId]
+                if geneDesc:
+                    nameline += ' {}'
+                    args.append(geneDesc)
+                if genomeName:
+                    nameline += ' OS={}'
+                    args.append(genomeName)
+                if geneName:
+                    nameline += ' GN={}'
+                    args.append(geneName)
+                if evidence:
+                    nameline += ' PE={}'
+                    args.append(evidence)
+                if seqVersion:
+                    nameline += ' SE={}'
+                    args.append(seqVersion)
+                if complete:
+                    nameline += ' KW='+COMPLETE_PROTEOME_KW
+                if reference:
+                    nameline += ' KW='+REFERENCE_PROTEOME_KW
+                nameline += '\n'
+                nameline = nameline.format(*args)
+                fastaLines = [nameline] + seqLines
+                
+                if False:
+                    print 'genome ', genome 
+                    print 'genomeName', genomeName
+                    print 'gene ', gene 
+                    print 'taxon ', taxon 
+                    print 'geneDesc ', geneDesc 
+                    print 'geneName ', geneName 
+                    # print 'fastaNS', fastaNS
+                    # print 'osLines ', osLines 
+                    # print 'seqLines', seqLines
+                    # print 'evidence ', evidence 
+                    # print 'seqVersion', seqVersion
+                    print 'complete ', complete 
+                    print 'reference', reference
+                    print 'geneIds  ', geneIds  
+                    print 'goTerms ', goTerms 
+                    print 'fastaLines ', fastaLines
+                    
+                yield (gene, genome, genomeName, taxon, geneName, geneDesc, complete, reference, geneIds, goTerms, fastaLines, surprises)
+    
+        
+def extractFromDats(ds, dats, writing=True, skipDirs=False, cleanDirs=False, bufSize=5000000, joinBeforeWrite=True):
+    '''
+    ds: a dataset (dir)
+    dats: a list of dat file paths.
+    writing: debugging. if False, fasta files will not be writen. Useful for debugging
+    skipDirs: optimization.  if True, no dirs are created for genomes.  Saves time if the dirs already exist.
+    cleanDirs: optimization.  if True, all fasta files in the dataset will be removed before splitting the genomes, which takes time.
+    bufSize: number of fasta sequence to cache in memory before writing to files.  this is to avoid writing frequently to
+      files, b/c opening and closing files on Isilon fileserver is slow.
+    joinBeforeWrite: if True, another optimization to write to filehandles less frequently.
+    create separate fasta files for each complete genome in the uniprot (sprot and trembl) data.
+    do not create files for genomes that are too small.
+    also save maps from genome to ncbi taxon id, and genome to size (# of sequences).
+    iterates once through the dat files to find out which sequences/entries belong to complete proteomes (and to get taxons and sequence counts.)
+    then iterates once through fasta files to write the fasta sequences for each genome.
+    '''
+
+    # From extractFromFasta: we need to extract genes, geneToName, geneToDesc, geneToGenome, genomeToGenes, and genomeToName
+    # gene name and desc might == ''
+    # idmapping extraction finds geneToGoTerms and geneToGeneIds.
+    # question: Do any Complete proteomes have entries that are not marked "Complete proteome"?
+
+     # remove any pre-existing genomes.
+    if cleanDirs:
+        print 'cleaning genomes directory...', datetime.datetime.now()
+        cleanGenomes(ds)
+
+    # helper function to create genome directories for genomes not yet seen
+    dirGenomes = set()
+    def makeGenomeDir(genome):
+        if not skipDirs and genome not in dirGenomes:
+            dirGenomes.add(genome)
+            genomePath = getGenomePath(ds, genome)
+            if not os.path.exists(genomePath):
+                os.mkdir(genomePath, DIR_MODE)
+
+    # helper function to write to a genome file.  for performance testing.
+    writeGenomes = set()
+    def writeToGenome(genome, data):
+        ''' data: a list of fasta lines, including newlines '''
+        if not writing:
+            return
+        
+        if genome not in writeGenomes: # first time writing to the genome
+            makeGenomeDir(genome) # make genome dir if missing
+            mode = 'w'
+            writeGenomes.add(genome)
+        else:
+            mode = 'a'
+        with open(getGenomeFastaPath(ds, genome), mode) as outfh:
+            # is it faster to join the lines and write once to fh or write each line to fh?
+            if joinBeforeWrite:
+                output = ''.join(data)
+                outfh.write(output)
+            else:
+                for line in data:
+                    outfh.write(line)
+
+    geneToGenome = {} # track which sequences belong to which genome.  store sequences of all complete genomes
+    geneToName = {}
+    geneToDesc = {}
+    geneToGeneIds = {}
+    geneToGoTerms = {}
+    geneToComplete = {}
+    geneToReference = {}
+
+    genomeToGenes = collections.defaultdict(list)
+    genomeToName = {}
+    genomeToTaxon = {} # maps each genome to an ncbi taxon id
+    genomeToCount = collections.defaultdict(int) # maps each genome to the number of sequences (in the dat files) for that genome.  should == num seqs in fasta files.
+    genomeToCompleteCount = collections.defaultdict(int) # track number of seqs in the Complete proteome set of an organism
+    genomeToReferenceCount = collections.defaultdict(int) # track number of seqs in the Reference proteome set of an organism
+
+
+    # collect exceptions to my assumptions about dat files
+    # are genes or genomes missing something they should have?
+    # do genes have more than one gene name, description?
+    # do genomes have more than one version of a name, a taxon, a complete status?
+    # do genomes have some seqs that are marked 'Complete proteome' and others that are not?
+    surprises = []
+    
+    # dats = [os.path.join(getSourcesDir(ds), 'knowledgebase/complete/uniprot_sprot.dat'), os.path.join(getSourcesDir(ds), 'knowledgebase/complete/uniprot_trembl.dat')]
+
+    # buffer fasta sequence lines for output
+    genomeToLines = collections.defaultdict(list)
+
+    for path in dats:
+        for entryNum, data in enumerate(genUniprotDatEntries(path)):
+            gene, genome, genomeName, taxon, geneName, geneDesc, complete, reference, geneIds, goTerms, fastaLines, surprises = data
+
+            # A sequence must be encountered only once.
+            # The organism name The gene name is optional.
+            # The organism name must be the same in every nameline (for the same genome).
+            # There must exactly one nameline per sequence.
+
+            # surprise!  gene has two entries
+            if gene in geneToGenome:
+                surprises.append(formatSurprise('gene_seen_again', gene, genome, path, i, ''))
+
+            geneToGenome[gene] = genome
+            geneToName[gene] = geneName
+            geneToDesc[gene] = geneDesc
+            geneToGeneIds[gene] = geneIds
+            geneToGoTerms[gene] = goTerms
+            geneToComplete[gene] = complete
+            geneToReference[gene] = reference
+
+            # surprise!  genome has a different name
+            if genome in genomeToName and genomeName != genomeToName[genome]:
+                surprises.append(formatSurprise('different_genome_name', gene, genome, path, i,
+                              'previous name: {}; this name: {}'.format(genomeToName[genome], genomeName)))
+            # surprise!  genome has a different taxon
+            if genome in genomeToTaxon and taxon != genomeToTaxon[genome]:
+                surprises.append(formatSurprise('different_genome_taxon', gene, genome, path, i,
+                              'previous taxon: {}; this taxon: {}'.format(genomeToTaxon[genome], taxon)))
+            genomeToGenes[genome].append(gene)
+            genomeToName[genome] = genomeName
+            genomeToTaxon[genome] = taxon
+            genomeToCount[genome] += 1
+            if complete:
+                genomeToCompleteCount[genome] += 1
+            if reference:
+                genomeToReferenceCount[genome] += 1
+           
+            genomeToLines[genome].extend(fastaLines)
+
+    countData = []
+    for genome in genomeToCount:
+        refCount = genomeToReferenceCount[genome]
+        compCount = genomeToCompleteCount[genome]
+        if refCount and refCount != compCount:
+            surprises.append(formatSurprise('reference_count_with_different_complete_count', '', genome, '', '', 
+                                            'reference count: {}, complete count: {}'.format(refCount, compCount)))
+        countData.append([genome, genomeToCount[genome], compCount, refCount])
+        
+    for data in sorted(countData, key=lambda d: (d[1], d[2], d[3], d[0])):
+        print '\t'.join(str(d) for d in data)
+                            
+
+    print '\n'.join(surprises)
+    return
+
+    # filter out genomes that are too small, and their respective sequences.
+    genomes = [genome for genome, count in genomeToCount.items() if count >= MIN_GENOME_SIZE]
+    seqToGenome = dict((gene, genome) for gene, genome in seqToGenome.items() if genome in genomes)
+            
+    # print a sorted list of genomes and number of sequences
+    for genome, count in sorted([(genome, genomeToCount[genome]) for genome in genomes], key=lambda x: (x[1], x[0])):
+        print genome, count
+        pass
+
+   # make a directory for each genome in which to put the fasta file.
+    print datetime.datetime.now()
+    print 'initializing {} genome directories...'.format(len(genomes))
+    for genome in genomes:
+        makeGenomeDir(genome)
+
+    # write the fasta sequences to the fasta files.  lots of caching here b/c filessystem is slow to open and close files.
+    print datetime.datetime.now()
+    for path in fastas:
+        # iterate through every line in the fasta file.
+        # when we find a nameline, check if the id is from a complete genome.
+        # if it is, check if the genome dir has been created yet and if not create it.
+        # if the genome is different from the last genome, switch files we are writing to.
+        # write every line from a complete genome to the right file.
+        print 'splitting {} into genomes'.format(path)
+        genomeToLines = collections.defaultdict(list)
+        for i, lines in enumerate(fasta.readFastaLines(path)):
+            gene = fasta.idFromName(lines[0]) # uniprot accession
+            if gene in seqToGenome: # write all lines from complete genomes to the fasta file
+                genomeToLines[seqToGenome[gene]].extend(lines)
+            if i % bufSize == 0:
+                # write out collected lines to the various genome fasta files
+                print 'writing collected lines to fasta files for {} genomes...'.format(len(genomeToLines)), datetime.datetime.now()
+                for genome in genomeToLines:
+                    writeToGenome(genome, genomeToLines[genome])
+                genomeToLines.clear()
+                print 'collecting more lines...', datetime.datetime.now()
+        # done with path.
+        # write out collected lines to the various genome fasta files
+        print 'finishing writing collected lines to fasta files for {} genomes...'.format(len(genomeToLines)), datetime.datetime.now()
+        for genome in genomeToLines:
+            writeToGenome(genome, genomeToLines[genome])
+        print 'done writing collected lines.', datetime.datetime.now()
+                
+    print 'getting genomes and updating metadata...', datetime.datetime.now()
+    
+    setGenomes(ds)
+    updateMetadata(ds, {'genomeToTaxon': genomeToTaxon, 'genomeToCount': genomeToCount})
+    print 'all done.', datetime.datetime.now()
+    
+
+def formatGenomes(ds):
+    '''
+    format genomes for blast.
+    '''
+    print 'formatting genomes. {}'.format(ds)
+    genomes = getGenomes(ds)
+    for genome in genomes:
+        fastaPath = getGenomeFastaPath(ds, genome)
+        print 'format {}'.format(genome)
+        rsd.formatForBlast(fastaPath)
+    print 'done formatting genomes'
+
+
+def parseUniprotNameline(nameline):
+    '''
+    Parse uniprot nameline to get the uniprot sequence accession, gene description, gene name, organism name and
+    organism id (e.g. HUMAN or MYCGE)
+    A uniprot nameline must have: acc, orgId
+    optional: geneDesc, geneName, orgName
+    example nameline: >sp|P38398|BRCA1_HUMAN Breast cancer type 1 susceptibility protein OS=Homo sapiens GN=BRCA1 PE=1 SV=2
+    example results: acc: P38398, geneName (GN): BRCA1, orgId: HUMAN, orgName (OS): Homo sapiens, geneDesc: Breast cancer type 1 susceptibility protein
+    returns: a dict containing keys for acc, geneDesc, geneName, orgName, and orgId.  Some values 
+    '''
+    # split apart nameline into acc, orgName, and geneName.
+    # example: >sp|P38398|BRCA1_HUMAN Breast cancer type 1 susceptibility protein OS=Homo sapiens GN=BRCA1 PE=1 SV=2
+    # sometimes no gene name: >sp|P38398|BRCA1_HUMAN Breast cancer type 1 susceptibility protein OS=Homo sapiens PE=1 SV=2
+    # '>sp|P38398|BRCA1_HUMAN', 'Breast cancer type 1 susceptibility protein OS=Homo sapiens GN=BRCA1 PE=1 SV=2'
+    accAndOrgId, descOrgGNEtc = nameline.strip().split(None, 1) # None splits on whitespace.  Only do the first split.
+    # '>sp', 'P38398', 'BRCA1_HUMAN'
+    etc, acc, almostOrgId = accAndOrgId.split('|')
+    # 'BRCA1', 'HUMAN'
+    etc, orgId = almostOrgId.rsplit('_', 1) # org abbr example: HUMAN.  i.e uniprot species id
+    # 'Breast cancer type 1 susceptibility protein', 'Homo sapiens GN=BRCA1 PE=1 SV=2'
+    geneDesc, orgGNEtc = (s.strip() for s in descOrgGNEtc.split('OS=', 1))
+    # 'Homo sapiens GN=BRCA1 ', '1 SV=2'
+    orgGN, etc = orgGNEtc.split('PE=', 1)
+    if orgGN.find('GN=') == -1:
+        orgName, geneName = (s.strip() for s in (orgGN, ''))
+    else:
+        # 'Homo sapiens', 'BRCA1'
+        orgName, geneName = (s.strip() for s in orgGN.split('GN=', 1))
+
+    return {'acc': acc, 'geneDesc': geneDesc, 'geneName': geneName, 'orgName': orgName, 'orgId': orgId}
+
+
 def extractFromIdMapping(ds):
     '''
     From ftp://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/idmapping/README:
@@ -593,7 +840,6 @@ def extractFromIdMapping(ds):
         23. Additional PubMed
     Writes two dicts to files, one mapping gene to go terms, the other mapping gene to ncbi gene id.
     '''
-
     geneSet = set(getData(ds, GENES)) # a set to improve lookup performance.  all the seq ids from the genome fasta files.
     geneToGoTerms = {}
     geneToGeneIds = {}
@@ -961,7 +1207,7 @@ def cleanGenomes(ds):
         path = getGenomePath(ds, genome)
         if os.path.exists(path):
             print 'removing {}'.format(path)
-            # shutil.rmtree(path)
+            shutil.rmtree(path)
     # reset genomes cache
     setGenomes(ds)
 
@@ -1602,6 +1848,150 @@ def convertOrthologsFile(path, newPath):
             fh.write('//\n')
             
             
+
+############
+# DEPRECATED
+############
+
+def splitUniprotIntoGenomes(ds, writing=True, skipDirs=False, cleanDirs=False, bufSize=5000000, joinBeforeWrite=True):
+    '''
+    create separate fasta files for each complete genome in the uniprot (sprot and trembl) data.
+    do not create files for genomes that are too small.
+    also save maps from genome to ncbi taxon id, and genome to size (# of sequences).
+    iterates once through the dat files to find out which sequences/entries belong to complete proteomes (and to get taxons and sequence counts.)
+    then iterates once through fasta files to write the fasta sequences for each genome.  
+    '''
+    seqToGenome = {} # track which sequences belong to which genome.  store sequences of all complete genomes
+    genomeToTaxon = {} # maps each genome to an ncbi taxon id
+    genomeToCount = collections.defaultdict(int) # maps each genome to the number of sequences (in the dat files) for that genome.  should == num seqs in fasta files.
+    
+    # the dats have all the info needed to make fasta files, but the namelines in the uniprot fasta files are nice and hard to reconstruct from the dats.
+    dats = [os.path.join(getSourcesDir(ds), 'knowledgebase/complete/uniprot_sprot.dat'), os.path.join(getSourcesDir(ds), 'knowledgebase/complete/uniprot_trembl.dat')]
+    fastas = [os.path.join(getSourcesDir(ds), 'knowledgebase/complete/uniprot_sprot.fasta'), os.path.join(getSourcesDir(ds), 'knowledgebase/complete/uniprot_trembl.fasta')]
+    # dats = [os.path.join(getSourcesDir(ds), 'knowledgebase/complete/uniprot_sprot.dat')]
+    # fastas = [os.path.join(getSourcesDir(ds), 'knowledgebase/complete/uniprot_sprot.fasta')]
+    # dats = ['/groups/cbi/td23/roundup_uniprot/uniprot_sprot_test.dat']
+    # fastas = ['/groups/cbi/td23/roundup_uniprot/uniprot_sprot_test.fasta']
+
+    # gather which sequences belong to complete genomes, by parsing uniprot dat files.
+    # also get the ncbi taxon ids and a count of the sequences per genome.
+    print datetime.datetime.now()
+    for path in dats:
+        print 'gathering ids in {}...'.format(path), datetime.datetime.now()
+        with open(path) as fh:
+            i = 0
+            seqId = genome = taxon = None
+            complete = False
+            for line in fh:
+                code = line[:2]
+                if code == 'ID':
+                    if i % 100000 == 0: print i
+                    i += 1
+                    genome = line.split()[1].split('_')[1]
+                elif code == 'AC' and not seqId: # can be one or more AC lines
+                    # e.g. AC   Q16653; O00713; O00714; O00715; Q13054; Q13055; Q14855; Q92891;
+                    seqId = line.split()[1].split(';')[0]
+                elif code == 'OX':
+                    # e.g. OX   NCBI_TaxID=9606;
+                    taxon = line.split()[1].split('=')[1].split(';')[0]
+                elif code == 'KW' and not complete and line.find('Complete proteome') != -1: # can be zero or more KW lines
+                    complete = True
+                elif code == '//': # end of sequence
+                    if complete:
+                        seqToGenome[seqId] = genome
+                        genomeToCount[genome] += 1
+                        if genome not in genomeToTaxon:
+                            genomeToTaxon[genome] = taxon
+                        elif genomeToTaxon[genome] != taxon:
+                            with open(os.path.join(ds, 'errors.process_uniprot.txt'), 'a') as fh:
+                                fh.write('{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\n'.format(datetime.datetime.now().isoformat(), 'genome_has_two_taxons', seqId,
+                                                                                      genome, genomeToTaxon[genome], taxon, os.path.basename(path)))
+                    seqId = genome = taxon = None
+                    complete = False
+
+    # filter out genomes that are too small, and their respective sequences.
+    genomes = [genome for genome, count in genomeToCount.items() if count >= MIN_GENOME_SIZE]
+    seqToGenome = dict((seqId, genome) for seqId, genome in seqToGenome.items() if genome in genomes)
+            
+    # print a sorted list of genomes and number of sequences
+    for genome, count in sorted([(genome, genomeToCount[genome]) for genome in genomes], key=lambda x: (x[1], x[0])):
+        print genome, count
+        pass
+
+    # helper function to create genome directories for genomes not yet seen
+    dirGenomes = set()
+    def makeGenomeDir(genome):
+        if not skipDirs and genome not in dirGenomes:
+            dirGenomes.add(genome)
+            genomePath = getGenomePath(ds, genome)
+            if not os.path.exists(genomePath):
+                os.mkdir(genomePath, DIR_MODE)
+
+    # helper function to write to a genome file or a single file.  for performance testing.
+    oneFileFH = []
+    writeGenomes = set()
+    def writeToGenome(genome, data):
+        if not writing:
+            return
+        if genome not in writeGenomes: # first time writing to the genome
+            mode = 'w'
+            writeGenomes.add(genome)
+        else:
+            mode = 'a'
+        with open(getGenomeFastaPath(ds, genome), mode) as outfh:
+            if joinBeforeWrite:
+                output = ''.join(data)
+                outfh.write(output)
+            else:
+                for line in data:
+                    outfh.write(line)
+
+    # remove any pre-existing genomes.
+    if cleanDirs:
+        print 'cleaning genomes directory...', datetime.datetime.now()
+        cleanGenomes(ds)
+
+    # make a directory for each genome in which to put the fasta file.
+    print datetime.datetime.now()
+    print 'initializing {} genome directories...'.format(len(genomes))
+    for genome in genomes:
+        makeGenomeDir(genome)
+
+    # write the fasta sequences to the fasta files.  lots of caching here b/c filessystem is slow to open and close files.
+    print datetime.datetime.now()
+    for path in fastas:
+        # iterate through every line in the fasta file.
+        # when we find a nameline, check if the id is from a complete genome.
+        # if it is, check if the genome dir has been created yet and if not create it.
+        # if the genome is different from the last genome, switch files we are writing to.
+        # write every line from a complete genome to the right file.
+        print 'splitting {} into genomes'.format(path)
+        genomeToLines = collections.defaultdict(list)
+        for i, lines in enumerate(fasta.readFastaLines(path)):
+            seqId = fasta.idFromName(lines[0]) # uniprot accession
+            if seqId in seqToGenome: # write all lines from complete genomes to the fasta file
+                genomeToLines[seqToGenome[seqId]].extend(lines)
+            if i % bufSize == 0:
+                # write out collected lines to the various genome fasta files
+                print 'writing collected lines to fasta files for {} genomes...'.format(len(genomeToLines)), datetime.datetime.now()
+                for genome in genomeToLines:
+                    writeToGenome(genome, genomeToLines[genome])
+                genomeToLines.clear()
+                print 'collecting more lines...', datetime.datetime.now()
+        # done with path.
+        # write out collected lines to the various genome fasta files
+        print 'finishing writing collected lines to fasta files for {} genomes...'.format(len(genomeToLines)), datetime.datetime.now()
+        for genome in genomeToLines:
+            writeToGenome(genome, genomeToLines[genome])
+        print 'done writing collected lines.', datetime.datetime.now()
+                
+    print 'getting genomes and updating metadata...', datetime.datetime.now()
+    
+    setGenomes(ds)
+    updateMetadata(ds, {'genomeToTaxon': genomeToTaxon, 'genomeToCount': genomeToCount})
+    print 'all done.', datetime.datetime.now()
+    
+
 
 
 # last line - python emacs bug fix
