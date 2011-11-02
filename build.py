@@ -32,7 +32,7 @@ def main():
     # usage: python build.py [--deployenv=<deployment environment>] [target]
     # target: choose from: all, deploy, init, build.
     parser = argparse.ArgumentParser(description='Genotator webapp deployment/build script.')
-    parser.add_argument('--deployenv', default='local', choices=('local', 'orch_dev', 'orch_prod'), help='deploy to this host/environment')
+    parser.add_argument('-d', '--deployenv', default='local', choices=('local', 'orch_dev', 'orch_prod'), help='deploy to this host/environment')
     parser.add_argument('target', default='all', nargs='?', choices=('init', 'build', 'deploy', 'all', 'init_project'))
     args = parser.parse_args()
     print args
