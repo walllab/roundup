@@ -160,6 +160,7 @@ def openDbConn(host=MYSQL_HOST, db=MYSQL_DB, user=MYSQL_USER, password=MYSQL_PAS
     '''
     return orchmysql.openConn(host, db, user, password, retries=1, sleep=1)
 
+
 @contextlib.contextmanager
 def dbConnCM(host=MYSQL_HOST, db=MYSQL_DB, user=MYSQL_USER, password=MYSQL_PASSWORD):
     '''

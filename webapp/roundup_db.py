@@ -334,7 +334,7 @@ def deleteGenomeByName(genome, conn=None):
     deletes all roundup results in mysql containing this genome.
     returns: nothing.
     '''
-    logging.debug('deleteGenomeByName(): genome=%s'%genome)
+    # logging.debug('deleteGenomeByName(): genome=%s'%genome)
     with connCM(conn=conn) as conn:
         dbId = getIdForGenome(genome, conn)
         if not dbId:
@@ -450,7 +450,7 @@ def getGenomesData(release=config.CURRENT_RELEASE):
     '''
     sql = '''SELECT acc, name, ncbi_taxon, taxon_category_code, taxon_category_name, taxon_division_code, taxon_division_name, num_seqs
     FROM {}'''.format(releaseTable(release, 'genomes'))
-    logging.debug(sql)
+    # logging.debug(sql)
     with connCM() as conn:
         return dbutil.selectSQL(sql=sql, conn=conn)
 
