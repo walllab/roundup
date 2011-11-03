@@ -23,7 +23,7 @@ def exceptionLoggingMiddleware(application, logfile):
             return application(environ, start_response)
         except:
             with open(logfile, 'a') as fh:
-                fh.write(traceback.format_exc()+'\n')
+                fh.write(traceback.format_exc())
             raise
     return logApp
             
@@ -45,18 +45,18 @@ def putDbCredsInEnvWSGIMiddleware(application):
 os.environ['DJANGO_SETTINGS_MODULE'] = 'settings'
 import django.core.handlers.wsgi
 
-def application(environ, start_response):
-    status = '200 OK'
-    headers = [('Content-type', 'text/html')]
-    start_response(status, headers)
-    parts = ['<html><head></head><body><img src="/wsgi-snake.jpg"/><pre>'] # image tests serving static content
-    parts += ['%s: %s\n' % (key, value) for key, value in environ.iteritems()]
-    parts += ['</pre></body></html>']
-    return parts
+# # simple wsgi app for testing
+# def application(environ, start_response):
+#     status = '200 OK'
+#     headers = [('Content-type', 'text/html')]
+#     start_response(status, headers)
+#     parts = ['<html><head></head><body><img src="/wsgi-snake.jpg"/><pre>'] # image tests serving static content
+#     parts += ['%s: %s\n' % (key, value) for key, value in environ.iteritems()]
+#     parts += ['</pre></body></html>']
+#     return parts
 
-application = putDbCredsInEnvWSGIMiddleware(django.core.handlers.wsgi.WSGIHandler())
-    
-
+application = django.core.handlers.wsgi.WSGIHandler()
+application = putDbCredsInEnvWSGIMiddleware(application)
 application = exceptionLoggingMiddleware(application, os.path.expanduser('~/passenger_wsgi.log'))
 
 
