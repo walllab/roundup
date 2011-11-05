@@ -3,6 +3,7 @@
 # local is the default deploy env.
 
 DEPLOY_ENV = 'local'
+PYTHON_EXE = '/Library/Frameworks/Python.framework/Versions/2.7/bin/python2.7'
 
 
 

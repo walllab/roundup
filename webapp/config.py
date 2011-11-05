@@ -16,7 +16,9 @@ import lsf
 ###############################################
 
 # NOTE: deployment magic.  when code is deployed to, e.g. production, deploy_env.py.prod -> deploy_env.py.
-from deploy_env import DEPLOY_ENV
+import deploy_env
+DEPLOY_ENV = deploy_env.DEPLOY_ENV
+PYTHON_EXE = deploy_env.PYTHON_EXE
 os.environ['ROUNDUP_DEPLOY_ENV'] = DEPLOY_ENV # put deployment env in the environment for the java pipeline.
 
 WEBAPP_PATH = os.path.dirname(os.path.abspath(__file__))
@@ -30,7 +32,6 @@ if DEPLOY_ENV == 'orch_prod':
     MAIL_METHOD = 'qmail'
     HTTP_HOST = 'roundup.hms.harvard.edu'
     SITE_URL_ROOT = 'http://{}'.format(HTTP_HOST)
-    PYTHON_EXE = '/home/td23/bin/python2.7'
     BLAST_BIN_DIR = '/opt/blast-2.2.24/bin'
     PROJ_BIN_DIR = '/home/td23/bin' # location of kalign
     NO_LSF = False
@@ -40,7 +41,6 @@ elif DEPLOY_ENV == 'orch_dev':
     MAIL_METHOD = 'qmail'
     HTTP_HOST = 'dev.roundup.hms.harvard.edu'
     SITE_URL_ROOT = 'http://{}'.format(HTTP_HOST)
-    PYTHON_EXE = '/home/td23/bin/python2.7'
     BLAST_BIN_DIR = '/opt/blast-2.2.24/bin'
     PROJ_BIN_DIR = '/home/td23/bin' # location of kalign
     NO_LSF = False
@@ -50,7 +50,6 @@ elif DEPLOY_ENV == 'local':
     MAIL_METHOD = '' # not sure how to get postfix working.
     HTTP_HOST = 'localhost'
     SITE_URL_ROOT = 'http://{}:8000'.format(HTTP_HOST)
-    PYTHON_EXE = '/Library/Frameworks/Python.framework/Versions/2.7/bin/python2.7'
     BLAST_BIN_DIR = '/usr/local/ncbi/blast/bin'
     PROJ_BIN_DIR = '/Users/td23/bin' # location of kalign
     NO_LSF = True

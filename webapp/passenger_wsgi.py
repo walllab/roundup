@@ -1,20 +1,16 @@
 
+import datetime
 import os
 import sys
-
-# def application(environ, start_response):
-#     start_response('200 OK', [('Content-type', 'text/plain')])
-#     return ["Hello, world!"]
-
-# passenger: replace python2.5 interpreter from apache with python2.7
-INTERP = "/home/td23/bin/python"
-if sys.executable != INTERP: os.execl(INTERP, INTERP, *sys.argv)
 
 # add to sys.path the location of user-defined modules
 # assume user-defined modules (e.g. index.py) are located with passenger_wsgi.py, this file.
 sys.path.append(os.path.dirname(__file__))
 
-# RUNNING A WSGI-APP USING PASSENGER requires setting 'application' to a wsgi-app
+import deploy_env
+
+INTERP = deploy_env.PYTHON_EXE # = "/home/td23/bin/python"
+if sys.executable != INTERP: os.execl(INTERP, INTERP, *sys.argv)
 
 def exceptionLoggingMiddleware(application, logfile):
     import traceback
@@ -23,7 +19,7 @@ def exceptionLoggingMiddleware(application, logfile):
             return application(environ, start_response)
         except:
             with open(logfile, 'a') as fh:
-                fh.write(traceback.format_exc())
+                fh.write(datetime.datetime.now().isoformat()+'\n'+traceback.format_exc())
             raise
     return logApp
             
@@ -45,7 +41,13 @@ def putDbCredsInEnvWSGIMiddleware(application):
 os.environ['DJANGO_SETTINGS_MODULE'] = 'settings'
 import django.core.handlers.wsgi
 
-# # simple wsgi app for testing
+# RUNNING A WSGI-APP USING PASSENGER requires setting 'application' to a wsgi-app
+
+application = django.core.handlers.wsgi.WSGIHandler()
+application = putDbCredsInEnvWSGIMiddleware(application)
+application = exceptionLoggingMiddleware(application, os.path.expanduser('~/passenger_wsgi.log'))
+
+# # simple wsgi apps for testing
 # def application(environ, start_response):
 #     status = '200 OK'
 #     headers = [('Content-type', 'text/html')]
@@ -54,9 +56,10 @@ import django.core.handlers.wsgi
 #     parts += ['%s: %s\n' % (key, value) for key, value in environ.iteritems()]
 #     parts += ['</pre></body></html>']
 #     return parts
+# def application(environ, start_response):
+#     start_response('200 OK', [('Content-type', 'text/plain')])
+#     return ["Hello, world!"]
 
-application = django.core.handlers.wsgi.WSGIHandler()
-application = putDbCredsInEnvWSGIMiddleware(application)
-application = exceptionLoggingMiddleware(application, os.path.expanduser('~/passenger_wsgi.log'))
+
 
 

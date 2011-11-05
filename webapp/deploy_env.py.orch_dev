@@ -1,2 +1,3 @@
 
 DEPLOY_ENV = 'orch_dev'
+PYTHON_EXE = '/groups/cbi/virtualenvs/roundup-1.0/bin/python'
