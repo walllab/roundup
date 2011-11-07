@@ -33,7 +33,7 @@ def main():
     # target: choose from: all, deploy, init, build.
     parser = argparse.ArgumentParser(description='Genotator webapp deployment/build script.')
     parser.add_argument('-d', '--deployenv', default='local', choices=('local', 'orch_dev', 'orch_prod'), help='deploy to this host/environment')
-    parser.add_argument('target', default='all', nargs='?', choices=('init', 'build', 'deploy', 'all', 'init_project'))
+    parser.add_argument('target', default='deploy', nargs='?', choices=('init', 'build', 'deploy', 'all', 'init_project'))
     args = parser.parse_args()
     print args
     
@@ -148,6 +148,10 @@ def deploy(baseDir, deployRoot, deployEnv, projectRoot, user=None, host=None, **
 
     # rename the deployment specific deploy_env.py file
     args = ['cp', '-p', os.path.join(deployRoot, 'webapp/deploy_env.py.{}'.format(deployEnv)), os.path.join(deployRoot, 'webapp/deploy_env.py')]
+    remote_check_call(args, user=user, host=host)
+
+    # tell passenger to restart
+    args = ['touch', os.path.join(deployRoot, 'webapp/tmp/restart.txt')]
     remote_check_call(args, user=user, host=host)
 
     

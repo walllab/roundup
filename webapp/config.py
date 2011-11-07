@@ -23,10 +23,7 @@ os.environ['ROUNDUP_DEPLOY_ENV'] = DEPLOY_ENV # put deployment env in the enviro
 
 WEBAPP_PATH = os.path.dirname(os.path.abspath(__file__))
 
-LSF_MEDIUM_QUEUE = os.environ.get('ROUNDUP_LSF_MEDIUM_QUEUE', 'shared_lenny')
-LSF_LONG_QUEUE = os.environ.get('ROUNDUP_LSF_LONG_QUEUE', 'shared_lenny')
-
-if DEPLOY_ENV == 'orch_prod':
+if DEPLOY_ENV == 'prod':
     CURRENT_RELEASE = '2'
     PROJ_DIR = '/groups/cbi/roundup'
     MAIL_METHOD = 'qmail'
@@ -35,7 +32,7 @@ if DEPLOY_ENV == 'orch_prod':
     BLAST_BIN_DIR = '/opt/blast-2.2.24/bin'
     PROJ_BIN_DIR = '/home/td23/bin' # location of kalign
     NO_LSF = False
-elif DEPLOY_ENV == 'orch_dev': 
+elif DEPLOY_ENV == 'dev': 
     CURRENT_RELEASE = 'test_dataset'
     PROJ_DIR = '/groups/cbi/dev.roundup'
     MAIL_METHOD = 'qmail'
