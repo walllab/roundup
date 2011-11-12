@@ -662,7 +662,7 @@ def convertToOrthoXML(ds, onGrid=True, clean=False):
     divEvalues, txtPaths, xmlPaths = getDownloadPaths(ds)
     ns = getDatasetId(ds) + '_to_orthoxml'
     jobs = [('roundup_dataset.convertTxtToOrthoXML', {'ds': ds, 'txtPath': txtPath, 'xmlPath': xmlPath}) for txtPath, xmlPath in zip(txtPaths, xmlPaths)]
-    lsfOptions = ['-q '+roundup_common.LSF_LONG_QUEUE]
+    lsfOptions = ['-q '+config.LSF_LONG_QUEUE]
     if clean:
         for xmlPath in xmlPaths:
             if os.path.exists(xmlPath):
@@ -678,7 +678,7 @@ def zipDownloadPaths(ds, onGrid=True, clean=False):
     divEvalues, txtPaths, xmlPaths = getDownloadPaths(ds)
     ns = getDatasetId(ds) + '_zip_download'
     jobs = [('roundup_dataset.zipDownloadPath', {'path': path}) for path in txtPaths + xmlPaths if os.path.exists(path)]
-    lsfOptions = ['-q '+roundup_common.LSF_LONG_QUEUE]
+    lsfOptions = ['-q '+config.LSF_LONG_QUEUE]
     if clean:
         workflow.dropDones(ns)
     workflow.runJobs(ns, jobs, lsfOptions=lsfOptions, onGrid=onGrid)
@@ -897,7 +897,7 @@ def computeJobs(ds):
         keywords = {'ds': ds, 'job': job}
         # reserve 500MB in /tmp for duration of job to avoid nodes where someone, not naming any names, has used too much space.
         # redirect output to /dev/null so we do not get thousands of useless emails from lsf.
-        lsfOptions = ['-R', '"rusage[tmp=500]"', '-q', roundup_common.LSF_LONG_QUEUE, '-J', getComputeJobName(ds, job)]
+        lsfOptions = ['-R', '"rusage[tmp=500]"', '-q', config.LSF_LONG_QUEUE, '-J', getComputeJobName(ds, job)]
         jobid = lsfdispatch.dispatch(funcName, keywords=keywords, lsfOptions=lsfOptions, devnull=True)
         msg = 'computeJobs(): starting job on grid.  lsfjobid={}, ds={}, job={}'.format(jobid, ds, job)
         print msg

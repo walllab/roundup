@@ -21,8 +21,6 @@ import util
 # DEBUG=10, WARNING=30, ERROR=40, IMPORTANT=ERROR+5
 ROUNDUP_LOG_LEVEL = int(os.environ.get('ROUNDUP_LOG_LEVEL', 0))
 
-LSF_LONG_QUEUE = os.environ.get('ROUNDUP_LSF_LONG_QUEUE', 'shared_unlimited')
-
 # use local disk or networked storage
 # because the cluster can put such a heavy load on the NAS, using local disk during computation is generally preferred.
 ROUNDUP_LOCAL = util.getBoolFromEnv('ROUNDUP_LOCAL', True)
