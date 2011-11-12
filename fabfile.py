@@ -115,7 +115,8 @@ def deploy():
 
     # copy files to remote destintation, excluding backups, .svn dirs, etc.
     # do not deploy these files/dirs.
-    deployExcludes = ['**/old', '**/old/**', '**/semantic.cache', '**/.svn', '**/.svn/**', '**/*.pyc', '**/*.pyo', '**/.DS_Store', '**/*~']
+    deployExcludes = ['**/old', '**/old/**', '**/semantic.cache', '**/.svn', '**/.svn/**', '**/*.pyc',
+                      '**/*.pyo', '**/.DS_Store', '**/*~', 'html_video_test/']
     filterArgs = []
     for e in deployExcludes:
         filterArgs += ['-f', '- {}'.format(e)]
