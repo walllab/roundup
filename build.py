@@ -132,7 +132,8 @@ def deploy(baseDir, deployRoot, deployEnv, projectRoot, user=None, host=None, **
     '''
     print 'deploy: baseDir={}, deployRoot={}, deployEnv={}, user={}, host={}'.format(baseDir, deployRoot, deployEnv, user, host)
     # do not deploy these files/dirs.
-    deployExcludes = ['**/old', '**/old/**', '**/semantic.cache', '**/.svn', '**/.svn/**', '**/*.pyc', '**/*.pyo', '**/.DS_Store', '**/*~']
+    deployExcludes = ['**/old', '**/old/**', '**/semantic.cache', '**/.svn', '**/.svn/**', '**/*.pyc', '**/*.pyo', '**/.DS_Store',
+                      '**/*~', 'html_video_test/']
     filterArgs = []
     for e in deployExcludes:
         filterArgs += ['-f', '- {}'.format(e)]

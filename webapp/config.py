@@ -21,6 +21,9 @@ os.environ['ROUNDUP_DEPLOY_ENV'] = DEPLOY_ENV # put deployment env in the enviro
 
 WEBAPP_PATH = os.path.dirname(os.path.abspath(__file__))
 
+LSF_MEDIUM_QUEUE = os.environ.get('ROUNDUP_LSF_MEDIUM_QUEUE', 'shared_lenny')
+LSF_LONG_QUEUE = os.environ.get('ROUNDUP_LSF_LONG_QUEUE', 'shared_lenny')
+
 if DEPLOY_ENV == 'orch_prod':
     CURRENT_RELEASE = '2011_01'
     PROJ_DIR = '/groups/cbi/roundup'
