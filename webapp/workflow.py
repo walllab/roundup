@@ -21,21 +21,61 @@ import lsfdispatch
 # cd /www/dev.roundup.hms.harvard.edu/webapp && python -c 'import workflow; workflow.testRunTasks()'
 # cd /www/dev.roundup.hms.harvard.edu/webapp && python -c 'import workflow; workflow.cleanTestRunTasks()'
 
+TEST_NS = 'test_workflow'
 
-def exampleFunc(msg='hello world'):
+def testWorkflow(onGrid=False):
+    assert not testJobsAllDone()
+    assert not testJobsAllDone(useNames=True)
+    assert testRunJobs(onGrid=onGrid)
+    assert testJobsAllDone()
+    assert not testJobsAllDone(useNames=True)
+    assert testRunJobs(onGrid=onGrid)
+    assert testJobsAllDone()
+    assert not testJobsAllDone(useNames=True)
+    assert testRunJobs(onGrid=onGrid, useNames=True)
+    assert testJobsAllDone()
+    assert testJobsAllDone(useNames=True)
+    assert testRunJobs(onGrid=onGrid)
+    testCleanJobs()
+    assert not testJobsAllDone()
+    assert not testJobsAllDone(useNames=True)
+    testCleanJobs()
+    unmarkDone(TEST_NS, 'foo')
+    unmarkDone(TEST_NS, 'foo')
+    testCleanJobs()
+
+    
+def testJobsAndNames(useNames=False):
+    numJobs = 2
+    jobs = [('workflow.exampleFunc', {'msg': 'test {}'.format(i)}) for i in range(numJobs)]
+    names = ['lovely_{}'.format(i) for i in range(numJobs)] if useNames else None
+    return jobs, names
+
+
+def testRunJobs(onGrid=False, useNames=False):
+    jobs, names = testJobsAndNames(useNames)
+    return runJobs(TEST_NS, jobs, names, lsfOptions=['-q', 'shared_15m'], onGrid=onGrid)
+
+
+def testCleanJobs():
+    return dropDones(TEST_NS)
+
+
+def testJobsAllDone(useNames=False):
+    jobs, names = testJobsAndNames(useNames)
+    return jobsAllDone(TEST_NS, jobs, names)
+
+
+def testJobNamesAllDone():
+    jobs, names = testJobsAndNames(useNames=True)
+    return jobNamesAllDone(TEST_NS, names)
+
+
+def exampleFunc(msg='hello world', secs=1):
     import time
-    time.sleep(10)
+    time.sleep(secs)
     print msg
     
-
-def testRunJobs(onGrid=True):
-    jobs = [('workflow.exampleFunc', {'msg': 'test {}'.format(i)}) for i in range(2)]
-    runJobs('test_workflow_jobs', jobs, lsfOptions=['-q shared_15m'], onGrid=onGrid)
-
-
-def cleanTestRunJobs():
-    dropDones('test_workflow_jobs')
-
 
 ###############
 # JOB FUNCTIONS
@@ -46,39 +86,45 @@ def cleanTestRunJobs():
 # if a job fails or exits while running, it can be restarted.
 # Only jobs which are not done or not already running will be restarted.
 
-def runJobs(ns, jobs, names=None, lsfOptions=None, onGrid=True):
+def runJobs(ns, jobs, names=None, lsfOptions=None, onGrid=False, devnull=False):
     '''
     ns: a namespace to keep jobs organized.
     jobs: a list of tuples of func and keyword arguments
-    names: a optional list of names for the jobs, one for each job.  Useful if you want descriptive names in the dones table.
-    lsfOptions: a list of lsf options.  '-J <job_name>' and '-o /dev/null' are appended to the list.
+    names: a optional list of names for the jobs.  There should be one name per job.  Names should be unique
+      within the namespace.  Names are submitted as part of an lsf job name (-J option), so avoid funny characters.
+      Names are useful if you want descriptive names in the dones table or on lsf.
+    lsfOptions: a list of lsf options.  '-J <job_name>' and '-o /dev/null' are appended to the list by default.
     onGrid: if True, jobs are distributed on lsf.  Otherwise, jobs are executed serially in the current process.  defaults to True.
-    An lsf job is run for each job.
+    devnull: if False, '-o /dev/null' is not appended to the lsf options.
+    Run jobs, either on lsf or locally.  Done jobs will not be run.  Jobs already running on lsf will not be resubmitted.
+    Otherwise the job will be run or submitted to lsf to be run.
     Tracks which jobs are done and are already running, so runJobs() can be rerun without rerunning finished or running jobs.
-    This is useful if jobs fail and need to be rerun.  Does that ever happen? ;-)
+    If jobs fail (does that ever happen?) this function can be rerun to resubmit only the incomplete jobs that are not running.
+    Returns: True iff all jobs are done.
     '''
-    names = names if names else ['job_{}'.format(i) for i in range(len(jobs))]
+    names = makeJobNames(jobs, names)
     lsfOptions = lsfOptions if lsfOptions else []
     if len(jobs) != len(set(names)):
         raise Exception('if names parameter is given, it must have a unique name for each job.')
 
-    createDones(ns) # initialize the namespace, if needed.
-
     for job, name in zip(jobs, names):
         lsfJobName = '{}_{}'.format(ns, name)
         if isDone(ns, name):
-            print 'already done job:', ns, name
-        elif onGrid:
+            print 'job already done. ns={}, name={}'.format(ns, name)
+        elif onGrid: # run async on grid
             if lsf.isJobNameOn(lsfJobName):
-                print 'already running job:', ns, name
+                print 'job already running. ns={}, name={}'.format(ns, name)
             else:
-                print 'starting job:', ns, name
+                print 'starting job. ns={}, name={}'.format(ns, name)
                 func = 'workflow.runJob'
                 kw = {'ns': ns, 'job': job, 'name': name}
-                print lsfdispatch.dispatch(func, keywords=kw, lsfOptions=list(lsfOptions)+['-J', lsfJobName], devnull=True)
-        else:
+                options = list(lsfOptions)+['-J', lsfJobName]
+                print 'lsf job id:', lsfdispatch.dispatch(func, keywords=kw, lsfOptions=options, devnull=devnull)
+        else: # run sync on
             runJob(ns, job, name)
-            
+
+    return jobsAllDone(ns, jobs, names)
+
 
 def runJob(ns, job, name):
     '''
@@ -94,6 +140,34 @@ def runJob(ns, job, name):
         markDone(ns, name)
 
 
+def makeJobNames(jobs, names=None):
+    '''
+    jobs: a list of jobs
+    names: if not None, names must be as long as jobs.
+    Returns: names, if names is given, otherwise a list of simple names is, one
+    for each job.
+    '''
+    names = names if names else ['job_{}'.format(i) for i in range(len(jobs))]
+    assert len(names) == len(jobs)
+    return names
+
+
+def jobsAllDone(ns, jobs, names=None):
+    '''
+    Returns True iff all the jobs in the namespace are marked done.
+    '''
+    return allDone(ns, makeJobNames(jobs, names))
+    
+
+def jobNamesAllDone(ns, names):
+    '''
+    Returns True iff all the names in the namespace are marked done.
+    This function is useful if you do not want to pass all the jobs as a parameter,
+    when all you need are their names.
+    '''
+    return allDone(ns, names)
+    
+
 ###########
 # DONES
 ###########
@@ -103,7 +177,26 @@ def runJob(ns, job, name):
 # pros: concurrency. fast even with millions of dones.
 # cons: different mysql db for dev and prod, so must use the prod code on a prod dataset.
 
+def allDone(ns, keys):
+    '''
+    Return: True iff all the keys are done.
+    '''
+    # implementation note: use generator b/c any/all are short-circuit functions
+    return all(isDone(ns, key) for key in keys)
+
+
+def anyDone(ns, keys):
+    '''
+    Return: True iff any of the keys are done.
+    '''
+    # implementation note: use generator b/c any/all are short-circuit functions
+    return any(isDone(ns, key) for key in keys)
+
+
 def isDone(ns, key):
+    '''
+    Return: True iff the key is done.
+    '''
     return getDonesStore(ns).exists(key)
 
  
@@ -115,12 +208,13 @@ def unmarkDone(ns, key):
     return getDonesStore(ns).remove(key)
 
 
-def createDones(ns):
-    getDonesStore(ns).create()
+# def createDones(ns):
+#     getDonesStore(ns).create()
 
 
 def dropDones(ns):
     getDonesStore(ns).drop()
+    del DONES_CACHE[ns]
 
 
 def resetDones(ns):
@@ -130,9 +224,10 @@ def resetDones(ns):
 DONES_CACHE = {}
 def getDonesStore(ns):
     '''
-    ns: namespace for these dones.  will become part of a table name, so use words, numbers, and underscores only
+    ns: namespace for these dones.  will become part of a table name, so use letters, numbers, and underscores only
     '''
     if ns not in DONES_CACHE:
         DONES_CACHE[ns] = kvstore.KStore(util.ClosingFactoryCM(config.openDbConn), ns='workflow_dones_{}'.format(ns))
+        DONES_CACHE[ns].create()
     return DONES_CACHE[ns]
     

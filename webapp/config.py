@@ -22,6 +22,10 @@ PYTHON_EXE = deploy_env.PYTHON_EXE
 os.environ['ROUNDUP_DEPLOY_ENV'] = DEPLOY_ENV # put deployment env in the environment for the java pipeline.
 
 WEBAPP_PATH = os.path.dirname(os.path.abspath(__file__))
+LSF_SHORT_QUEUE = 'shared_15m'
+LSF_MEDIUM_QUEUE = 'shared_2h'
+LSF_LONG_QUEUE = os.environ.get('ROUNDUP_LSF_LONG_QUEUE', 'shared_2h')
+
 
 if DEPLOY_ENV == 'prod':
     CURRENT_RELEASE = '2'
@@ -32,6 +36,9 @@ if DEPLOY_ENV == 'prod':
     BLAST_BIN_DIR = '/opt/blast-2.2.24/bin'
     PROJ_BIN_DIR = '/home/td23/bin' # location of kalign
     NO_LSF = False
+    LSF_SHORT_QUEUE = 'shared_lenny'
+    LSF_MEDIUM_QUEUE = 'shared_lenny'
+    LSF_LONG_QUEUE = 'shared_lenny'
 elif DEPLOY_ENV == 'dev': 
     CURRENT_RELEASE = 'test_dataset'
     PROJ_DIR = '/groups/cbi/dev.roundup'

@@ -84,10 +84,9 @@ def createRelease(release):
             acc varchar(100) NOT NULL,
             name varchar(255) NOT NULL,
             ncbi_taxon varchar(20) NOT NULL,
+            taxon_name varchar(255) NOT NULL,
             taxon_category_code varchar(10) NOT NULL,
             taxon_category_name varchar(255) NOT NULL,
-            taxon_division_code varchar(10) NOT NULL,
-            taxon_division_name varchar(255) NOT NULL,
             num_seqs int unsigned NOT NULL,
             UNIQUE KEY genome_acc_key (acc)) ENGINE = InnoDB'''.format(releaseTable(release, 'genomes')),
             '''CREATE TABLE IF NOT EXISTS {}
@@ -224,7 +223,7 @@ def selectOne(conn, sql, args=None):
     
 def getGenomeForId(id, conn=None):
     '''
-    returns: name of database whose id is id.
+    returns: genome accession of genome whose id is id.
     '''
     sql = 'SELECT acc FROM {} WHERE id=%s'.format(releaseTable(config.CURRENT_RELEASE, 'genomes'))
     return selectOne(conn, sql, args=[id])
@@ -232,8 +231,8 @@ def getGenomeForId(id, conn=None):
 
 def getIdForGenome(genome, conn=None):
     '''
-    db: name of roundup database registered in the mysql db lookup table.  e.g. Homo_sapiens.aa
-    returns: id used to refer to that db in the roundup results table or None if db was not found.
+    genome: acc of roundup genome registered in the mysql db lookup table.  e.g. 9606
+    returns: id used to refer to that genome in the roundup results table or None if genome was not found.
     '''
     sql = 'SELECT id FROM {} WHERE acc=%s'.format(releaseTable(config.CURRENT_RELEASE, 'genomes'))
     return selectOne(conn, sql, args=[genome])
@@ -244,6 +243,14 @@ def getDivergenceForId(id, conn=None):
     returns: divergence value whose id is id.
     '''
     return getNameForId(id=id, table=releaseTable(config.CURRENT_RELEASE, 'divergences'), conn=conn)
+
+
+def getIdForDivergence(divergence, conn=None):
+    '''
+    divergence: value of roundup divergence, e.g. 0.2
+    returns: id used to refer to divergence in the roundup results table or None if divergence was not found.
+    '''
+    return getIdForName(name=divergence, table=releaseTable(config.CURRENT_RELEASE, 'divergences'), conn=conn)
 
 
 def getEvalueForId(id, conn=None):
@@ -259,14 +266,6 @@ def getIdForEvalue(evalue, conn=None):
     returns: id used to refer to evalue in the roundup results table or None if evalue was not found.
     '''
     return getIdForName(name=evalue, table=releaseTable(config.CURRENT_RELEASE, 'evalues'), conn=conn)
-
-
-def getIdForDivergence(divergence, conn=None):
-    '''
-    divergence: value of roundup divergence, e.g. 0.2
-    returns: id used to refer to divergence in the roundup results table or None if divergence was not found.
-    '''
-    return getIdForName(name=divergence, table=releaseTable(config.CURRENT_RELEASE, 'divergences'), conn=conn)
 
 
 def getIdForName(name, table, conn=None):
@@ -446,9 +445,9 @@ def getOrthologs(qdb, sdb, divergence='0.2', evalue='1e-20', conn=None):
 def getGenomesData(release=config.CURRENT_RELEASE):
     '''
     returns a list of tuples, one for each genome, of acc, name, ncbi_taxon, taxon_category_code,
-    taxon_category_name, taxon_division_code, taxon_division_name, and num_seqs.
+    taxon_category_name, and num_seqs.
     '''
-    sql = '''SELECT acc, name, ncbi_taxon, taxon_category_code, taxon_category_name, taxon_division_code, taxon_division_name, num_seqs
+    sql = '''SELECT acc, name, ncbi_taxon, taxon_category_code, taxon_category_name, num_seqs
     FROM {}'''.format(releaseTable(release, 'genomes'))
     # logging.debug(sql)
     with connCM() as conn:

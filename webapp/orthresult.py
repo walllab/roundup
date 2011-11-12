@@ -45,13 +45,16 @@ RESULT_TYPES = (ORTH_RESULT, GENE_RESULT, TERM_RESULT, TEST_RESULT, GENE_SUMMARY
                 
 TERM_PROMISCUITY_LIMIT = 100
 BEST_GENOMES_FOR_GENE_NAMES = ['Homo_sapiens.aa', 'Mus_musculus.aa', 'Drosophila_melanogaster.aa', 'Caenorhabditis_elegans.aa', 'Saccharomyces_cerevisiae.aa']
+GENOME_TO_NAME = roundup_dataset.getGenomeToName(config.CURRENT_DATASET)
 
 
 def genomeDisplayName(genome):
     '''
     Turn a genome id into something more human-readable.  E.g. Homo_sapiens.aa -> Homo sapiens
     '''
-    if genome.endswith('.aa'):
+    if genome in GENOME_TO_NAME:
+        return GENOME_TO_NAME[genome]
+    elif genome.endswith('.aa'):
         return genome[:-3].replace('_', ' ')
     else:
         return genome.replace('_', ' ')

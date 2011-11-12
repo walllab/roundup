@@ -70,9 +70,9 @@ def genDatEntries(path):
                 # initialize entry vars
                 fastaNS = '' # namespace for ids used in uniprot fasta files
                 entryId = ''
-                genome = '' # uniprot organism code. http://www.uniprot.org/docs/speclist
-                gene = '' # uniprot entry primary accession number, used as our sequence id.
-                taxon = '' # ncbi taxon id
+                orgCode = '' # uniprot organism code.  subspecies sometimes share this, e.g. TRYCR.  http://www.uniprot.org/docs/speclist
+                acc = '' # uniprot entry primary accession number, used as our sequence id.
+                taxon = '' # ncbi taxon id.  should be unique to an organism.
                 evidence = ''
                 seqVersion = ''
                 geneDesc = ''
@@ -89,12 +89,12 @@ def genDatEntries(path):
                 splits = line.split()
                 fastaNS = 'sp' if splits[2] == 'Reviewed;' else 'tr' # namespace of fasta name line for this seq.
                 entryId = splits[1]
-                genome = entryId.split('_')[1]
-            elif code == 'AC' and not gene: # occurs 1+ times
+                orgCode = entryId.split('_')[1]
+            elif code == 'AC' and not acc: # occurs 1+ times
                 # e.g. AC   Q16653; O00713; O00714; O00715; Q13054; Q13055; Q14855; Q92891;
                 # get first accession from first line.
-                if not gene:
-                    gene = line.split()[1].split(';')[0]
+                if not acc:
+                    acc = line.split()[1].split(';')[0]
             elif code == 'OX': # occurs exactly one time?
                 # e.g. OX   NCBI_TaxID=9606;
                 match = taxonRE.search(line)
@@ -102,12 +102,12 @@ def genDatEntries(path):
                     taxon = match.group(1) if match else ''
                 else:
                     surprises.append('\t'.join(('many_OX_lines',
-                                                gene, genome, path, i, '')))
+                                                acc, orgCode, path, i, '')))
             elif code == 'PE': # occurs exactly 1 time?
                 # e.g. PE   2: Evidence at transcript level;
                 if evidence:
                     surprises.append('\t'.join(('many_PE_lines',
-                                                gene, genome, path, i, '')))
+                                                acc, orgCode, path, i, '')))
                 evidence = line.split()[1][:-1] # remove trailing colon
             elif code == 'DT': # occurs 3 times?
                 # e.g. DT   01-DEC-2001, sequence version 1.
@@ -116,7 +116,7 @@ def genDatEntries(path):
                         seqVersion = line.rsplit(None, 1)[1][:-1] # remove trailing period.
                     else:
                         surprises.append('\t'.join(('many_sequence_version_lines',
-                                                    gene, genome, path, i, '')))
+                                                    acc, orgCode, path, i, '')))
             elif code == 'DE': # can occur >1 times
                 # http://web.expasy.org/docs/userman.html#DE_line
                 # e.g. DE   RecName: Full=Uncharacterized protein 002R;
@@ -154,26 +154,26 @@ def genDatEntries(path):
                     seqLines.append(seqLine+'\n') # "MTMDKSELVQKAKLAEQAERYDDMAAAMKAVTEQGHELSNEERNLLSVAYKNVVGARRSS\n"
                 else:
                     surprises.append('\t'.join(('empty_seq_line',
-                                                gene, genome, path, i, '')))
+                                                acc, orgCode, path, i, '')))
             elif code == '//': # occurs 1 time.  end of sequence
                 if not inEntry:
                     surprises.append('\t'.join(('end_without_beginning',
-                                                gene, genome, path, i, '// line with unmatched ID line found.')))
+                                                acc, orgCode, path, i, '// line with unmatched ID line found.')))
                 inEntry == False
 
-                genomeName = ' '.join(osLines)
+                orgName = parseParens(' '.join(osLines))
                
                 # construct fasta nameline
                 # e.g. >sp|Q197F8|002R_IIV3 Uncharacterized protein 002R OS=Invertebrate iridescent virus 3 GN=IIV3-002R PE=4 SV=1
                 # generic: >{source}|{accession}|{entry_id} {gene_desc} OS={organism_name}[ GN={gene_name}] PE={protein_evidence} SV={seq_version}
                 nameline = '>{}|{}|{}'
-                args = [fastaNS, gene, entryId]
+                args = [fastaNS, acc, entryId]
                 if geneDesc:
                     nameline += ' {}'
                     args.append(geneDesc)
-                if genomeName:
+                if orgName:
                     nameline += ' OS={}'
-                    args.append(genomeName)
+                    args.append(orgName)
                 if geneName:
                     nameline += ' GN={}'
                     args.append(geneName)
@@ -183,18 +183,18 @@ def genDatEntries(path):
                 if seqVersion:
                     nameline += ' SE={}'
                     args.append(seqVersion)
-                if complete:
-                    nameline += ' KW='+COMPLETE_PROTEOME_KW
-                if reference:
-                    nameline += ' KW='+REFERENCE_PROTEOME_KW
+                # if complete:
+                #     nameline += ' KW='+COMPLETE_PROTEOME_KW
+                # if reference:
+                #     nameline += ' KW='+REFERENCE_PROTEOME_KW
                 nameline += '\n'
                 nameline = nameline.format(*args)
                 fastaLines = [nameline] + seqLines
                 
                 if False:
-                    print 'genome ', genome 
-                    print 'genomeName', genomeName
-                    print 'gene ', gene 
+                    print 'orgCode ', orgCode 
+                    print 'orgName', orgName
+                    print 'acc ', acc 
                     print 'taxon ', taxon 
                     print 'geneDesc ', geneDesc 
                     print 'geneName ', geneName 
@@ -208,20 +208,85 @@ def genDatEntries(path):
                     print 'geneIds  ', geneIds  
                     print 'goTerms ', goTerms 
                     print 'fastaLines ', fastaLines
-                    
-                yield (fastaNS, gene, genome, genomeName, taxon, geneName, geneDesc, complete,
+
+                yield (fastaNS, acc, orgCode, orgName, taxon, geneName, geneDesc, complete,
                        reference, geneIds, goTerms, fastaLines, surprises)
+
+
+def testParseParens():
+    goodStrings = ["foo (bar (baz)) (wiz)", "foo bar", "(foo) holla"]
+    badStrings = ["foo bar (baz)) (wiz)", "foo bar ((baz) (wiz)", "foo bar))(baz)"]
+    for string in goodStrings:
+        print string, '=>', parseParens(string)
+    for string in badStrings:
+        try:
+            parseParens(string)
+            raise Exception('No exception when testing', string)
+        except Exception:
+            print string, 'Good: found exception'
+            
+        
+def parseParens(string):
+    '''
+    Returns everything up to and including the first set of parentheses.
+    Nested parens ok.  Mismatched parens raise an exception.
+    Example: "Frog virus 3 (isolate Goorha) (FV-3)" -> "Frog virus 3 (isolate Goorha)"
+    '''
+    count = 0
+    for i, c in enumerate(string):
+        if c == '(':
+            count += 1
+        if c == ')':
+            count -= 1
+            if count == 0:
+                return string[:i+1]
+            elif count < 0:
+                raise Exception('Mismatched parentheses', string, count)
+    if count > 0:
+        raise Exception('Mismatched parentheses', string, count)
+    return string
+
+
+def upToAndIncludingFirstBlock2(string, start='(', end=')'):
+    # need different characters to start and end a block
+    assert start != end
+    lenStart = len(start)
+    lenEnd = len(end)
+    part = string[:]
+
+    # if no start of a block or no end of a block return whole string
+    i = part.find(start)
+    j = part.find(end)
+    if i == -1 or j == -1:
+        return part
+    
+    # if and end comes before a start, die.
+    assert i >= j
+
+    # find the matching end
+    count = 1
+    while True:
+        # the remaining part after the start of the block
+        part = part[i+lenStart:]
+        i = part.find(start)
+        j = part.find(end)
+        if i < j:
+            pass
+        if j <= i:
+            pass
+    
+    pass
     
         
 def parseFastaNameline(nameline):
     '''
     Parse uniprot nameline to get the uniprot sequence accession, gene description, gene name, organism name and
     organism id (e.g. HUMAN or MYCGE)
-    A uniprot nameline must have: acc, orgId
+    A uniprot nameline must have: acc, orgCode
     optional: geneDesc, geneName, orgName
     example nameline: >sp|P38398|BRCA1_HUMAN Breast cancer type 1 susceptibility protein OS=Homo sapiens GN=BRCA1 PE=1 SV=2
-    example results: acc: P38398, geneName (GN): BRCA1, orgId: HUMAN, orgName (OS): Homo sapiens, geneDesc: Breast cancer type 1 susceptibility protein
-    returns: a dict containing keys for acc, geneDesc, geneName, orgName, and orgId.  Some values 
+    example results: acc: P38398, geneName (GN): BRCA1, orgCode: HUMAN, orgName (OS): Homo sapiens, geneDesc: Breast cancer type 1 susceptibility protein
+    returns: a dict containing keys for acc, geneDesc, geneName, orgName, and orgCode.  Some values 
     '''
     # split apart nameline into acc, orgName, and geneName.
     # example: >sp|P38398|BRCA1_HUMAN Breast cancer type 1 susceptibility protein OS=Homo sapiens GN=BRCA1 PE=1 SV=2
@@ -233,7 +298,7 @@ def parseFastaNameline(nameline):
     # 'sp', 'P38398', 'BRCA1_HUMAN'
     ns, acc, entryId = accAndOrgId.split('|') # ns = namespace, either swissprot or trembl
     # 'BRCA1', 'HUMAN'
-    etc, orgId = entryId.rsplit('_', 1) # org abbr example: HUMAN.  i.e uniprot species id
+    etc, orgCode = entryId.rsplit('_', 1) # org abbr example: HUMAN.  i.e uniprot species id
     # 'Breast cancer type 1 susceptibility protein', 'Homo sapiens GN=BRCA1 PE=1 SV=2'
     geneDesc, orgGNEtc = (s.strip() for s in descOrgGNEtc.split('OS=', 1))
     # 'Homo sapiens GN=BRCA1 ', '1 SV=2'
@@ -244,7 +309,7 @@ def parseFastaNameline(nameline):
         # 'Homo sapiens', 'BRCA1'
         orgName, geneName = (s.strip() for s in orgGN.split('GN=', 1))
 
-    return {'ns': ns, 'entryId': entryId, 'acc': acc, 'geneDesc': geneDesc, 'geneName': geneName, 'orgName': orgName, 'orgId': orgId}
+    return {'ns': ns, 'entryId': entryId, 'acc': acc, 'geneDesc': geneDesc, 'geneName': geneName, 'orgName': orgName, 'orgCode': orgCode}
 
 
 def parseIdMapping(path):

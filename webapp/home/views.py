@@ -241,7 +241,7 @@ def download(request):
     orthologsSizes = [util.humanBytes(os.path.getsize(path)) for path in orthologsPaths]
     orthologsFilenames = [os.path.basename(path) for path in orthologsPaths]
     orthologsData = zip(divEvalues, orthologsFilenames, orthologsSizes)
-    example = "{'first_genome': 'HUMAN', 'second_genome': 'MOUSE'}"
+    example = "{'first_genome': '9606', 'second_genome': '10090'}"
     return django.shortcuts.render(request, 'download.html', {'form': form, 'nav_id': 'download', 'form_doc_id': 'download',
                                                          'form_action': django.core.urlresolvers.reverse(download), 'form_example': example,
                                                          'genomes_filename': genomesFilename, 'genomes_size': genomesSize, 'orthologs_data': orthologsData})
@@ -319,7 +319,7 @@ def lookup(request):
     else:
         form = LookupForm() # An unbound form
 
-    example = "{'fasta': '>example_nameline\\nMYSIVKEIIVDPYKRLKWGFIPVKRQVEDLPDDLNSTEIV\\nTISNSIQSHETAENFITTTSEKDQLHFETSSYSEHKDNVN\\nVTRSYEYRDEADRPWWRFFDEQEYRINEKERSHNKWYS\\nWFKQGTSFKEKKLLIKLDVLLAFYSCIAYWVKYLD', 'genome': 'YEAST'}"
+    example = "{'fasta': '>example_nameline\\nMYSIVKEIIVDPYKRLKWGFIPVKRQVEDLPDDLNSTEIV\\nTISNSIQSHETAENFITTTSEKDQLHFETSSYSEHKDNVN\\nVTRSYEYRDEADRPWWRFFDEQEYRINEKERSHNKWYS\\nWFKQGTSFKEKKLLIKLDVLLAFYSCIAYWVKYLD', 'genome': '559292'}"
     return django.shortcuts.render(request, 'lookup.html', {'form': form, 'nav_id': 'lookup', 'form_doc_id': 'lookup',
                                                             'form_action': django.core.urlresolvers.reverse(lookup), 'form_example': example})
 
@@ -466,7 +466,7 @@ def browse(request):
     else:
         form = BrowseForm() # An unbound form
 
-    example = "{'primary_genome': 'YEAST', 'identifier': 'Q03834', 'identifier_type': 'seq_id_type', 'secondary_genomes': ['HUMAN', 'MOUSE']}" # javascript
+    example = "{'primary_genome': '559292', 'identifier': 'Q03834', 'identifier_type': 'seq_id_type', 'secondary_genomes': ['9606', '10090']}" # javascript
     # example = "{'primary_genome': 'MYCGE', 'secondary_genomes': ['MYCHH', 'MYCH1']}" # javascript
     # , 'include_gene_name': 'true', 'include_go_term': 'true'}" # javascript
     return django.shortcuts.render(request, 'browse.html',
@@ -513,7 +513,7 @@ def cluster(request):
     else:
         form = ClusterForm() # An unbound form
 
-    example = "{'genomes': ['HUMAN', 'MOUSE', 'YEAST']}"
+    example = "{'genomes': ['9606', '10090', '559292']}" # Human, Mouse, Yeast (S. cerevisiae)
     # example = "{'genomes': ['MYCGE', 'MYCHH', 'MYCHP']}"
     return django.shortcuts.render(request, 'cluster.html',
                                    {'form': form, 'nav_id': 'cluster', 'form_doc_id': 'cluster', 'chosen_ids': ['id_genomes'],
