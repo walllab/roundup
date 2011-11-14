@@ -127,7 +127,7 @@ def deploy():
         # rename the deployment specific .htacccess file
         run('cp -p webapp/public/.htaccess.{} webapp/public/.htaccess'.format(DEPLOY_ENV))
         # rename the deployment specific deploy_env.py file
-        run('cp -p webapp/deploy_env.py.{} webapp/deploy_env.py'.format(DEPLOY_ENV))
+        run('cp -p webapp/deploy_env.{}.py webapp/deploy_env.py'.format(DEPLOY_ENV))
         # tell passenger to restart
         run ('touch webapp/tmp/restart.txt')
 
