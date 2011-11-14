@@ -39,7 +39,7 @@ SYNC_QUERY_LIMIT = 20 # run an asynchronous query (on lsf) if more than this man
 GENOMES_AND_NAMES = roundup_util.getGenomesAndNames()
 GENOME_TO_NAME = dict(GENOMES_AND_NAMES)
 GENOMES = [genome for genome, name in GENOMES_AND_NAMES]
-GENOME_CHOICES = sorted([(g, '{}: {}'.format(g, n)) for g, n in GENOMES_AND_NAMES], key=lambda gn: gn[1]) # sorted by display name
+GENOME_CHOICES = sorted(GENOMES_AND_NAMES, key=lambda gn: gn[1]) # sorted by name name
 DIVERGENCE_CHOICES = [(d, d) for d in roundup_common.DIVERGENCES]
 EVALUE_CHOICES = [(d, d) for d in roundup_common.EVALUES] # 1e-20 .. 1e-5
 IDENTIFIER_TYPE_CHOICES = [('gene_name_type', 'Gene Name'), ('seq_id_type', 'Sequence Id')]
