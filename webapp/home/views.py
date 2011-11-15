@@ -69,13 +69,22 @@ def displayName(key, nameMap=DISPLAY_NAME_MAP):
 
 def home(request):
     stats = roundup_util.getDatasetStats() # keys: numGenomes, numPairs, numOrthologs
-    return django.shortcuts.render(request, 'home.html', dict([('nav_id', 'home')] + stats.items()))
+    release = roundup_util.getRelease()
+    kw = {'nav_id': 'home', 'release': release}
+    kw.update(stats)
+    return django.shortcuts.render(request, 'home.html', kw)
 
 
 def about(request):
     stats = roundup_util.getDatasetStats() # keys: numGenomes, numPairs, numOrthologs
-    sources_html = roundup_util.getSourcesHtml()    
-    return django.shortcuts.render(request, 'about.html', {'nav_id': 'about', 'numGenomes': stats['numGenomes'], 'sources_html': sources_html})
+    sourceUrls = roundup_util.getSourceUrls()
+    release = roundup_util.getRelease()
+    uniprotRelease = roundup_util.getUniprotRelease()
+    # sources_html = roundup_util.getSourcesHtml()    
+    return django.shortcuts.render(request, 'about.html', {'nav_id': 'about', 'numGenomes': stats['numGenomes'],
+                                                           # 'sources_html': sources_html,
+                                                           'source_urls': sourceUrls, 'release': release,
+                                                           'uniprot_release': uniprotRelease})
     
 
 def documentation(request):
@@ -83,7 +92,7 @@ def documentation(request):
 
 
 def genomes(request):
-    # tuples for each genome containing: acc, name, taxon, cat, catName, div, divName, size
+    # tuples for each genome containing: acc, name, taxon, cat, catName, size
     descs = sorted(roundup_util.getGenomeDescriptions(), key=lambda d: d[1]) # sorted by name
     eukaryota = [desc for desc in descs if desc[3] == 'E']
     archaea = [desc for desc in descs if desc[3] == 'A']

@@ -39,7 +39,7 @@ def test():
     prop2 = Property("valuable")
     pgroup = ParalogGroup([geneRef2, geneRef3], properties=[prop1, prop2], iden="p1", scores=[score], notes=Notes("good job"))
     ogroup = OrthologGroup([pgroup, geneRef1], scores=[score], notes=Notes("good job"))
-    for x in toOrthoXML("roundup", "2011_01", [species, species2], [ogroup], scoreDefs=[scoredef], notes=Notes("params look ok"), indent=' ', newl='\n'):
+    for x in toOrthoXML("roundup", "2", [species, species2], [ogroup], scoreDefs=[scoredef], notes=Notes("params look ok"), indent=' ', newl='\n'):
         sys.stdout.write(x)
       
 
@@ -272,7 +272,7 @@ class GeneRef(object):
 def toOrthoXML(origin, originVersion, species, groups, scoreDefs=None, notes=None, version='0.3', indent=' ', newl='\n'):
     '''
     origin: the source of these ortholog groups.  e.g. inparanoid, roundup, omabrowser.
-    originVersion: the version or release of the source database.  e.g 7.0, 2011_01, 11.
+    originVersion: the version or release of the source database.  e.g 2, 7.0, GRCh37.p5, 2011_06.
     species: a iterable of Species objects.  These species contain the databases which contain the genes that are referred to within the groups.
     Iterable so items can be generated on the fly to avoid memory issues.
     groups: an iterable of one or more OrthologGroup objects.  Iterable so items can be generated on the fly to avoid memory issues.

@@ -66,7 +66,7 @@ JOBS: are directories in a dataset which organize how orthologs are computed.  A
 
 DATABASE: most of the roundup website uses data from a mysql database.  Tables for the dataset are loaded with data from a dataset.  
 
-RELEASE: Each dataset is called a release on the website and in the code.  Releases are named with a year and release number within that year.  The first release of 2011 would be named 2011_01.  
+RELEASE: Each dataset is called a release on the website and in the code.  Releases are named with a number.  Release 1 is from May 2010.  And so on.
 
 
 ########################################

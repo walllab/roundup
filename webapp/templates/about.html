@@ -1,31 +1,85 @@
 {% extends "base.html" %}
 {% load url from future %}
 
+overview
+ why
+ what
+ releases
+ --release schedule
+people
+acknowledgements
+
+
 {% block content %}
 <div class="node"> 
-<h1>about</h1> 
+<h1>overview</h1> 
 <div class="content">
-<p>Principal Investigator: Dr. Dennis P. Wall, the <a href="http://wall.hms.harvard.edu">Wall Lab</a> at the <a href="http://cbmi.med.harvard.edu">Center for Biomedical Informatics</a> at <a href="http://hms.harvard.edu/">Harvard Medical School</a></p> 
-<p>Roundup has been developed by Todd F. DeLuca, Kristian Che St.Gabriel, Dennis P. Wall, and I-Hsien Wu.</p>
-<p>This project would not have been possible without the hard work and sound advice of many other people, including Jian Pu, Thomas Monaghan, Saurav Singh and Leon Peshkin</p> 
-<p>In addition, we owe a great debt of gratitude to Mark Komarinski, Andy Bergman, Bret Martin, Gregory Cavanagh and Marcos Athanasoulis of the <a href="http://ritg.med.harvard.edu/">Research Information Technology Group</a>(RITG) at Harvard Medical School. Their group maintains the vast linux cluster where our computation takes place.</p> 
-</div> 
-</div>  
+<p>The ability to accurately detect orthologous or functionally equivalent proteins in different organisms is important to numerous biological research questions, including studies of variables influencing rate protein evolution [1-3], accurate genome annotation [4], and studies of proteins implicated in cancer [5]. Roundup was created to speed such research projects by making available an up-to-date set of orthologs for many genomes.  To that end, Roundup is "released" 4 times a year.  For each release, the latest completed genomes are downloaded (see sources below), orthologs are computed for those genomes, and then made available on the website.  For scientific reproducibility, previous releases are archived and available for <a href="{% url 'home.views.download' %}">download</a>.
+</p>
 
-<div class="node"> 
-<h1>publications</h1> 
-<div class="content">
+<p>
+Roundup is an online database of gene orthologs for {{ numGenomes }} genomes computed using the reciprocal smallest distance (RSD) algorithm. Users may query Roundup for single-linkage clusters of orthologous genes based on any group of genomes. Annotated query results may be viewed in a variety of ways including as clusters of orthologs and as phylogenetic profiles. Genomic results may be downloaded in formats suitable for functional as well as phylogenetic analysis, including the recent OrthoXML standard. In addition, gene IDs can be retrieved using FASTA sequence search. All orthology results and source code are freely available.
+</p>
+
+<p>Recovering the true set of orthologs between two lineages depend on many parameters, including date of divergence between the lineages, rates of gene duplication in either lineage, intensity of molecular selection, and others. To account for such variables that can have a large impact on the size and content of a list of orthologs, and to provide users of Roundup a certain degree of exploratory power, we adjusted two parameters -- BLAST E-value and global pair-wise sequence divergence -- when calculating orthology between genomes. Specifically, in our calculations we used four increasingly stringent BLAST scores, 1e-5, 1e-10, 1e-15, and 1e-20, and three increasingly stringent divergence thresholds, 0.8, 0.5, and 0.2.  Therefore, for every pair of genomes, Roundup contains twelve ortholog lists representing all possible combinations of the two parameters.
+</p> 
+
 <ul>
-<li><a href="http://bioinformatics.oxfordjournals.org/content/22/16/2044">Roundup: a multi-genome repository of orthologs and evolutionary distances.</a></li>
-<li><a href="http://bioinformatics.oxfordjournals.org/content/19/13/1710" title="RSD: Detecting putative orthologs">Reciprocal smallest distance (RSD): Detecting putative orthologs.</a></li>
-<li><a href="http://www.ncbi.nlm.nih.gov/pubmed/18025688">Ortholog detection using the reciprocal smallest distance algorithm.</a></li>
-<li><a href="http://www.ncbi.nlm.nih.gov/pubmed/21258651">Cost-effective cloud computing: a case study using the comparative genomics tool, roundup.</a></li>
-<ul/>
+<li>[1] Fraser, H.B., et al., Evolutionary rate in the protein interaction network. Science, 2002. 296(5568): p. 750-2.</li> 
+<li>[2] Fraser, H.B., D.P. Wall, and A.E. Hirsh, A simple dependence between protein evolution rate and the number of protein-protein interactions. BMC Evol Biol, 2003. 3(1): p. 11.</li> 
+<li>[3] Hirsh, A.E. and H.B. Fraser, Protein dispensability and rate of evolution. Nature, 2001. 411(6841): p. 1046-9.</li> 
+<li>[4] Waterston, R.H., et al., Initial sequencing and comparative analysis of the mouse genome. Nature, 2002. 420(6915): p. 520-62.</li> 
+<li>[5] Brown, J.R., et al., Evolutionary relationships of Aurora kinases: implications for model organism studies and the development of anti-cancer drugs. BMC Evol Biol, 2004. 4(1): p. 39.</li> 
+</ul>
 </div> 
 </div>  
 
+
 <div class="node"> 
-<h1>project overview</h1> 
+<h1>algorithm</h1> 
+<div class="content">
+<p>
+The reciprocal smallest distance (RSD) algorithm [1] represents an improvement over ortholog detection approaches that rely on blast hits alone, since it uses global rather than local sequence alignments and evolutionary estimates of distance between sequences rather than blast probability scores, an approach that can often be misleading when trying to determine functional equivalence [2].
+<p>RSD first uses BLAST [5] to net a list of possible orthologs between two genomes.  This list is then filtered by E-value and a global alignment threshold (a.k.a. divergence) before evolutionary distance is estimated.  Explicitly, if the alignable region exceeds a predefined fraction of the total length of the protein, a distance is calculated as a maximum likelihood estimate of the number of amino acid substitutions separating the two putatively orthologous protein sequences, given an empirical amino acid substitution rate matrix [6].  The smallest distance is considered to be consistent with a hypothesis of functional equivalency between the two proteins.</p>
+<p>A paper describing the algorithm in more detail is avialable at <a href="http://bioinformatics.oxfordjournals.org/content/19/13/1710" title="RSD: Detecting putative orthologs">Bioinformatics</a>.  The algorithm can be downloaded <a href="{% url 'home.views.download' %}">here</a>.
+<ul>
+<li>[1] Wall, D.P., H.B. Fraser, and A.E. Hirsh, Detecting putative orthologs. Bioinformatics, 2003. 19(13): p. 1710-1.</li> 
+<li>[2] Koski, L.B. and G.B. Golding, The closest BLAST hit is often not the nearest neighbor. J Mol Evol, 2001. 52(6): p. 540-2.</li> 
+<li>[3] Remm, M., C.E. Storm, and E.L. Sonnhammer, Automatic clustering of orthologs and in-paralogs from pairwise species comparisons. J Mol Biol, 2001. 314(5): p. 1041-52.</li> 
+<li>[4] Tatusov, R.L., et al., The COG database: a tool for genome-scale analysis of protein functions and evolution. Nucleic Acids Res, 2000. 28(1): p. 33-6.</li> 
+<li>[5] Altschul, S.F., et al., Basic local alignment search tool. J Mol Biol, 1990. 215(3): p. 403-10.</li> 
+<li>[6] Jones, D.T., W.R. Taylor, and J.M. Thornton, The rapid generation of mutation data matrices from protein sequences. Comput Appl Biosci, 1992. 8(3): p. 275-82.</li>
+</ul>
+</div>
+</div>
+
+
+<div class="node"> 
+<h1>people</h1> 
+<div class="content">
+<p><em><a href="http://wall.hms.harvard.edu/people/dennis">Dr. Dennis P. Wall</a></em> is the original author of the Reciprocal Smallest Distance (RSD) algorithm and the prinicipal investigator of the <a href="http://wall.hms.harvard.edu">Wall Lab</a> at the <a href="http://cbmi.med.harvard.edu">Center for Biomedical Informatics</a> at <a href="http://hms.harvard.edu/">Harvard Medical School</a></p>
+
+<p><em><a href="http://todddeluca.com">Todd F. DeLuca</a></em> optimized the RSD algorithm for use with Roundup and developed and maintains the computational pipeline which runs RSD on thousands of genomes and the website and database used to qeuery and display clusters of orthologous genes.</p>
+
+<p><em><a href="http://wall.hms.harvard.edu/people/kris">Kristian Che St.Gabriel</a></em>, who is responsible for the web design of Roundup, is the Creative Director of the <a href="http://wall.hms.harvard.edu">Wall Lab</a>.  Shh...he also is the genius behind <a href="http://wrongcards.com">wrongcards</a>.</p>
+
+<p><em><a href="http://www.facebook.com/ihsien.wu">I-Hsien Wu</a></em> is the bioinformatician who originally developed the Roundup website.  She now researches diabetes at the <a href="http://www.joslin.org/">Joslin Diabetes Center</a>.</p>
+</div>
+</div>
+
+
+<div class="node"> 
+<h1>acknowledgements</h1> 
+<div class="content">
+<p>
+Roundup is based upon work supported by the National Science Foundation under Grant Nos. 0543480 and 0640809 and the National Institutes of Health under Grant No. LM009261.  This project would not have been possible without the hard work and sound advice of many people, including Jian Pu, Thomas Monaghan, Saurav Singh and Leon Peshkin.  In addition, we owe a great debt of gratitude to Mark Komarinski, Andy Bergman, Bret Martin, Gregory Cavanagh and Marcos Athanasoulis of the <a href="http://ritg.med.harvard.edu/">Research Information Technology Group</a>(RITG) at Harvard Medical School. Their group maintains the vast linux cluster where our computation takes place.
+</p>
+</div>
+</div>
+
+
+<div class="node"> 
+<h1>overview</h1> 
 <div class="content">
 <p>The ability to accurately detect orthologous or functionally equivalent proteins in different organisms is important to numerous biological research questions, including studies of variables influencing rate protein evolution [1-3],  accurate genome annotation [4], and studies of proteins implicated in cancer [5]. The ability to retrieve orthologs from many genomes at the click of a button would help speed such research projects along tremendously.</p> 
 <p>To accelerate research this, we have computed orthologs for {{ numGenomes }} genomes using the reciprocal smallest distance (RSD) algorithm [6].  This method represents an improvement over approaches that rely on blast hits alone, since it uses global rather than local sequence alignments and evolutionary estimates of distance between sequences rather than blast probability scores, an approach that can often be misleading when trying to determine functional equivalence [7].  These computed sets of orthologs are stored in the publicly accessible database, Roundup, one of the most comprehensive of its kind [8, 9].</p> 
@@ -49,10 +103,45 @@
 </div> 
 </div>  
 
+
 <div class="node"> 
-<h1>sources</h1> 
+<h1>publications</h1> 
 <div class="content">
-{{ sources_html|safe }}
+<ul>
+<li><a href="http://bioinformatics.oxfordjournals.org/content/22/16/2044">Roundup: a multi-genome repository of orthologs and evolutionary distances.</a></li>
+<li><a href="http://bioinformatics.oxfordjournals.org/content/19/13/1710" title="RSD: Detecting putative orthologs">Reciprocal smallest distance (RSD): Detecting putative orthologs.</a></li>
+<li><a href="http://www.ncbi.nlm.nih.gov/pubmed/18025688">Ortholog detection using the reciprocal smallest distance algorithm.</a></li>
+<li><a href="http://www.ncbi.nlm.nih.gov/pubmed/21258651">Cost-effective cloud computing: a case study using the comparative genomics tool, roundup.</a></li>
+<ul/>
+</div> 
+</div>  
+
+
+<div class="node"> 
+<h1>data sources</h1> 
+<div class="content">
+<p id="sources_desc">
+Roundup Release {{ release }} uses the following data sources:
+<ul>
+<li>
+<a href="http://www.uniprot.org">UniProt</a>, specifically UniProtKB/Swiss-Prot and UniProtKB/TrEMBL from Uniprot Release {{ uniprot_release }}, is used as a source for protein sequences from complete genomes, for sequence annotations, and for genome annotations.
+</li>
+<li>
+<a href="http://www.ncbi.nlm.nih.gov/taxonomy">The NCBI Taxonomy database</a> is used as a source for genome annotations.
+</li>
+<li>
+<a href="http://geneontology.org/">Gene Ontology</a> is used for sequence annotations.
+</li>
+</ul>
+</p>
+<p id="source_urls">
+The following is a comprehensive list of files that were downloaded for this Roundup release.  All sources are publicly available.
+<ul>
+{% for url in source_urls %}
+<li><a href="{{ url }}">{{ url }}</a></li>
+{% endfor %}
+</ul>
+</p>
 </div> 
 </div>  
 

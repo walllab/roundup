@@ -78,6 +78,18 @@ def getDatasetStats():
     return roundup_dataset.getDatasetStats(config.CURRENT_DATASET)
     
 
+def getSourceUrls(ds=config.CURRENT_DATASET):
+    return roundup_dataset.getSourceUrls(ds)
+
+
+def getRelease(ds=config.CURRENT_DATASET):
+    return roundup_dataset.getReleaseName(ds)
+
+
+def getUniprotRelease(ds=config.CURRENT_DATASET):
+    return roundup_dataset.getUniprotRelease(ds)
+
+
 def getSourcesHtml(ds=config.CURRENT_DATASET):
     '''
     generate the sources page html div, and store it in the metadata.
