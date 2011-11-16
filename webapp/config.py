@@ -25,7 +25,7 @@ LSF_MEDIUM_QUEUE = os.environ.get('ROUNDUP_LSF_MEDIUM_QUEUE', 'shared_lenny')
 LSF_LONG_QUEUE = os.environ.get('ROUNDUP_LSF_LONG_QUEUE', 'shared_lenny')
 
 if DEPLOY_ENV == 'orch_prod':
-    CURRENT_RELEASE = '2011_01'
+    CURRENT_RELEASE = '2'
     PROJ_DIR = '/groups/cbi/roundup'
     MAIL_METHOD = 'qmail'
     HTTP_HOST = 'roundup.hms.harvard.edu'
