@@ -501,8 +501,9 @@ def browse(request):
 ###################
 
 class ClusterForm(django.forms.Form):
-    genomes = django.forms.MultipleChoiceField(choices=GENOME_CHOICES, help_text='Select two or more',
-                                               widget=django.forms.SelectMultiple(attrs={'class': 'chzn-select', 'data-placeholder': 'Select two or more'}))
+    # genomesWidget = django.forms.SelectMultiple(attrs={'class': 'chzn-select', 'data-placeholder': 'Select two or more'})
+    # genomes = django.forms.MultipleChoiceField(choices=GENOME_CHOICES, help_text='Select two or more', widget=genomesWidget)
+    genomes = django.forms.CharField(widget=django.forms.Textarea()
     divergence = django.forms.ChoiceField(choices=DIVERGENCE_CHOICES)
     evalue = django.forms.ChoiceField(choices=EVALUE_CHOICES, label='BLAST E-value')
     distance_lower_limit = django.forms.FloatField(help_text=DIST_LIMIT_HELP, required=False, max_value=19.0, min_value=0.0)
