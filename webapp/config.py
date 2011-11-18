@@ -57,6 +57,15 @@ elif DEPLOY_ENV == 'local':
     BLAST_BIN_DIR = '/usr/local/ncbi/blast/bin'
     PROJ_BIN_DIR = '/Users/td23/bin' # location of kalign
     NO_LSF = True
+elif DEPLOY_ENV == 'ds3': 
+    CURRENT_RELEASE = '3'
+    PROJ_DIR = '/groups/cbi/roundup'
+    MAIL_METHOD = 'qmail'
+    HTTP_HOST = 'dev.roundup.hms.harvard.edu'
+    SITE_URL_ROOT = 'http://{}'.format(HTTP_HOST)
+    BLAST_BIN_DIR = '/opt/blast-2.2.24/bin'
+    PROJ_BIN_DIR = '/home/td23/bin' # location of kalign
+    NO_LSF = False
 
 CURRENT_DATASET = os.path.join(PROJ_DIR, 'datasets', CURRENT_RELEASE)
 LOG_FILE = os.path.join(PROJ_DIR, 'log/app.log')

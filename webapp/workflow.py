@@ -106,13 +106,17 @@ def runJobs(ns, jobs, names=None, lsfOptions=None, onGrid=False, devnull=False):
     lsfOptions = lsfOptions if lsfOptions else []
     if len(jobs) != len(set(names)):
         raise Exception('if names parameter is given, it must have a unique name for each job.')
+    lsfJobNames = ['{}_{}'.format(ns, name) for name in names]
 
-    for job, name in zip(jobs, names):
-        lsfJobName = '{}_{}'.format(ns, name)
+    # what job names are currently on lsf.
+    if onGrid:
+        onJobNames = set(lsf.getOnJobNames())
+    
+    for job, name, lsfJobName in zip(jobs, names, lsfJobNames):
         if isDone(ns, name):
             print 'job already done. ns={}, name={}'.format(ns, name)
         elif onGrid: # run async on grid
-            if lsf.isJobNameOn(lsfJobName):
+            if lsfJobName in onJobNames: # lsf.isJobNameOn(lsfJobName):
                 print 'job already running. ns={}, name={}'.format(ns, name)
             else:
                 print 'starting job. ns={}, name={}'.format(ns, name)

@@ -3,7 +3,7 @@
 '''
 ## CONCEPTS YOU NEED TO KNOW TO UNDERSTAND THIS CODE
 
-* Dataset: ds, the id of a dataset.  also happens to be a directory path, but that is an implementation detail. 
+* Dataset: ds, the id of a dataset.  also happens to be a directory path, but that is an implementation detail.
 * Sources: a dir containing all the files needed to create the genomes and the metadata about those genomes: gene names, go terms, gene descriptions, genome names, etc.
 * Genomes: A dir containing dirs named after each genome and containing a fasta file and blast indexes named after the genome.
   a genome id is an uniprot species identifier.  http://ca.expasy.org/sprot/userman.html#ID_line
@@ -16,7 +16,7 @@
   and scalable to millions of entries (useful for tracking complete pairs), and one on the filesystem, which is human editable and stored with the dataset so it is not
   sensitive to which code (dev or prod) is run.
 
-  
+
 '''
 
 # # make a test dataset from an existing dataset
@@ -115,6 +115,7 @@ TAXON_TO_DATA = 'taxon_to_data'
 BLAST_STATS = 'blast_stats'
 RSD_STATS = 'rsd_stats'
 
+
 def main(ds):
     '''
     '''
@@ -132,7 +133,8 @@ def prepareDataset(ds):
     '''
     resetCompletes(ds) # make an empty db table for dones
     resetStats(ds) # make an empty db table for stats
-    for path in (ds, getGenomesDir(ds), getOrthologsDir(ds), getJobsDir(ds), getSourcesDir(ds), getDownloadDir(ds)):
+    for path in [ds, getGenomesDir(ds), getOrthologsDir(ds), getJobsDir(ds),
+                 getSourcesDir(ds), getDownloadDir(ds)]:
         if not os.path.exists(path):
             os.makedirs(path, DIR_MODE)
     setMetadata(ds, {}) # initialize a blank metadata for the dataset
@@ -487,6 +489,7 @@ def extractFromDats(ds, dats=None, writing=True, cleanDirs=False, bufSize=500000
     # helper function to create genome dirs for genomes not yet seen
     # fasta files placed in genome dirs
     dirGenomes = set()
+
     def makeGenomeDir(genome):
         if genome not in dirGenomes:
             dirGenomes.add(genome)
@@ -496,6 +499,7 @@ def extractFromDats(ds, dats=None, writing=True, cleanDirs=False, bufSize=500000
 
     # helper function to write fasta lines to a genome file.
     writeGenomes = set()
+
     def writeToGenome(genome, data):
         ''' data: a list of fasta lines, including newlines '''
         if not writing: # speed performance when not testing behavior that does not involve writing fasta
@@ -623,7 +627,7 @@ def formatSomeGenomes(ds, genomes):
         rsd.formatForBlast(fastaPath)
         
 
-def prepareJobs(ds, numJobs=8000, pairs=None):
+def prepareJobs(ds, numJobs=2000, pairs=None):
     '''
     ds: dataset to ready to compute pairs
     numJobs: split pairs into this many jobs.  More jobs = shorter jobs, better parallelism.
@@ -645,7 +649,8 @@ def prepareJobs(ds, numJobs=8000, pairs=None):
     # Ideally job running time would be explictly balanced, but currently pairs are just assigned randomly.
     random.shuffle(pairs)
     for i, jobPairs in enumerate(util.splitIntoN(pairs, numJobs)):
-        if i % 100 == 0: print 'preparing job', i
+        if i % 100 == 0:
+            print 'preparing job', i
         job = 'job_{}'.format(i)
         print 'job:', job
         print 'len(jobPairs)=', len(jobPairs)
@@ -804,6 +809,7 @@ def convertOrthDatasToXml(ds, orthDatas, orthDatasAgain, xmlOut):
     scoreDef = orthoxml.ScoreDef('dist', 'Maximum likelihood evolutionary distance')
 
     print 'pass 2: writing xml'
+
     def groupGen():
         for params, orthologs in orthDatasAgain:
             qdb, sdb, div, evalue = params
@@ -836,14 +842,15 @@ def convertOrthGroupsToXml(ds, groups, genomeToGenes, div, evalue, xmlOut):
     speciesList = makeOrthoxmlSpecies(genomeToGenes, genomeToName, genomeToTaxon, uniprotRelease)    
 
     scoreDef = orthoxml.ScoreDef('avgdist', 'Mean maximum likelihood evolutionary distance of all orthologous pairs in a group')
-
+    
     print 'writing xml'
+
     def groupGen():
-       for genes, avgDist in groups:
-           geneRefs = [orthoxml.GeneRef(gene) for gene in genes]
-           score = orthoxml.Score(scoreDef.id, str(avgDist))
-           group = orthoxml.OrthologGroup(geneRefs, scores=[score])
-           yield group
+        for genes, avgDist in groups:
+            geneRefs = [orthoxml.GeneRef(gene) for gene in genes]
+            score = orthoxml.Score(scoreDef.id, str(avgDist))
+            group = orthoxml.OrthologGroup(geneRefs, scores=[score])
+            yield group
 
     notes = orthoxml.Notes('These orthologs were computed using the following Reciprocal Smallest Distance (RSD) parameters: divergence={} and evalue={}.  See http://roundup.hms.harvard.edu for more information about Roundup and RSD.'.format(div, evalue))
     for xmlText in orthoxml.toOrthoXML('roundup', roundupRelease, speciesList, groupGen(), scoreDefs=[scoreDef], notes=notes):
@@ -956,7 +963,7 @@ def computeJobs(ds):
     '''
     # awkward: a dataset job is a name of a directory and a set of pairs to compute orthologs for.
     # and a workflow job is a tuple of function name and keywords
-    jobs = getJobs(ds)
+    jobs = getJobs(ds)[:10]
     func = 'roundup_dataset.computeJob'
     ns = getDatasetId(ds) + '_compute_jobs'
     workflowJobs = [(func, {'ds': ds, 'job': job}) for job in jobs]
@@ -1035,8 +1042,8 @@ def computePair(ds, pair, workingDir, orthologsPath):
 
         if not isComplete(ds, 'roundup', pair):
             startTime = time.time()
-            divEvalueToOrthologs =  rsd.computeOrthologsUsingSavedHits(queryFastaPath, subjectFastaPath, divEvalues,
-                                                                       forwardHitsPath, reverseHitsPath, workingDir=tmpDir)
+            divEvalueToOrthologs = rsd.computeOrthologsUsingSavedHits(queryFastaPath, subjectFastaPath, divEvalues,
+                                                                      forwardHitsPath, reverseHitsPath, workingDir=tmpDir)
             orthDatas = [((queryGenome, subjectGenome, div, evalue), orthologs) for (div, evalue), orthologs in divEvalueToOrthologs.items()]
             orthutil.orthDatasToFile(orthDatas, orthologsPath)
             putRsdStats(ds, queryGenome, subjectGenome, divEvalues, startTime=startTime, endTime=time.time())
@@ -1332,6 +1339,8 @@ def getTaxonToData(ds):
 
 
 STATS_CACHE = {}
+
+
 def getStatsStore(ds):
     if ds not in STATS_CACHE:
         dsId = getDatasetId(ds)
@@ -1446,46 +1455,6 @@ def extractPerformanceStats(ds, pairs=None):
     setData(ds, BLAST_STATS, blastStats)
     setData(ds, RSD_STATS, rsdStats)
         
-
-def extractPerformanceStatsOld(ds):
-    '''
-    this function needs to be fixed for future data set.  it currently only works for the old stats.
-    it should not dump the stats table and then use eval and json to parse it, when there are functions like getBlastStats().
-    '''
-    print 'this function needs to be fixed for future data set.  it currently only works for the old stats.'
-    
-    with nested.NestedTempDir(dir=roundup_common.LOCAL_DIR) as tmpDir:
-        tmpDir = ds
-        statsTable = 'roundup_kvstore_{}_stats'.format(getDatasetId(ds))
-        dumpFile = os.path.join(tmpDir, 'performance.stats.dump')
-        if not os.path.exists(dumpFile):
-            cmd = "time echo 'select name, value from {}' | mysql --skip-column-names -h dev.mysql devroundup > {}".format(statsTable, dumpFile)
-            subprocess.check_call(cmd, shell=True)
-    
-        blastStats = {}
-        rsdStats = {}
-        totalTime = 0
-        print 'processing stats'
-        with open(dumpFile) as fh:
-            for i, line in enumerate(fh):
-                if i % 100000 == 0: print i
-                key, value = line.strip().split('\t')
-                stats = eval(json.loads(value))
-                elapsedTime = stats['endTime'] - stats['startTime']
-                args = eval(key)
-                kind, qdb, sdb = args
-                pair = (qdb, sdb)
-                if kind == 'blast':
-                    blastStats[json.dumps(pair)] = elapsedTime
-                    totalTime += elapsedTime
-                elif kind == 'rsd':
-                    rsdStats[json.dumps(pair)] = elapsedTime
-                    totalTime += elapsedTime
-        print 'total time:', totalTime
-        print 'saving stats'
-        setData(ds, BLAST_STATS, blastStats)
-        setData(ds, RSD_STATS, rsdStats)
-
 
 ########################
 # DEPRECATED / UNUSED

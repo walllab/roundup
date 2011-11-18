@@ -4,13 +4,14 @@
 Helpful functions for interacting with LSF using python, and for setting up an environment for lsf.
 '''
 
+import collections
+import logging
 import os
 import re
 import shlex
 import subprocess
 import time
 
-import logging
 
 
 ###########
@@ -41,27 +42,53 @@ def isJobNameOff(jobName, retry=False, delay=1.0):
     jobName: the name of a lsf job.
     The job is "off" lsf if there is no status for it on LSF (i.e. bjobs returns nothing for it)
     or if its status is DONE, EXIT, or ZOMBIE.
-    exception raised if there are multiple jobs for the same name.
     '''
-    statuses = getJobNameStatuses(jobName, retry, delay)
-    # "on" jobs
-    onStatuses = [status for status in statuses if status not in OFF_STATUSES]
-    # too many "on" jobs?
-    if len(onStatuses) > 1:
-        msg = 'more than one LSF job is being processed for {}\nstatuses={}'.format(jobName, onStatuses)
-        raise Exception(msg)
-    # any "on" jobs?
-    return not onStatuses
+    infos = getJobNameInfos(jobName, retry, delay)
+    return infosAreOff(infos)
 
 
 def isJobNameOn(jobName, retry=False, delay=1.0):
     '''
     checks if job is running, pending, suspended, or otherwise in the process of running on LSF.
-    A job is "on" lsf if it exists on lsf and does not have an off status.
+    A job is "on" lsf if it exists on lsf and has a non-"off" status
     returns: True if job is not off.  False otherwise.
     exception raised if there are multiple jobs for the same name.
     '''
     return not isJobNameOff(jobName, retry, delay)
+
+
+def infosAreOff(infos):
+    '''
+    infos: a list of job infos.  The are considered "off" if infos is empty
+    or if all the info statuses are one of DONE, EXIT, or ZOMBIE.
+    '''
+    # "on" jobs
+    ons = [info for info in infos if info[STATUS] not in OFF_STATUSES]
+    return not ons
+
+    
+
+def infosAreOn(infos):
+    '''
+    infos: a list of job infos.  The are considered "on" if there is one
+    info with a status not in DONE, EXIT, or ZOMBIE.
+    '''
+    return not infosAreOff(infos)
+    
+
+def getOnJobNames():
+    '''
+    return: list of all job names "on" on lsf.
+    '''
+    jobNameToInfos = getJobNameToInfos()
+    return [name for name in jobNameToInfos if infosAreOn(jobNameToInfos[name])]
+
+
+def getJobNameToInfos():
+    jobNameToInfos = collections.defaultdict(list)
+    for info in getJobInfos():
+        jobNameToInfos[info[JOB_NAME]].append(info)
+    return jobNameToInfos
 
 
 def getJobNameStatuses(jobName, retry=False, delay=1.0):
@@ -72,7 +99,7 @@ def getJobNameStatuses(jobName, retry=False, delay=1.0):
     return [info[STATUS] for info in infos]
 
 
-def getJobNameInfos(jobName):
+def getJobNameInfos(jobName, retry=False, delay=1.0):
     '''
     jobName: name of a job
     returns: info for each job named jobName.
@@ -86,18 +113,14 @@ def getJobNameInfos(jobName):
     # Job <bar> is not found
     
     args = ['bjobs', '-a', '-u', 'all', '-w', '-J', str(jobName)]
-    return getJobInfosSub(args)
-
-
-def getJobStatuses(job, retry=False, delay=1.0):
-    infos = getJobInfos([job])
+    infos = getJobInfosSub(args)
     if not infos and retry: # pause to let lsf catch up and try again
         time.sleep(delay);
-        infos = getJobInfos([job])
-    return [info[STATUS] for info in infos]
+        infos = getJobInfosSub(args)
+    return infos
 
 
-def getJobInfos(jobIds=None):
+def getJobInfos(jobIds=None, retry=False, delay=1.0):
     '''
     jobIds: seq of job ids to get info for.  If jobIds is None, infos for all lsf jobs are returned.
     returns: info for each job id in jobIds.
@@ -107,7 +130,11 @@ def getJobInfos(jobIds=None):
         jobIds = ['0']
 
     args = ['bjobs', '-a', '-u', 'all', '-w'] + [str(j) for j in jobIds]
-    return getJobInfosSub(args)
+    infos = getJobInfosSub(args)
+    if not infos and retry: # pause to let lsf catch up and try again
+        time.sleep(delay);
+        infos = getJobInfosSub(args)
+    return infos
 
 
 def getJobInfosSub(args):

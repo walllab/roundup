@@ -39,6 +39,8 @@ HOME_DIR = os.path.expanduser('~')
 deploy_env_kw = {
     'local': {'deployRoot': os.path.join(HOME_DIR, 'www/dev.roundup.hms.harvard.edu'),
               'projectRoot': os.path.join(HOME_DIR, 'local.roundup'), },
+    'ds3': {'deployRoot': '/groups/cbi/roundup/datasets/3/code',
+            'projectRoot': '/groups/cbi/roundup', },
     'dev': {'deployRoot': '/www/dev.roundup.hms.harvard.edu',
             'projectRoot': '/groups/cbi/dev.roundup', },
     'prod': {'deployRoot': '/www/roundup.hms.harvard.edu',
@@ -51,6 +53,15 @@ DEPLOY_ENV = 'local'
 # TASKS
 #######
 
+@task
+def ds3():
+    '''
+    execute this task first to do stuff on dev
+    '''
+    global DEPLOY_ENV
+    DEPLOY_ENV = 'ds3'
+
+    
 @task
 def dev():
     '''
