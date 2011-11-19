@@ -1275,7 +1275,7 @@ def getReleaseDate(ds):
     '''
     returns: a datetime.date object
     '''
-    dateStr = datetime.date.getMetadata(ds)['releaseDate']
+    dateStr = getMetadata(ds)['releaseDate']
     return datetime.datetime.strptime(dateStr, "%Y-%m-%d").date()
 
     

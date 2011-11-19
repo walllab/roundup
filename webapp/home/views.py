@@ -40,6 +40,15 @@ GENOMES_AND_NAMES = roundup_util.getGenomesAndNames()
 GENOME_TO_NAME = dict(GENOMES_AND_NAMES)
 GENOMES = [genome for genome, name in GENOMES_AND_NAMES]
 GENOME_CHOICES = sorted(GENOMES_AND_NAMES, key=lambda gn: gn[1]) # sorted by name name
+# tuples for each genome containing: acc, name, taxon, cat, catName, size
+GENOME_DESCS = sorted(roundup_util.getGenomeDescriptions(), key=lambda d: d[1]) # sorted by name
+CAT_TO_GENOME = {
+    'eukaryota': [{'name': d[1] + ' -- ' + d[4], 'value': d[1]} for d in GENOME_DESCS if d[3] == 'E'],
+    'bacteria': [{'name': d[1] + ' -- ' + d[4], 'value': d[1]} for d in GENOME_DESCS if d[3] == 'B'],
+    'archaea': [{'name': d[1] + ' -- ' + d[4], 'value': d[1]} for d in GENOME_DESCS if d[3] == 'A'],
+    'viruses': [{'name': d[1] + ' -- ' + d[4], 'value': d[1]} for d in GENOME_DESCS if d[3] == 'V'],
+}
+
 DIVERGENCE_CHOICES = [(d, d) for d in roundup_common.DIVERGENCES]
 EVALUE_CHOICES = [(d, d) for d in roundup_common.EVALUES] # 1e-20 .. 1e-5
 IDENTIFIER_TYPE_CHOICES = [('gene_name_type', 'Gene Name'), ('seq_id_type', 'Sequence Id')]
@@ -70,7 +79,9 @@ def displayName(key, nameMap=DISPLAY_NAME_MAP):
 def home(request):
     stats = roundup_util.getDatasetStats() # keys: numGenomes, numPairs, numOrthologs
     release = roundup_util.getRelease()
-    kw = {'nav_id': 'home', 'release': release}
+    releaseDate = roundup_util.getReleaseDate()
+    logging.debug('release: {}'.format(release))
+    kw = {'nav_id': 'home', 'release': release, 'release_date': releaseDate}
     kw.update(stats)
     return django.shortcuts.render(request, 'home.html', kw)
 
@@ -79,12 +90,12 @@ def about(request):
     stats = roundup_util.getDatasetStats() # keys: numGenomes, numPairs, numOrthologs
     sourceUrls = roundup_util.getSourceUrls()
     release = roundup_util.getRelease()
+    releaseDate = roundup_util.getReleaseDate()
     uniprotRelease = roundup_util.getUniprotRelease()
-    # sources_html = roundup_util.getSourcesHtml()    
-    return django.shortcuts.render(request, 'about.html', {'nav_id': 'about', 'numGenomes': stats['numGenomes'],
-                                                           # 'sources_html': sources_html,
-                                                           'source_urls': sourceUrls, 'release': release,
-                                                           'uniprot_release': uniprotRelease})
+    # sources_html = roundup_util.getSourcesHtml()
+    kw = {'nav_id': 'about', 'numGenomes': stats['numGenomes'], 'source_urls': sourceUrls,
+          'release': release, 'release_date': releaseDate, 'uniprot_release': uniprotRelease}
+    return django.shortcuts.render(request, 'about.html', kw)
     
 
 def documentation(request):
@@ -93,15 +104,17 @@ def documentation(request):
 
 def genomes(request):
     # tuples for each genome containing: acc, name, taxon, cat, catName, size
-    descs = sorted(roundup_util.getGenomeDescriptions(), key=lambda d: d[1]) # sorted by name
-    eukaryota = [desc for desc in descs if desc[3] == 'E']
-    archaea = [desc for desc in descs if desc[3] == 'A']
-    bacteria = [desc for desc in descs if desc[3] == 'B']
-    viruses = [desc for desc in descs if desc[3] == 'V']
-    unclassified = [desc for desc in descs if desc[3] == 'U']
-    num_genomes, num_eukaryota, num_archaea, num_bacteria, num_viruses, num_unclassified = [len(g) for g in (descs, eukaryota, archaea, bacteria, viruses, unclassified)]
-    kw = {'nav_id': 'genomes', 'descGroups': [eukaryota, archaea, bacteria, viruses, unclassified], 'num_genomes': num_genomes,
-          'num_eukaryota': num_eukaryota, 'num_archaea': num_archaea, 'num_bacteria': num_bacteria, 'num_viruses': num_viruses, 'num_unclassified': num_unclassified}
+    eukaryota = [desc for desc in GENOME_DESCS if desc[3] == 'E']
+    archaea = [desc for desc in GENOME_DESCS if desc[3] == 'A']
+    bacteria = [desc for desc in GENOME_DESCS if desc[3] == 'B']
+    viruses = [desc for desc in GENOME_DESCS if desc[3] == 'V']
+    unclassified = [desc for desc in GENOME_DESCS if desc[3] == 'U']
+    if unclassified:
+        logging.error('There are unclassified genomes: {}'.format(unclassified))
+    num_eukaryota, num_archaea, num_bacteria, num_viruses = [len(g) for g in (eukaryota, archaea, bacteria, viruses)]
+    num_genomes = num_eukaryota + num_archaea + num_bacteria + num_viruses
+    kw = {'nav_id': 'genomes', 'descGroups': [eukaryota, archaea, bacteria, viruses], 'num_genomes': num_genomes,
+          'num_eukaryota': num_eukaryota, 'num_archaea': num_archaea, 'num_bacteria': num_bacteria, 'num_viruses': num_viruses}
     return django.shortcuts.render(request, 'genomes.html', kw)
 
 

@@ -18,8 +18,9 @@ def exceptionLoggingMiddleware(application, logfile):
         try:
             return application(environ, start_response)
         except:
-            with open(logfile, 'a') as fh:
-                fh.write(datetime.datetime.now().isoformat()+'\n'+traceback.format_exc())
+            fh = open(logfile, 'a')
+            fh.write(datetime.datetime.now().isoformat()+'\n'+traceback.format_exc())
+            fh.close()
             raise
     return logApp
             

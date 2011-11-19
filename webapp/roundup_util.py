@@ -86,6 +86,10 @@ def getRelease(ds=config.CURRENT_DATASET):
     return roundup_dataset.getReleaseName(ds)
 
 
+def getReleaseDate(ds=config.CURRENT_DATASET):
+    return roundup_dataset.getReleaseDate(ds)
+
+
 def getUniprotRelease(ds=config.CURRENT_DATASET):
     return roundup_dataset.getUniprotRelease(ds)
 
