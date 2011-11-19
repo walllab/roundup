@@ -963,7 +963,7 @@ def computeJobs(ds):
     '''
     # awkward: a dataset job is a name of a directory and a set of pairs to compute orthologs for.
     # and a workflow job is a tuple of function name and keywords
-    jobs = getJobs(ds)[:10]
+    jobs = sorted(getJobs(ds))
     func = 'roundup_dataset.computeJob'
     ns = getDatasetId(ds) + '_compute_jobs'
     workflowJobs = [(func, {'ds': ds, 'job': job}) for job in jobs]

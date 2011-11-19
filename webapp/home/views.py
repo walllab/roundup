@@ -437,7 +437,7 @@ class BrowseForm(django.forms.Form):
                                                       help_text='Filter which genomes appear in the Secondary Genome Choices list')
     secondary_genome_choices = django.forms.CharField(required=False, help_text='Use to add a genome to Secondary Genomes box',
                                                       widget=django.forms.Select())
-    secondary_genomes = django.forms.CharField(widget=django.forms.Textarea(), help_text='Select one or more')
+    secondary_genomes = django.forms.CharField(widget=django.forms.Textarea(), help_text='Enter one or more')
     divergence = django.forms.ChoiceField(choices=DIVERGENCE_CHOICES)
     evalue = django.forms.ChoiceField(choices=EVALUE_CHOICES, label='BLAST E-value')
     distance_lower_limit = django.forms.FloatField(help_text=DIST_LIMIT_HELP, required=False, max_value=19.0, min_value=0.0)
@@ -551,7 +551,7 @@ class ClusterForm(django.forms.Form):
                                                       help_text='Filter which genomes appear in the Genome Choices list')
     genome_choices = django.forms.CharField(required=False, help_text='Use to add a genome to Genomes box',
                                                       widget=django.forms.Select())
-    genomes = django.forms.CharField(widget=django.forms.Textarea(), help_text='Select two or more')
+    genomes = django.forms.CharField(widget=django.forms.Textarea(), help_text='Enter two or more')
     divergence = django.forms.ChoiceField(choices=DIVERGENCE_CHOICES)
     evalue = django.forms.ChoiceField(choices=EVALUE_CHOICES, label='BLAST E-value')
     distance_lower_limit = django.forms.FloatField(help_text=DIST_LIMIT_HELP, required=False, max_value=19.0, min_value=0.0)
