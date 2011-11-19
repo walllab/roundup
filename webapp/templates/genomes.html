@@ -5,33 +5,28 @@
 
 {% block content %}
 {% comment %}
-a desc is a tuple of acc, name, taxon, cat, catName, div, divName, size.
+a desc is a tuple of acc, name, taxon, cat, catName, size.
 {% endcomment %}
 <p>
-Roundup contains {{ num_genomes }} genomes: {{ num_eukaryota }} Eukaryota, {{ num_bacteria }} Bacteria, {{ num_archaea }} Archaea, {{ num_viruses }} Viruses and Viroids,
-and {{ num_unclassified }} Unclassified or Other genomes.
+Roundup contains {{ num_genomes }} genomes: {{ num_eukaryota }} Eukaryota, {{ num_bacteria }} Bacteria, {{ num_archaea }} Archaea, and {{ num_viruses }} Viruses and Viroids.
 </p>
 <p>
-Below is a list detailing every genome in Roundup.  It includes the genome identifier (which corresponds to a UniProt Species Code), the genome name, the number of protein sequences in the genome, and the NCBI Taxonomy Id, Category and Division.
+Below is a list detailing every genome in Roundup.  It includes the NCBI taxonomy id, the genome name, the number of protein sequences in the genome, and the NCBI Category.
 </p>
 <table id="genome_descs">
 <tr>
-<th>Genome</th>
-<th>Name</th>
 <th>NCBI Taxon</th>
+<th>Name</th>
 <th>Category</th>
-<th>Division</th>
 <th>Number of Genes</th>
 </tr>
 {% for descs in descGroups %}
 {% for desc in descs %}
 <tr id="{{desc.0}}">
-<td><a href="http://www.uniprot.org/taxonomy/{{ desc.2 }}">{{ desc.0 }}</a></td>
+<td><a href="http://www.uniprot.org/taxonomy/{{ desc.2 }}">{{ desc.2 }}</a></td>
 <td>{{ desc.1 }}</td>
-<td><a href="http://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?lvl=0&id={{ desc.2 }}">{{ desc.2 }}</a></td>
-<td>{{ desc.4 }}</td>
-<td>{{ desc.6 }}</td>
-<td>{{ desc.7 }}</td>
+<td>{{ desc.3 }}</td>
+<td>{{ desc.5 }}</td>
 </tr>
 {% endfor %}
 {% endfor %}

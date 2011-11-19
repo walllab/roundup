@@ -16,31 +16,35 @@ import lsf
 ###############################################
 
 # NOTE: deployment magic.  when code is deployed to, e.g. production, deploy_env.py.prod -> deploy_env.py.
-from deploy_env import DEPLOY_ENV
+import deploy_env
+DEPLOY_ENV = deploy_env.DEPLOY_ENV
+PYTHON_EXE = deploy_env.PYTHON_EXE
 os.environ['ROUNDUP_DEPLOY_ENV'] = DEPLOY_ENV # put deployment env in the environment for the java pipeline.
 
 WEBAPP_PATH = os.path.dirname(os.path.abspath(__file__))
+LSF_SHORT_QUEUE = 'shared_15m'
+LSF_MEDIUM_QUEUE = 'shared_2h'
+LSF_LONG_QUEUE = os.environ.get('ROUNDUP_LSF_LONG_QUEUE', 'shared_2h')
 
-LSF_MEDIUM_QUEUE = os.environ.get('ROUNDUP_LSF_MEDIUM_QUEUE', 'shared_lenny')
-LSF_LONG_QUEUE = os.environ.get('ROUNDUP_LSF_LONG_QUEUE', 'shared_lenny')
 
-if DEPLOY_ENV == 'orch_prod':
+if DEPLOY_ENV == 'prod':
     CURRENT_RELEASE = '2'
     PROJ_DIR = '/groups/cbi/roundup'
     MAIL_METHOD = 'qmail'
     HTTP_HOST = 'roundup.hms.harvard.edu'
     SITE_URL_ROOT = 'http://{}'.format(HTTP_HOST)
-    PYTHON_EXE = '/home/td23/bin/python2.7'
     BLAST_BIN_DIR = '/opt/blast-2.2.24/bin'
     PROJ_BIN_DIR = '/home/td23/bin' # location of kalign
     NO_LSF = False
-elif DEPLOY_ENV == 'orch_dev': 
+    LSF_SHORT_QUEUE = 'shared_lenny'
+    LSF_MEDIUM_QUEUE = 'shared_lenny'
+    LSF_LONG_QUEUE = 'shared_lenny'
+elif DEPLOY_ENV == 'dev': 
     CURRENT_RELEASE = 'test_dataset'
     PROJ_DIR = '/groups/cbi/dev.roundup'
     MAIL_METHOD = 'qmail'
     HTTP_HOST = 'dev.roundup.hms.harvard.edu'
     SITE_URL_ROOT = 'http://{}'.format(HTTP_HOST)
-    PYTHON_EXE = '/home/td23/bin/python2.7'
     BLAST_BIN_DIR = '/opt/blast-2.2.24/bin'
     PROJ_BIN_DIR = '/home/td23/bin' # location of kalign
     NO_LSF = False
@@ -50,10 +54,18 @@ elif DEPLOY_ENV == 'local':
     MAIL_METHOD = '' # not sure how to get postfix working.
     HTTP_HOST = 'localhost'
     SITE_URL_ROOT = 'http://{}:8000'.format(HTTP_HOST)
-    PYTHON_EXE = '/Library/Frameworks/Python.framework/Versions/2.7/bin/python2.7'
     BLAST_BIN_DIR = '/usr/local/ncbi/blast/bin'
     PROJ_BIN_DIR = '/Users/td23/bin' # location of kalign
     NO_LSF = True
+elif DEPLOY_ENV == 'ds3': 
+    CURRENT_RELEASE = '3'
+    PROJ_DIR = '/groups/cbi/roundup'
+    MAIL_METHOD = 'qmail'
+    HTTP_HOST = 'dev.roundup.hms.harvard.edu'
+    SITE_URL_ROOT = 'http://{}'.format(HTTP_HOST)
+    BLAST_BIN_DIR = '/opt/blast-2.2.24/bin'
+    PROJ_BIN_DIR = '/home/td23/bin' # location of kalign
+    NO_LSF = False
 
 CURRENT_DATASET = os.path.join(PROJ_DIR, 'datasets', CURRENT_RELEASE)
 LOG_FILE = os.path.join(PROJ_DIR, 'log/app.log')
@@ -159,6 +171,7 @@ def openDbConn(host=MYSQL_HOST, db=MYSQL_DB, user=MYSQL_USER, password=MYSQL_PAS
     returns: an open python DB API connection to the mysql host and db.  caller is responsible for closing the connection.
     '''
     return orchmysql.openConn(host, db, user, password, retries=1, sleep=1)
+
 
 @contextlib.contextmanager
 def dbConnCM(host=MYSQL_HOST, db=MYSQL_DB, user=MYSQL_USER, password=MYSQL_PASSWORD):

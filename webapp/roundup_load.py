@@ -164,10 +164,9 @@ def writeGenomesTable(genomes, genomeToId, genomeToName, genomeToTaxon, genomeTo
     acc varchar(100) NOT NULL,
     name varchar(255) NOT NULL,
     ncbi_taxon varchar(20) NOT NULL,
+    taxon_name varchar(255) NOT NULL,
     taxon_category_code varchar(10) NOT NULL,
     taxon_category_name varchar(255) NOT NULL,
-    taxon_division_code varchar(10) NOT NULL,
-    taxon_division_name varchar(255) NOT NULL,
     num_seqs int NOT NULL,
     '''
     with open(genomesFile, 'w') as fh:
@@ -175,12 +174,11 @@ def writeGenomesTable(genomes, genomeToId, genomeToName, genomeToTaxon, genomeTo
             gid = genomeToId[genome]
             name = genomeToName[genome]
             taxon = genomeToTaxon[genome]
+            taxonName = taxonToData[taxon][roundup_dataset.NAME]
             catCode = taxonToData[taxon][roundup_dataset.CAT_CODE]
             catName = taxonToData[taxon][roundup_dataset.CAT_NAME]
-            divCode = taxonToData[taxon][roundup_dataset.DIV_CODE]
-            divName = taxonToData[taxon][roundup_dataset.DIV_NAME]
             numSeqs = genomeToCount[genome]
-            fh.write('{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n'.format(gid, genome, name, taxon, catCode, catName, divCode, divName, numSeqs))
+            fh.write('\t'.join(str(f) for f in (gid, genome, name, taxon, taxonName, catCode, catName, numSeqs)) + '\n')
     
             
 def writeLookupTable(items, itemToId, itemsFile):

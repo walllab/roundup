@@ -90,12 +90,13 @@ def testing(msg='Hello, World.'):
     return msg
 
 
-def strToBool(value):
+def strToBool(value, falsies=('F', 'FALSE', '0', '0.0', 'NO', 'N', 'NONE')):
     '''
+    falsies: a list of uppercase strings that are considered false.
     An arbitrary set of human-readable strings is mapped to False.  Everything else is true.
-    What is false? Ingoring case, 'F', 'FALSE', '0', '0.0', 'None'
+    What is false? Ingoring case, 'F', 'FALSE', '0', '0.0', 'NO', 'N', 'None'
     '''
-    return str(value).upper() not in ('F', 'FALSE', '0', '0.0', 'NO', 'N', 'NONE')
+    return str(value).upper() not in falsies
 
 
 def getBoolFromEnv(key, default=True):

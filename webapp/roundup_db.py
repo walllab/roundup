@@ -65,13 +65,36 @@ def releaseTable(release, table):
     return '{}.roundup_{}_{}'.format(ROUNDUP_MYSQL_DB, release, table)
 
 
+def dropGenomes(release):
+    sql = 'DROP TABLE IF EXISTS {}'.format(releaseTable(release, 'genomes'))
+    with connCM() as conn:
+        print sql
+        dbutil.executeSQL(sql=sql, conn=conn)
+    
+
+def createGenomes(release):
+    sql = '''CREATE TABLE IF NOT EXISTS {}
+            (id smallint unsigned auto_increment primary key,
+            acc varchar(100) NOT NULL,
+            name varchar(255) NOT NULL,
+            ncbi_taxon varchar(20) NOT NULL,
+            taxon_name varchar(255) NOT NULL,
+            taxon_category_code varchar(10) NOT NULL,
+            taxon_category_name varchar(255) NOT NULL,
+            num_seqs int unsigned NOT NULL,
+            UNIQUE KEY genome_acc_key (acc)) ENGINE = InnoDB'''.format(releaseTable(release, 'genomes'))
+    with connCM() as conn:
+        print sql
+        dbutil.executeSQL(sql=sql, conn=conn)
+
+
 def dropRelease(release):
-    sqls = ['DROP TABLE IF EXISTS {}'.format(releaseTable(release, 'genomes')),
-            'DROP TABLE IF EXISTS {}'.format(releaseTable(release, 'divergences')), 
+    sqls = ['DROP TABLE IF EXISTS {}'.format(releaseTable(release, 'divergences')), 
             'DROP TABLE IF EXISTS {}'.format(releaseTable(release, 'evalues')), 
             'DROP TABLE IF EXISTS {}'.format(releaseTable(release, 'sequence')), 
             'DROP TABLE IF EXISTS {}'.format(releaseTable(release, 'sequence_to_go_term')), 
             ]
+    dropGenomes(release)
     with connCM() as conn:
         for sql in sqls:
             print sql
@@ -80,17 +103,6 @@ def dropRelease(release):
 
 def createRelease(release):
     sqls = ['''CREATE TABLE IF NOT EXISTS {}
-            (id smallint unsigned auto_increment primary key,
-            acc varchar(100) NOT NULL,
-            name varchar(255) NOT NULL,
-            ncbi_taxon varchar(20) NOT NULL,
-            taxon_category_code varchar(10) NOT NULL,
-            taxon_category_name varchar(255) NOT NULL,
-            taxon_division_code varchar(10) NOT NULL,
-            taxon_division_name varchar(255) NOT NULL,
-            num_seqs int unsigned NOT NULL,
-            UNIQUE KEY genome_acc_key (acc)) ENGINE = InnoDB'''.format(releaseTable(release, 'genomes')),
-            '''CREATE TABLE IF NOT EXISTS {}
             (id tinyint unsigned auto_increment primary key, name varchar(100) NOT NULL) ENGINE = InnoDB'''.format(releaseTable(release, 'divergences')),
             '''CREATE TABLE IF NOT EXISTS {}
             (id tinyint unsigned auto_increment primary key, name varchar(100) NOT NULL) ENGINE = InnoDB'''.format(releaseTable(release, 'evalues')),
@@ -112,6 +124,7 @@ def createRelease(release):
             KEY sequence_index (sequence_id),
             UNIQUE KEY sequence_and_acc_index (sequence_id, go_term_acc) ) ENGINE = InnoDB'''.format(releaseTable(release, 'sequence_to_go_term')),
             ]
+    createGenomes(release)
     with connCM() as conn:
         for sql in sqls:
             print sql
@@ -148,6 +161,22 @@ def createReleaseResults(release):
 #########################
 
     
+def loadGenomes(release, genomesFile):
+    '''
+    release: the id of the release being loaded
+    genomesFile: each line contains a tab-separated id (integer) and external genome id/name (string).
+    The ids should go from 1 to N (where N is the number of genomes.)  Genomes should be unique.
+    Why use LOAD DATA INFILE?  Because it is very fast relative to insert.  a discussion of insertion speed: http://dev.mysql.com/doc/refman/5.1/en/insert-speed.html
+    
+    '''
+    sql = 'LOAD DATA LOCAL INFILE %s INTO TABLE {}'.format(releaseTable(release, 'genomes'))
+    args = [genomesFile]
+    
+    with connCM() as conn:
+        print sql, args
+        dbutil.executeSQL(sql=sql, conn=conn, args=args)
+
+
 def loadRelease(release, genomesFile, divergencesFile, evaluesFile, seqsFile, seqToGoTermsFile):
     '''
     release: the id of the release being loaded
@@ -156,14 +185,13 @@ def loadRelease(release, genomesFile, divergencesFile, evaluesFile, seqsFile, se
     Why use LOAD DATA INFILE?  Because it is very fast relative to insert.  a discussion of insertion speed: http://dev.mysql.com/doc/refman/5.1/en/insert-speed.html
     
     '''
-    sqls = ['LOAD DATA LOCAL INFILE %s INTO TABLE {}'.format(releaseTable(release, 'genomes')), 
-            'LOAD DATA LOCAL INFILE %s INTO TABLE {}'.format(releaseTable(release, 'divergences')), 
+    sqls = ['LOAD DATA LOCAL INFILE %s INTO TABLE {}'.format(releaseTable(release, 'divergences')), 
             'LOAD DATA LOCAL INFILE %s INTO TABLE {}'.format(releaseTable(release, 'evalues')), 
             'LOAD DATA LOCAL INFILE %s INTO TABLE {}'.format(releaseTable(release, 'sequence')), 
             'LOAD DATA LOCAL INFILE %s INTO TABLE {}'.format(releaseTable(release, 'sequence_to_go_term')), 
             ]
     argsList = [[genomesFile], [divergencesFile], [evaluesFile], [seqsFile], [seqToGoTermsFile]]
-    
+    loadGenomes(release, genomesFile)
     with connCM() as conn:
         for sql, args in zip(sqls, argsList):
             print sql, args
@@ -224,18 +252,18 @@ def selectOne(conn, sql, args=None):
     
 def getGenomeForId(id, conn=None):
     '''
-    returns: name of database whose id is id.
+    returns: genome accession of genome whose id is id.
     '''
     sql = 'SELECT acc FROM {} WHERE id=%s'.format(releaseTable(config.CURRENT_RELEASE, 'genomes'))
     return selectOne(conn, sql, args=[id])
 
 
-def getIdForGenome(genome, conn=None):
+def getIdForGenome(genome, conn=None, release=config.CURRENT_RELEASE):
     '''
-    db: name of roundup database registered in the mysql db lookup table.  e.g. Homo_sapiens.aa
-    returns: id used to refer to that db in the roundup results table or None if db was not found.
+    genome: acc of roundup genome registered in the mysql db lookup table.  e.g. 9606
+    returns: id used to refer to that genome in the roundup results table or None if genome was not found.
     '''
-    sql = 'SELECT id FROM {} WHERE acc=%s'.format(releaseTable(config.CURRENT_RELEASE, 'genomes'))
+    sql = 'SELECT id FROM {} WHERE acc=%s'.format(releaseTable(release, 'genomes'))
     return selectOne(conn, sql, args=[genome])
 
 
@@ -244,6 +272,14 @@ def getDivergenceForId(id, conn=None):
     returns: divergence value whose id is id.
     '''
     return getNameForId(id=id, table=releaseTable(config.CURRENT_RELEASE, 'divergences'), conn=conn)
+
+
+def getIdForDivergence(divergence, conn=None):
+    '''
+    divergence: value of roundup divergence, e.g. 0.2
+    returns: id used to refer to divergence in the roundup results table or None if divergence was not found.
+    '''
+    return getIdForName(name=divergence, table=releaseTable(config.CURRENT_RELEASE, 'divergences'), conn=conn)
 
 
 def getEvalueForId(id, conn=None):
@@ -259,14 +295,6 @@ def getIdForEvalue(evalue, conn=None):
     returns: id used to refer to evalue in the roundup results table or None if evalue was not found.
     '''
     return getIdForName(name=evalue, table=releaseTable(config.CURRENT_RELEASE, 'evalues'), conn=conn)
-
-
-def getIdForDivergence(divergence, conn=None):
-    '''
-    divergence: value of roundup divergence, e.g. 0.2
-    returns: id used to refer to divergence in the roundup results table or None if divergence was not found.
-    '''
-    return getIdForName(name=divergence, table=releaseTable(config.CURRENT_RELEASE, 'divergences'), conn=conn)
 
 
 def getIdForName(name, table, conn=None):
@@ -334,7 +362,7 @@ def deleteGenomeByName(genome, conn=None):
     deletes all roundup results in mysql containing this genome.
     returns: nothing.
     '''
-    logging.debug('deleteGenomeByName(): genome=%s'%genome)
+    # logging.debug('deleteGenomeByName(): genome=%s'%genome)
     with connCM(conn=conn) as conn:
         dbId = getIdForGenome(genome, conn)
         if not dbId:
@@ -446,11 +474,11 @@ def getOrthologs(qdb, sdb, divergence='0.2', evalue='1e-20', conn=None):
 def getGenomesData(release=config.CURRENT_RELEASE):
     '''
     returns a list of tuples, one for each genome, of acc, name, ncbi_taxon, taxon_category_code,
-    taxon_category_name, taxon_division_code, taxon_division_name, and num_seqs.
+    taxon_category_name, and num_seqs.
     '''
-    sql = '''SELECT acc, name, ncbi_taxon, taxon_category_code, taxon_category_name, taxon_division_code, taxon_division_name, num_seqs
+    sql = '''SELECT acc, name, ncbi_taxon, taxon_category_code, taxon_category_name, num_seqs
     FROM {}'''.format(releaseTable(release, 'genomes'))
-    logging.debug(sql)
+    # logging.debug(sql)
     with connCM() as conn:
         return dbutil.selectSQL(sql=sql, conn=conn)
 
