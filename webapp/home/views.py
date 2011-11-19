@@ -261,7 +261,9 @@ def download(request):
     orthologsSizes = [util.humanBytes(os.path.getsize(path)) for path in orthologsPaths]
     orthologsFilenames = [os.path.basename(path) for path in orthologsPaths]
     orthologsData = zip(divEvalues, orthologsFilenames, orthologsSizes)
-    example = "{'first_genome': '9606', 'second_genome': '10090'}"
+    # example = "{'first_genome': '9606', 'second_genome': '10090'}"
+    example = "{'first_genome': 'HUMAN', 'second_genome': 'MOUSE'}"
+    # example = json.dumps({'first_genome': 'Homo sapiens', 'second_genome': 'Mus musculus'})
     return django.shortcuts.render(request, 'download.html', {'form': form, 'nav_id': 'download', 'form_doc_id': 'download',
                                                          'form_action': django.core.urlresolvers.reverse(download), 'form_example': example,
                                                          'genomes_filename': genomesFilename, 'genomes_size': genomesSize, 'orthologs_data': orthologsData})
@@ -339,7 +341,9 @@ def lookup(request):
     else:
         form = LookupForm() # An unbound form
 
-    example = "{'fasta': '>example_nameline\\nMYSIVKEIIVDPYKRLKWGFIPVKRQVEDLPDDLNSTEIV\\nTISNSIQSHETAENFITTTSEKDQLHFETSSYSEHKDNVN\\nVTRSYEYRDEADRPWWRFFDEQEYRINEKERSHNKWYS\\nWFKQGTSFKEKKLLIKLDVLLAFYSCIAYWVKYLD', 'genome': '559292'}"
+    # example = "{'fasta': '>example_nameline\\nMYSIVKEIIVDPYKRLKWGFIPVKRQVEDLPDDLNSTEIV\\nTISNSIQSHETAENFITTTSEKDQLHFETSSYSEHKDNVN\\nVTRSYEYRDEADRPWWRFFDEQEYRINEKERSHNKWYS\\nWFKQGTSFKEKKLLIKLDVLLAFYSCIAYWVKYLD', 'genome': '559292'}"
+    # example = "{'fasta': '>example_nameline\\nMYSIVKEIIVDPYKRLKWGFIPVKRQVEDLPDDLNSTEIV\\nTISNSIQSHETAENFITTTSEKDQLHFETSSYSEHKDNVN\\nVTRSYEYRDEADRPWWRFFDEQEYRINEKERSHNKWYS\\nWFKQGTSFKEKKLLIKLDVLLAFYSCIAYWVKYLD', 'genome': 'Saccharomyces cerevisiae (strain ATCC 204508 / S288c)'}"
+    example = "{'fasta': '>example_nameline\\nMYSIVKEIIVDPYKRLKWGFIPVKRQVEDLPDDLNSTEIV\\nTISNSIQSHETAENFITTTSEKDQLHFETSSYSEHKDNVN\\nVTRSYEYRDEADRPWWRFFDEQEYRINEKERSHNKWYS\\nWFKQGTSFKEKKLLIKLDVLLAFYSCIAYWVKYLD', 'genome': 'YEAST'}"
     return django.shortcuts.render(request, 'lookup.html', {'form': form, 'nav_id': 'lookup', 'form_doc_id': 'lookup',
                                                             'form_action': django.core.urlresolvers.reverse(lookup), 'form_example': example})
 
@@ -524,7 +528,11 @@ def browse(request):
                                    'secondary_genomes_filter': [value for value, name in CAT_CHOICES]
                                    }) # An unbound form
 
-    example = "{'primary_genome': '559292', 'identifier': 'Q03834', 'identifier_type': 'seq_id_type', 'secondary_genomes': ['9606', '10090']}" # javascript
+    # example = json.dumps({'primary_genome': '559292', 'identifier': 'Q03834',
+    #                       'identifier_type': 'seq_id_type', 'secondary_genomes': ['9606', '10090']})
+    example = json.dumps({'primary_genome': 'Saccharomyces cerevisiae (strain ATCC 204508 / S288c)',
+                          'identifier': 'Q03834', 'identifier_type': 'seq_id_type',
+                          'secondary_genomes': 'Homo sapiens\nMus musculus\n'})
     # example = "{'primary_genome': 'MYCGE', 'secondary_genomes': ['MYCHH', 'MYCH1']}" # javascript
     # , 'include_gene_name': 'true', 'include_go_term': 'true'}" # javascript
     return django.shortcuts.render(request, 'browse.html',
@@ -583,7 +591,8 @@ def cluster(request):
     else:
         form = ClusterForm(initial={'genomes_filter': [value for value, name in CAT_CHOICES]}) # An unbound form
 
-    example = "{'genomes': ['9606', '10090', '559292']}" # Human, Mouse, Yeast (S. cerevisiae)
+    # example = "{'genomes': ['9606', '10090', '559292']}" # Human, Mouse, Yeast (S. cerevisiae)
+    example = json.dumps({'genomes': 'Homo sapiens\nMus musculus\nSaccharomyces cerevisiae (strain ATCC 204508 / S288c)\n'})
     # example = "{'genomes': ['MYCGE', 'MYCHH', 'MYCHP']}"
     return django.shortcuts.render(request, 'cluster.html',
                                    {'form': form, 'nav_id': 'cluster', 'form_doc_id': 'cluster', 'chosen_ids': ['id_genomes'],
