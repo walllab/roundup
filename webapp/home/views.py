@@ -38,17 +38,15 @@ USE_CACHE = True
 SYNC_QUERY_LIMIT = 20 # run an asynchronous query (on lsf) if more than this many genomes are in the query.
 GENOMES_AND_NAMES = roundup_util.getGenomesAndNames()
 GENOME_TO_NAME = dict(GENOMES_AND_NAMES)
+NAME_TO_GENOME = dict([(n, g) for g, n in GENOMES_AND_NAMES]) # assumes genomes and names are one-to-one.
 GENOMES = [genome for genome, name in GENOMES_AND_NAMES]
 GENOME_CHOICES = sorted(GENOMES_AND_NAMES, key=lambda gn: gn[1]) # sorted by name name
-# tuples for each genome containing: acc, name, taxon, cat, catName, size
-GENOME_DESCS = sorted(roundup_util.getGenomeDescriptions(), key=lambda d: d[1]) # sorted by name
-CAT_TO_GENOME = {
-    'eukaryota': [{'name': d[1] + ' -- ' + d[4], 'value': d[1]} for d in GENOME_DESCS if d[3] == 'E'],
-    'bacteria': [{'name': d[1] + ' -- ' + d[4], 'value': d[1]} for d in GENOME_DESCS if d[3] == 'B'],
-    'archaea': [{'name': d[1] + ' -- ' + d[4], 'value': d[1]} for d in GENOME_DESCS if d[3] == 'A'],
-    'viruses': [{'name': d[1] + ' -- ' + d[4], 'value': d[1]} for d in GENOME_DESCS if d[3] == 'V'],
-}
-
+# tuples for each genome containing: acc, name, taxon, cat, categoryName, size
+GENOME_DESCS = sorted(roundup_util.getGenomeDescriptions(), key=lambda d: d[1].lower()) # case-insensitive sort by name
+CATS = ['E', 'B', 'A', 'V']
+CAT_TO_NAME = {'E': 'Eukaryota', 'B': 'Bacteria', 'A': 'Archaea', 'V': 'Viruses'}
+CAT_GENOMES = [(d[3], {'name': d[1] + ' -- ' + d[4], 'value': d[1]}) for d in GENOME_DESCS]
+CAT_CHOICES = [(cat, CAT_TO_NAME[cat]) for cat in CATS]
 DIVERGENCE_CHOICES = [(d, d) for d in roundup_common.DIVERGENCES]
 EVALUE_CHOICES = [(d, d) for d in roundup_common.EVALUES] # 1e-20 .. 1e-5
 IDENTIFIER_TYPE_CHOICES = [('gene_name_type', 'Gene Name'), ('seq_id_type', 'Sequence Id')]
@@ -424,27 +422,63 @@ def search_gene_names_result(request, key):
 ##################
 
 class BrowseForm(django.forms.Form):
-    primary_genome = django.forms.ChoiceField(choices=GENOME_CHOICES,
-                                              widget=django.forms.Select(attrs={'class': 'chzn-select'}))
+    primaryWidget = django.forms.CheckboxSelectMultiple()
+    primary_genome_filter = django.forms.MultipleChoiceField(required=False, choices=CAT_CHOICES, widget=primaryWidget,
+                                                      help_text='Filter which genomes appear in the Primary Genome list')
+    primary_genome = django.forms.CharField(widget=django.forms.Select())
     identifier_type = django.forms.ChoiceField(choices=IDENTIFIER_TYPE_CHOICES)
     identifier = django.forms.CharField(required=False, max_length=100, widget=django.forms.TextInput(attrs={'size': '60'}))
-    secondary_genomes = django.forms.MultipleChoiceField(choices=GENOME_CHOICES,
-                                              widget=django.forms.SelectMultiple(attrs={'class': 'chzn-select', 'data-placeholder': 'Select one or more'}))
+    secondaryWidget = django.forms.CheckboxSelectMultiple()
+    secondary_genomes_filter = django.forms.MultipleChoiceField(required=False, choices=CAT_CHOICES, widget=secondaryWidget,
+                                                      help_text='Filter which genomes appear in the Secondary Genome Choices list')
+    secondary_genome_choices = django.forms.CharField(required=False, help_text='Use to add a genome to Secondary Genomes box',
+                                                      widget=django.forms.Select())
+    secondary_genomes = django.forms.CharField(widget=django.forms.Textarea(), help_text='Select one or more')
     divergence = django.forms.ChoiceField(choices=DIVERGENCE_CHOICES)
     evalue = django.forms.ChoiceField(choices=EVALUE_CHOICES, label='BLAST E-value')
     distance_lower_limit = django.forms.FloatField(help_text=DIST_LIMIT_HELP, required=False, max_value=19.0, min_value=0.0)
     distance_upper_limit = django.forms.FloatField(help_text=DIST_LIMIT_HELP, required=False, max_value=19.0, min_value=0.0)
-    # include_gene_names = django.forms.BooleanField(required=False, initial=True)
-    # include_go_terms = django.forms.BooleanField(required=False, initial=True)
 
+    def clean_primary_genome(self):
+        '''
+        Transform name to genome.  Raise exception if a name is not valid.
+        '''
+        data = self.cleaned_data.get('primary_genome')
+        if data not in NAME_TO_GENOME:
+            msg = 'Please enter a Primary genome from our choices. {} is not.'.format(data)
+            raise django.forms.ValidationError(msg)
+        genome = NAME_TO_GENOME[data]
+        return genome
+
+
+    def clean_secondary_genomes(self):
+        '''
+        Transform names to genomes.  Raise exception if a name is not
+        valid or there are not enough names.
+        '''
+        data = self.cleaned_data.get('secondary_genomes')
+        names = [line.strip() for line in data.splitlines() if line.strip()]
+        badNames = [n for n in names if n not in NAME_TO_GENOME]
+        if badNames:
+            msg = 'Please enter Secondary genomes only from our choices. The following are not: '+', '.join(badNames)
+            raise django.forms.ValidationError(msg)
+        if len(names) < 1:
+            raise django.forms.ValidationError('At least one Secondary genomes must be entered.')
+        # Always return the cleaned data, whether you have changed it or not.
+        genomes = [NAME_TO_GENOME[n] for n in sorted(set(names))] # sort by name, remove duplicates
+        return genomes
+
+        
     def clean(self):
+        '''
+        make sure secondary genomes does not contain the primary genome
+        '''
         primary_genome = self.cleaned_data.get('primary_genome')
         secondary_genomes = self.cleaned_data.get('secondary_genomes')
-        logging.debug('clean(): secondary_genomes={}'.format(secondary_genomes))
         if secondary_genomes and primary_genome in secondary_genomes:
             raise django.forms.ValidationError('Primary genome must not be among the selected Secondary genomes.')
         return self.cleaned_data
-
+    
 
 def browse(request):
     '''
@@ -486,14 +520,17 @@ def browse(request):
             roundup_util.cacheSet(queryId, orthQuery)
             return django.shortcuts.redirect(django.core.urlresolvers.reverse(orth_query, kwargs={'queryId': queryId}))
     else:
-        form = BrowseForm() # An unbound form
+        form = BrowseForm(initial={'primary_genome_filter': [value for value, name in CAT_CHOICES],
+                                   'secondary_genomes_filter': [value for value, name in CAT_CHOICES]
+                                   }) # An unbound form
 
     example = "{'primary_genome': '559292', 'identifier': 'Q03834', 'identifier_type': 'seq_id_type', 'secondary_genomes': ['9606', '10090']}" # javascript
     # example = "{'primary_genome': 'MYCGE', 'secondary_genomes': ['MYCHH', 'MYCH1']}" # javascript
     # , 'include_gene_name': 'true', 'include_go_term': 'true'}" # javascript
     return django.shortcuts.render(request, 'browse.html',
                                    {'form': form, 'nav_id': 'browse', 'form_doc_id': 'browse', 'chosen_ids': ['id_primary_genome', 'id_secondary_genomes'],
-                                    'form_action': django.core.urlresolvers.reverse(browse), 'form_example': example})
+                                    'form_action': django.core.urlresolvers.reverse(browse), 'form_example': example,
+                                    'cat_genomes_json': json.dumps(CAT_GENOMES, indent=-1), })
 
 
 ###################
@@ -501,23 +538,33 @@ def browse(request):
 ###################
 
 class ClusterForm(django.forms.Form):
-    # genomesWidget = django.forms.SelectMultiple(attrs={'class': 'chzn-select', 'data-placeholder': 'Select two or more'})
-    # genomes = django.forms.MultipleChoiceField(choices=GENOME_CHOICES, help_text='Select two or more', widget=genomesWidget)
-    genomes = django.forms.CharField(widget=django.forms.Textarea()
+    genomesFilterWidget = django.forms.CheckboxSelectMultiple()
+    genomes_filter = django.forms.MultipleChoiceField(required=False, choices=CAT_CHOICES, widget=genomesFilterWidget,
+                                                      help_text='Filter which genomes appear in the Genome Choices list')
+    genome_choices = django.forms.CharField(required=False, help_text='Use to add a genome to Genomes box',
+                                                      widget=django.forms.Select())
+    genomes = django.forms.CharField(widget=django.forms.Textarea(), help_text='Select two or more')
     divergence = django.forms.ChoiceField(choices=DIVERGENCE_CHOICES)
     evalue = django.forms.ChoiceField(choices=EVALUE_CHOICES, label='BLAST E-value')
     distance_lower_limit = django.forms.FloatField(help_text=DIST_LIMIT_HELP, required=False, max_value=19.0, min_value=0.0)
     distance_upper_limit = django.forms.FloatField(help_text=DIST_LIMIT_HELP, required=False, max_value=19.0, min_value=0.0)
     tc_only = django.forms.BooleanField(label='Only Show Transitively Closed Gene Clusters', required=False, initial=False)
-    # include_gene_names = django.forms.BooleanField(required=False, initial=True)
-    # include_go_terms = django.forms.BooleanField(required=False, initial=True)
     
     def clean_genomes(self):
+        '''
+        Transform genome names to genome ids.  Raise exception if a name is not
+        valid or there are not enough names.
+        '''
         data = self.cleaned_data.get('genomes')
-        if data is None or len(data) < 2:
-            raise django.forms.ValidationError('At least two Genomes must be selected.')
+        names = [line.strip() for line in data.splitlines() if line.strip()]
+        badNames = [n for n in names if n not in NAME_TO_GENOME]
+        if badNames:
+            raise django.forms.ValidationError('Please only enter genomes from our choices. These genomes are not: '+', '.join(badNames))
+        if len(names) < 2:
+            raise django.forms.ValidationError('At least two genomes must be entered.')
         # Always return the cleaned data, whether you have changed it or not.
-        return data
+        genomes = [NAME_TO_GENOME[n] for n in sorted(set(names))] # sort by name, remove duplicates
+        return genomes
 
 
 def cluster(request):
@@ -534,13 +581,14 @@ def cluster(request):
             # cache the query and redirect to a page that will run the query
             return django.shortcuts.redirect(django.core.urlresolvers.reverse(orth_query, kwargs={'queryId': queryId}))
     else:
-        form = ClusterForm() # An unbound form
+        form = ClusterForm(initial={'genomes_filter': [value for value, name in CAT_CHOICES]}) # An unbound form
 
     example = "{'genomes': ['9606', '10090', '559292']}" # Human, Mouse, Yeast (S. cerevisiae)
     # example = "{'genomes': ['MYCGE', 'MYCHH', 'MYCHP']}"
     return django.shortcuts.render(request, 'cluster.html',
                                    {'form': form, 'nav_id': 'cluster', 'form_doc_id': 'cluster', 'chosen_ids': ['id_genomes'],
-                                    'form_action': django.core.urlresolvers.reverse(cluster), 'form_example': example})
+                                    'form_action': django.core.urlresolvers.reverse(cluster), 'form_example': example,
+                                    'cat_genomes_json': json.dumps(CAT_GENOMES, indent=-1), })
 
 
 ###########################
@@ -587,8 +635,6 @@ def makeOrthQueryFromBrowseForm(form):
     orthQuery['seq_ids'] = form.cleaned_data.get('seq_ids', [])
     orthQuery['genome'] = form.cleaned_data.get('primary_genome')
     orthQuery['limit_genomes'] = form.cleaned_data.get('secondary_genomes', [])
-#     orthQuery['gene_name'] = form.cleaned_data.get('include_gene_names')
-#     orthQuery['go_term'] = form.cleaned_data.get('include_go_terms')
     orthQuery['divergence'] = form.cleaned_data.get('divergence')
     orthQuery['evalue'] = form.cleaned_data.get('evalue')
     orthQuery['distance_lower_limit'] = form.cleaned_data.get('distance_lower_limit')
@@ -597,17 +643,14 @@ def makeOrthQueryFromBrowseForm(form):
     browseId = form.cleaned_data.get('identifier')
     browseIdType = form.cleaned_data.get('identifier_type')
     queryDesc = 'Browse Query:\n'
-    queryDesc += '\t{}={}: {}\n'.format(displayName('genome'), orthQuery['genome'], GENOME_TO_NAME[orthQuery['genome']])
-    queryDesc += '\t{}={}\n'.format(displayName('identifier_type'), displayName(form.cleaned_data.get('identifier_type')))
-    queryDesc += '\t{}={}\n'.format(displayName('identifier'), form.cleaned_data.get('identifier'))
-    # queryDesc += '\t{}={}\n'.format(displayName('seq_ids'), ', '.join(orthQuery['seq_ids']))
-    queryDesc += '\t{}={}\n'.format(displayName('limit_genomes'), '\n\t\t'.join(['{}: {}'.format(g, GENOME_TO_NAME[g]) for g in orthQuery['limit_genomes']]))
-    queryDesc += '\t{}={}\n'.format(displayName('divergence'), orthQuery['divergence'])
-    queryDesc += '\t{}={}\n'.format(displayName('evalue'), orthQuery['evalue'])
-    queryDesc += '\t{}={}\n'.format(displayName('distance_lower_limit'), orthQuery['distance_lower_limit'])
-    queryDesc += '\t{}={}\n'.format(displayName('distance_upper_limit'), orthQuery['distance_upper_limit'])
-#     queryDesc += '\t{}={}\n'.format(displayName('gene_name'), orthQuery['gene_name'])
-#     queryDesc += '\t{}={}\n'.format(displayName('go_term'), orthQuery['go_term'])
+    queryDesc += '\t{} = {}\n'.format(displayName('genome'), GENOME_TO_NAME[orthQuery['genome']])
+    queryDesc += '\t{} = {}\n'.format(displayName('identifier_type'), displayName(form.cleaned_data.get('identifier_type')))
+    queryDesc += '\t{} = {}\n'.format(displayName('identifier'), form.cleaned_data.get('identifier'))
+    queryDesc += '\t{} = {}\n'.format(displayName('limit_genomes'), '\n\t\t'.join([GENOME_TO_NAME[g] for g in orthQuery['limit_genomes']]))
+    queryDesc += '\t{} = {}\n'.format(displayName('divergence'), orthQuery['divergence'])
+    queryDesc += '\t{} = {}\n'.format(displayName('evalue'), orthQuery['evalue'])
+    queryDesc += '\t{} = {}\n'.format(displayName('distance_lower_limit'), orthQuery['distance_lower_limit'])
+    queryDesc += '\t{} = {}\n'.format(displayName('distance_upper_limit'), orthQuery['distance_upper_limit'])
     orthQuery['query_desc'] = queryDesc
 
     return orthQuery
@@ -617,22 +660,18 @@ def makeOrthQueryFromClusterForm(form):
     orthQuery = makeDefaultOrthQuery()
     orthQuery['genomes'] = form.cleaned_data.get('genomes', [])
     orthQuery['tc_only'] = form.cleaned_data.get('tc_only')
-#     orthQuery['gene_name'] = form.cleaned_data.get('include_gene_names')
-#     orthQuery['go_term'] = form.cleaned_data.get('include_go_terms')
     orthQuery['divergence'] = form.cleaned_data.get('divergence')
     orthQuery['evalue'] = form.cleaned_data.get('evalue')
     orthQuery['distance_lower_limit'] = form.cleaned_data.get('distance_lower_limit')
     orthQuery['distance_upper_limit'] = form.cleaned_data.get('distance_upper_limit')
     
     queryDesc = 'Retrieve Query:\n'
-    queryDesc += '\t{}={}\n'.format(displayName('genomes'), '\n\t\t'.join(['{}: {}'.format(g, GENOME_TO_NAME[g]) for g in orthQuery['genomes']]))
-    queryDesc += '\t{}={}\n'.format(displayName('divergence'), orthQuery['divergence'])
-    queryDesc += '\t{}={}\n'.format(displayName('evalue'), orthQuery['evalue'])
-    queryDesc += '\t{}={}\n'.format(displayName('distance_lower_limit'), orthQuery['distance_lower_limit'])
-    queryDesc += '\t{}={}\n'.format(displayName('distance_upper_limit'), orthQuery['distance_upper_limit'])
-    queryDesc += '\t{}={}\n'.format(displayName('tc_only'), orthQuery['tc_only'])
-#     queryDesc += '\t{}={}\n'.format(displayName('gene_name'), orthQuery['gene_name'])
-#     queryDesc += '\t{}={}\n'.format(displayName('go_term'), orthQuery['go_term'])
+    queryDesc += '\t{} = {}\n'.format(displayName('genomes'), '\n\t\t'.join([GENOME_TO_NAME[g] for g in orthQuery['genomes']]))
+    queryDesc += '\t{} = {}\n'.format(displayName('divergence'), orthQuery['divergence'])
+    queryDesc += '\t{} = {}\n'.format(displayName('evalue'), orthQuery['evalue'])
+    queryDesc += '\t{} = {}\n'.format(displayName('distance_lower_limit'), orthQuery['distance_lower_limit'])
+    queryDesc += '\t{} = {}\n'.format(displayName('distance_upper_limit'), orthQuery['distance_upper_limit'])
+    queryDesc += '\t{} = {}\n'.format(displayName('tc_only'), orthQuery['tc_only'])
     orthQuery['query_desc'] = queryDesc
 
     return orthQuery

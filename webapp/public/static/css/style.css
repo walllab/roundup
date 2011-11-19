@@ -277,8 +277,12 @@ font-size:12px;
 }
 
 
+/* RETRIEVE AND BROWSE PAGE */
 
-
+/* make genome filtering checkbox list inline */
+#input_form ul li {
+display:inline;
+}
 
 
 

@@ -4,6 +4,17 @@
 {% endcomment %}
 
 {% block content %}
+<script>
+var cat_genomes_json = {{ cat_genomes_json|safe }};
+$(function(){
+filterSelect('primary_genome_filter', 'id_primary_genome', cat_genomes_json);
+
+filterSelect('secondary_genomes_filter', 'id_secondary_genome_choices', cat_genomes_json);
+selectToTextarea('id_secondary_genome_choices', 'id_secondary_genomes');
+tidyTextarea('id_secondary_genomes');
+});
+</script>
+
 <div id="mainpage"> 
 <h2>Browse the Roundup Orthology Database</h2> 
 <p>

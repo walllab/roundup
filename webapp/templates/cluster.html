@@ -4,6 +4,15 @@
 {% endcomment %}
 
 {% block content %}
+<script>
+var cat_genomes_json = {{ cat_genomes_json|safe }};
+$(function(){
+filterSelect('genomes_filter', 'id_genome_choices', cat_genomes_json);
+selectToTextarea('id_genome_choices', 'id_genomes');
+tidyTextarea('id_genomes');
+});
+</script>
+
 <div id="mainpage"> 
 <h2>Retrieve Phylogenetic Profiles in the Roundup Orthology Database</h2> 
 <p>
