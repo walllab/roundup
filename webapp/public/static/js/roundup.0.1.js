@@ -109,61 +109,99 @@ function inArray(obj, arr) {
 }
 
 
-$(document).ready( function(){
-        /** check that everything is working **/
-        
-        populateGenomeDropdown();
-        
-        /** Set up responses to events ****************************************/
-        /* transfer selection from dropdown to text area */
-        $('#id_genome_choices').change( function(event){
-                var selected_genome = $("select#id_genome_choices option:selected").attr('value');
-                var previous_genomes = $('#id_genomes').val();
-                $('#id_genomes').val( previous_genomes + selected_genome + '\n' );
+function filterSelect2(checkboxesName, selectId, optionsMap) {
+    // checkboxesName: used as a selector for the checkboxes
+    // selectId: the choices
+    // Use check boxes to populate and filter the options in a select box.
+    console.log('started');
+
+    var filterOptions = function() {
+        // console.log('filtering');
+        var sel = $('#' + selectId);
+        var options = [];
+        sel.empty();
+        $('input[name="' + checkboxesName + '"]:checked').each( function(i,elem){
+                var optionsKey = $(elem).attr('value');
+                options = options.concat(optionsMap[optionsKey]);
             });
-        /* regenerate the select dropdown when checkbox status changes */
-        //$('#id_genome_checkboxes input').change( populateGenomeDropdown );
-        $('#id_genome_checkboxes input').change( makeCheckboxFillDropdown('#id_genome_checkboxes', '#id_genome_choices', cat_to_genomes) );
-        /* tidy typing in the textarea (only after textarea loses focus) */
-        $('#id_genomes').change( function(){
-                console.log("textarea changed")
-                    genomes = $('#id_genomes').val().split( /\n/ );
-                genomes = $.grep($.map(genomes, function(g) {return g.trim();}), 
-                                 function(g) {return g;});
-                genomes.push("");
-                $('#id_genomes').val(genomes.join("\n"));
+        // on production, sort returns bizarre results, not at all sorted.
+        // options.sort(function(opt1, opt2) { return (opt1.name.toLowerCase() > opt2.name.toLowerCase());});
+        $.each(options, function(i, option){
+                sel.append('<option value="' + option.value + '">' + option.name + '</option>');
             });
-        /* monitor textarea */
-        //$('#id_genomes').live('keyup', function(){ console.log('key pressed');} );
-        
-        /** populate the select dropdown based on options corresponding to the checked boxes **/
-        function makeCheckboxFillDropdown(checkboxesId, selectId, optionsMap) {
-            return function() {
-                var sel = $(selectId);
-                sel.empty();
-                $(checkboxesId + ' input:checked').each( function(i,elem){
-                        var optionKey = $(elem).attr('value');
-                        $.each( optionsMap[optionsKey], function(i,option) {
-                                sel.append('<option value="' + option.value + '">' + option.name + '</option>');
-                            });
-                    });
-            };
-        }
+    };
 
-        function populateGenomeDropdown() {
-            var gc = $('#id_genome_choices');
-            gc.empty();
-            $('#id_genome_checkboxes input:checked').each( function(i,elem){
-                    var genome_set = $(elem).attr('value');
-                    $.each( cat_to_genomes[genome_set], function(i,option) {
-                            gc.append('<option value="' + option.value + '">' + option.name + '</option>');
-                        });
-                });
-        }
+    filterOptions();
 
-    });
+    /** Set up responses to events ****************************************/
+    /* regenerate the select dropdown when checkbox status changes */
+    $('input[name="' + checkboxesName + '"]').change(filterOptions);
+}
 
-//keep in mind for later:
-//disable a form element:
-//$('x').attr('disabled', true);
+
+function filterSelect(checkboxesName, selectId, keyedOptions) {
+    // checkboxesName: used as a selector for the checkboxes
+    // selectId: the choices
+    // keyedOptions: a list of tuples of (key, option)
+    // Use check boxes to populate and filter the options in a select box.
+    // Order of options in keyedOptions is preserved.
+    console.log('started');
+
+    var filterOptions = function() {
+        console.log('filtering');
+        var sel = $('#' + selectId);
+        sel.empty();
+        var keys = [];
+        $('input[name="' + checkboxesName + '"]:checked').each(function(i, elem){
+                keys.push($(elem).attr('value'));
+            });
+        console.log(keys);
+        // on production, sort returns bizarre results, not at all sorted.
+        // options.sort(function(opt1, opt2) { return (opt1.name.toLowerCase() > opt2.name.toLowerCase());});
+        $.each(keyedOptions, function(i, ko){
+                if ($.inArray(ko[0], keys) > -1) {
+                    sel.append('<option value="' + ko[1].value + '">' + ko[1].name + '</option>');
+                }
+            });
+    };
+
+    filterOptions();
+
+    /** Set up responses to events ****************************************/
+    /* regenerate the select dropdown when checkbox status changes */
+    $('input[name="' + checkboxesName + '"]').change(filterOptions);
+}
+
+
+function selectToTextarea(selectId, textareaId) {
+    // selectId: the choices
+    // textareaId: where the options end up. 
+    // When an option is selected, it is copied to the last line of the
+    // textarea, followed by a newline.
+    /** Set up responses to events ****************************************/
+    /* transfer selection from dropdown to text area */
+    $('#' + selectId).change( function(event){
+            var selected_genome = $('#' + selectId + " option:selected").attr('value');
+            var previous_genomes = $('#' + textareaId).val();
+            console.log('selected_genome=' + selected_genome);
+            console.log('previous_genomes=' + previous_genomes);
+            $('#' + textareaId).val( previous_genomes + selected_genome + '\n' );
+        });
+}
+
+
+function tidyTextarea(textareaId){
+    // When the textarea is changed, the lines in it are
+    // trimmed, blank lines are removed, and a newline
+    // is added to the end.
+    $('#' + textareaId).change( function(){
+            // console.log("textarea changed");
+            var genomes = $('#' + textareaId).val().split( /\n/ );
+            genomes = $.grep($.map(genomes, function(g) {return g.trim();}), 
+                             function(g) {return g;});
+            genomes.push("");
+            $('#' + textareaId).val(genomes.join("\n"));
+        });
+}
+
 
