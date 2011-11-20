@@ -64,6 +64,7 @@
 # standard library modules
 import collections
 import glob
+import itertools
 import json
 import datetime
 import logging
@@ -114,6 +115,7 @@ GENOME_TO_GENES = 'genome_to_genes'
 TAXON_TO_DATA = 'taxon_to_data'
 BLAST_STATS = 'blast_stats'
 RSD_STATS = 'rsd_stats'
+CHANGE_LOG = 'change_log'
 
 
 def main(ds):
@@ -660,7 +662,87 @@ def prepareJobs(ds, numJobs=2000, pairs=None):
         setJobPairs(ds, job, jobPairs)
 
     getJobs(ds, refresh=True) # refresh the cached metadata
-    
+
+
+def makeChangeLog(ds, others):
+    '''
+    others: a list of other datasets to compare this one too.
+    '''
+    dss = [ds] + others
+    dsids = [getDatasetId(d) for d in dss]
+    data = collections.defaultdict(dict)
+    for d, dsid in zip(dss, dsids):
+        print d
+        genomes = getGenomes(d)
+        print 'len(genomes)=', len(genomes)
+        genomeToName = getGenomeToName(d)
+        genomeToName = {g: genomeToName[g] for g in genomes}
+        print 'len(genomeToName)=', len(genomeToName)
+        genomeToTaxon = getGenomeToTaxon(d)
+        genomeToTaxon = {g: genomeToTaxon[g] for g in genomes}
+        print 'len(genomeToTaxon)=', len(genomeToTaxon)
+        taxonToGenome = {genomeToTaxon[g]: g for g in genomeToTaxon}
+        print 'len(taxonToGenome)=', len(taxonToGenome)
+        taxonToName = {t: genomeToName[taxonToGenome[t]] for t in taxonToGenome}
+        taxToData = getTaxonToData(d)
+        taxToCat = {t: taxToData[t][CAT_CODE] for t in taxToData if CAT_CODE in taxToData[t] }
+        taxons = [genomeToTaxon[g] for g in genomes]
+        euks = [t for t in taxons if taxToCat.get(t) == 'E']
+        assert len(taxons) == len(set(taxons)) == len(genomes) == len(set(genomes))
+        taxons = set(taxons)
+        euks = set(euks)
+        def spec(name):
+            return ' '.join(name.split()[:2])
+        taxonNames = set(taxonToName[g] for g in taxons)
+        eukNames = set([taxonToName[g] for g in euks])
+        taxonSpecies = set([spec(n) for n in taxonNames])
+        eukSpecies = set(spec(n) for n in eukNames)
+        taxonSpeciesToNames = collections.defaultdict(set)
+        [taxonSpeciesToNames[spec(g)].add(g) for g in taxonNames]
+        multiTaxonSpecies = set([s for s in taxonSpeciesToNames if len(taxonSpeciesToNames[s]) > 1])
+        eukSpeciesToNames = collections.defaultdict(set)
+        [eukSpeciesToNames[spec(g)].add(g) for g in eukNames]
+        multiEukSpecies = set([s for s in eukSpeciesToNames if len(eukSpeciesToNames[s]) > 1])
+        data[dsid]['taxons'] = list(taxons) # convert to list b/c json does not serialize sets.  boo.
+        data[dsid]['euks'] = list(euks)
+        data[dsid]['taxonToName'] = taxonToName
+        data[dsid]['taxonNames'] = list(taxonNames)
+        data[dsid]['eukNames'] = list(eukNames)
+        data[dsid]['taxonSpecies'] = list(taxonSpecies)
+        data[dsid]['eukSpecies'] = list(eukSpecies)
+        data[dsid]['multiTaxonSpecies'] = list(multiTaxonSpecies)
+        data[dsid]['multiEukSpecies'] = list(multiEukSpecies)
+        
+    descs = 'taxons euks taxonSpecies eukSpecies multiTaxonSpecies multiEukSpecies'.split()
+    # differences in taxonNames and eukNames are not interesting because names are not comparable when
+    # we use ncbi taxonomy names in one release and uniprot organism names in another.
+    diffs = collections.defaultdict(dict)
+    for dsid1, dsid2 in itertools.permutations(dsids, 2):
+        print 'difference', dsid1, ' - ', dsid2
+        descDiffs = {}
+        for desc in descs:
+            diff = list(set(data[dsid1][desc]) - set(data[dsid2][desc]))
+            size = len(diff)
+            print desc, 'len({}) - len({}) = {}'.format(dsid1, dsid2, size)
+            print '\n'.join(['\t'+str(x) for x in diff])
+            descDiffs[desc] = {'difference': diff, 'size': size}
+        diffs[dsid1][dsid2] = descDiffs
+    sizes = {}
+    for dsid in dsids:
+        print 'sizes', dsid
+        descSizes = {}
+        for i, desc in enumerate(descs):
+            size = len(data[dsid][desc])
+            print desc, 'len({}) = {}'.format(dsid, size)
+            descSizes[desc] = size
+        sizes[dsid] = descSizes
+    for dsid1, dsid2 in itertools.permutations(dsids, 2):
+        print 'difference', dsid1, ' - ', dsid2
+        diff = list(set(data[dsid1]['euks']) - set(data[dsid2]['euks']))
+        print '\n'.join([str(t) + '\t' + str(data[dsid1]['taxonToName'][t]) for t in diff])
+    changeLog = {'data': data, 'differences': diffs, 'sizes': sizes}
+    setData(ds, CHANGE_LOG, changeLog)
+                
 
 
 #################################

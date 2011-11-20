@@ -5,6 +5,7 @@ CLI is used by LSF to run functions and store results.
 '''
 
 import os
+import re
 import sys
 import cPickle
 import logging
@@ -15,8 +16,12 @@ import lsf
 import util
 
 
-# requires python2.7 in the path
-_LSF_DISPATCH_CMD = ['python', os.path.abspath(os.path.join(os.path.dirname(__file__), 'lsfdispatch.py'))]
+# __file__ is e.g. lsfdispatch.py or lsfdispatch.pyc
+_FILE_PATH = os.path.abspath(re.sub(r'(.*\.py)(c|o)?', lambda m: m.group(1), __file__))
+# use the current python executable to run this module
+_LSF_DISPATCH_CMD = [sys.executable, _FILE_PATH]
+
+# print _LSF_DISPATCH_CMD
 
 
 def dispatch(func, args=None, keywords=None, path=None, lsfOptions=None, devnull=True, outfile=None):
