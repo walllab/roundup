@@ -24,7 +24,7 @@ os.environ['ROUNDUP_DEPLOY_ENV'] = DEPLOY_ENV # put deployment env in the enviro
 WEBAPP_PATH = os.path.dirname(os.path.abspath(__file__))
 LSF_SHORT_QUEUE = 'shared_15m'
 LSF_MEDIUM_QUEUE = 'shared_2h'
-LSF_LONG_QUEUE = os.environ.get('ROUNDUP_LSF_LONG_QUEUE', 'shared_2h')
+LSF_LONG_QUEUE = os.environ.get('ROUNDUP_LSF_LONG_QUEUE', 'shared_unlimited')
 
 
 if DEPLOY_ENV == 'prod':
