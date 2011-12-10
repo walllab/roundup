@@ -23,18 +23,18 @@ var countdownAction = function(count, interval, mainAction, intervalAction) {
   }
 };
 
-var waitOnJob = function(job, url) {
+var waitOnJob = function(jobUrl, job, url) {
   // waits, then checks to see if a lsf job is finished.  if so it forwards the browser to url.  otherwise it waits and checks again.
   // while waiting it makes little tickmarks so the user feels like something is happening.
   var msg = $("p#wait_msg").html();
   countdownAction(10, 1000, 
                   function() {
-                    $.ajax({ "url": "{% url 'home.views.job_ready' %}",
+                    $.ajax({ "url": jobUrl,
                              data: {"job": job},
                              dataType: "json",
                              success: function(data) {
                                         if (data.ready) { window.location.replace(url); } 
-                                        else { $("p#wait_msg").html(msg); waitOnJob(job, url); }
+                                        else { $("p#wait_msg").html(msg); waitOnJob(jobUrl, job, url); }
                                       },
                              error: function() { alert("callback failed for job="+job+" and url="+url); }
                            });},
