@@ -1,3 +1,3 @@
 
 DEPLOY_ENV = 'prod'
-PYTHON_EXE = '/home/td23/bin/python2.7'
+PYTHON_EXE = '/groups/cbi/virtualenvs/roundup-1.0/bin/python' # works on debian squeeze

@@ -19,6 +19,18 @@ import sys
 import subprocess
 
 
+def coroutine(func):
+    '''
+    primes a coroutine function by calling next when the coroutine is first constructed.
+    http://www.dabeaz.com/coroutines/
+    '''
+    def start(*args,**kwargs):
+        cr = func(*args,**kwargs)
+        cr.next()
+        return cr
+    return start
+
+
 def humanBytes(num):
     '''
     http://blogmag.net/blog/read/38/Print_human_readable_file_size
