@@ -36,9 +36,6 @@ if DEPLOY_ENV == 'prod':
     BLAST_BIN_DIR = '/opt/blast-2.2.24/bin'
     PROJ_BIN_DIR = '/home/td23/bin' # location of kalign
     NO_LSF = False
-    LSF_SHORT_QUEUE = 'shared_lenny'
-    LSF_MEDIUM_QUEUE = 'shared_lenny'
-    LSF_LONG_QUEUE = 'shared_lenny'
 elif DEPLOY_ENV == 'dev': 
     CURRENT_RELEASE = 'test_dataset'
     PROJ_DIR = '/groups/cbi/dev.roundup'
