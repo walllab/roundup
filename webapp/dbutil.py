@@ -10,9 +10,46 @@ Things this module does not do:
   Get connections, since that is specific to the database server being used (MySQL, Oracle, etc.)
   Generate SQL, since that can be database-specific too. (some exceptions might apply.)
 '''
+
 from __future__ import with_statement
 
 import contextlib
+import logging
+
+
+class OnePool(object):
+    '''
+    An instance is a callable object that returns an open connection.  Multiple calls will return the same connection,
+    if the connection is still "live".  It will open a new connection if necessary.
+    '''
+    def __init__(self, open_conn):
+        '''
+        open: function that returns an open connection
+        '''
+        self.open_conn = open_conn
+        self.conn = None
+
+    def __call__(self):
+        '''
+        returns: an open db connection, opening one if necessary.
+        '''
+        if not self._ping():
+            self.conn = self.open_conn()
+        return self.conn
+
+    def _ping(self):
+        '''
+        returns: True if there is an active connection.  False otherwise.
+        '''
+        if self.conn:
+            try:
+                selectSQL(self.conn, 'SELECT 1')
+                return True
+            except Exception: # <module>.OperationalError happens when the db connection times out.
+                logging.exception('Error encountered in OnePool._ping')
+                return False
+        else:
+            return False
 
 
 @contextlib.contextmanager

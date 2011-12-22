@@ -19,20 +19,6 @@
 
 '''
 
-# # make a test dataset from an existing dataset
-# cd /www/dev.roundup.hms.harvard.edu/webapp && time python -c "import roundup_dataset
-# ds = '/groups/cbi/td23/test_dataset'
-# roundup_dataset.prepareDataset(ds)
-# "
-# mkdir /groups/cbi/td23/test_dataset
-# python -c 'import subprocess;
-# cmd = "time rsync -avz --delete /groups/cbi/roundup/datasets/3/genomes/{}* /groups/cbi/td23/test_dataset/genomes &"
-# cmds = [cmd.format(i) for i in range(10)]
-# for cmd in cmds:
-#   subprocess.call(cmd, shell=True)
-#   '
-# time rsync -avz --delete /groups/cbi/roundup/datasets/3/metadata* /groups/cbi/td23/test_dataset
-
 # # prepare a computation using only a few small genomes
 # cd /www/dev.roundup.hms.harvard.edu/webapp && time python -c "import roundup_dataset
 # ds = '/groups/cbi/td23/test_dataset'
@@ -42,8 +28,6 @@
 # roundup_dataset.setGenomes(ds, genomes)
 # roundup_dataset.prepareJobs(ds, numJobs=10)
 # "
-
-
 
 # taxon used for genome b/c orgCode can be used for multiple organisms (e.g. subspecies).
 # orgName used for genomeName
@@ -78,6 +62,7 @@ import uuid
 
 # our modules
 import config
+import dbutil
 import fasta
 import kvstore
 import lsf
@@ -1426,7 +1411,8 @@ STATS_CACHE = {}
 def getStatsStore(ds):
     if ds not in STATS_CACHE:
         dsId = getDatasetId(ds)
-        kv = kvstore.KVStore(util.ClosingFactoryCM(config.openDbConn), ns='roundup_dataset_{}_{}'.format(dsId, 'stats'))
+        # kv = kvstore.KVStore(util.ClosingFactoryCM(config.openDbConn), ns='roundup_dataset_{}_{}'.format(dsId, 'stats'))
+        kv = kvstore.KVStore(util.FactoryCM(dbutil.OnePool(config.openDbConn)), ns='roundup_dataset_{}_{}'.format(dsId, 'stats'))
         STATS_CACHE[ds] = kv
     return STATS_CACHE[ds]
     
