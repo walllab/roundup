@@ -28,7 +28,7 @@ LSF_LONG_QUEUE = os.environ.get('ROUNDUP_LSF_LONG_QUEUE', 'shared_unlimited')
 
 
 if DEPLOY_ENV == 'prod':
-    CURRENT_RELEASE = '2'
+    CURRENT_RELEASE = '3'
     PROJ_DIR = '/groups/cbi/roundup'
     MAIL_METHOD = 'qmail'
     HTTP_HOST = 'roundup.hms.harvard.edu'
