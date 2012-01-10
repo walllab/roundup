@@ -7,10 +7,9 @@ import sys
 # assume user-defined modules (e.g. index.py) are located with passenger_wsgi.py, this file.
 sys.path.append(os.path.dirname(__file__))
 
-import deploy_env
-
-INTERP = deploy_env.PYTHON_EXE # = "/home/td23/bin/python"
-if sys.executable != INTERP: os.execl(INTERP, INTERP, *sys.argv)
+import deployenv
+if sys.executable != deployenv.PYTHON_EXE:
+    os.execl(deployenv.PYTHON_EXE, deployenv.PYTHON_EXE, *sys.argv)
 
 def exceptionLoggingMiddleware(application, logfile):
     import traceback

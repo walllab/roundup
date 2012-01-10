@@ -5,13 +5,17 @@ Deploy code to development environment on orchestra:
 
     fab dev deploy
 
+Deploy code to a specific dataset (e.g. 3)
+
+    fab ds:3 deploy
+    
 Do a clean deployment of code to production
 
     fab prod all
 
 Initialize the project directories (e.g. In /groups/cbi/dev.roundup) for local environment
 
-    fab initProject
+    fab init_deploy_env
 
 The file allows deployment to remote hosts, assuming key pairs and permissions are good.
 e.g. deploy from laptop to dev.genotator on orchestra.  or to an aws instance.
@@ -22,44 +26,112 @@ On the ec2-instance for user ec2-user, I have in ~/.ssh/authorized_keys, the cbi
 '''
 
 
+import functools
+import getpass
 import os
 import subprocess
 import sys
-import getpass
-import glob
-import argparse
 
-from fabric.api import env, task, run, cd, local, lcd, execute
+import fabric
+from fabric.api import env, task, run, cd, lcd, execute
+from fabric.api import local as lrun
 
-# the only remote host we use right now is roundup
+import fabutil
+
+# http://stackoverflow.com/questions/6725244/running-fabric-script-locally
+# the defaults are to deploy remotely to orchestra.
 env.hosts = ['orchestra.med.harvard.edu']
+env.run = run
+env.cd = cd
+env.rsync = fabutil.rsync
 
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
-HOME_DIR = os.path.expanduser('~')
-deploy_env_kw = {
-    'local': {'deployRoot': os.path.join(HOME_DIR, 'www/dev.roundup.hms.harvard.edu'),
-              'projectRoot': os.path.join(HOME_DIR, 'local.roundup'), },
-    'ds3': {'deployRoot': '/groups/cbi/roundup/datasets/3/code',
-            'projectRoot': '/groups/cbi/roundup', },
-    'dev': {'deployRoot': '/www/dev.roundup.hms.harvard.edu',
-            'projectRoot': '/groups/cbi/dev.roundup', },
-    'prod': {'deployRoot': '/www/roundup.hms.harvard.edu',
-            'projectRoot': '/groups/cbi/roundup', },
+
+
+######################################
+# DEPLOYMENT ENVIRONMENT CONFIGURATION
+######################################
+
+# true if one of the deployment environment tasks has been run.
+env.is_deploy_set = False
+env.is_local = False
+
+# deploy_kw is used to fill in templates for .htaccess and config.py
+# and set up other values used for deployment
+deploy_kw = {
+    'deploy_env': '',
+    'current_release': '',
+    'http_host': '',
+    'site_url_root': '',
+    'proj_dir': '',
+    'deploy_dir': '',
+    'python_exe': '/groups/cbi/virtualenvs/roundup-1.0/bin/python', # works on debian squeeze
+    'blast_bin_dir': '/opt/blast-2.2.24/bin',
+    'proj_bin_dir': '/home/td23/bin',
+    'no_lsf': False,
+    'mail_method': 'qmail',
     }
-DEPLOY_ENV = 'local'
 
 
-#######
-# TASKS
-#######
+def setup_deploy_env(func):
+    '''
+    decorator used to make sure that at least one deployment enviroment setup task has been called.
+    If none has been called, the local() environment will be called.
+    '''
+    @functools.wraps(func)
+    def wrapper(*args, **kws):
+        if not env.is_deploy_set:
+            execute(local)
+        return func(*args, **kws)
+    return wrapper
+
 
 @task
-def ds3():
+def local():
     '''
-    execute this task first to do stuff on dev
+    execute this task first to do stuff on the local deployment environment
     '''
-    global DEPLOY_ENV
-    DEPLOY_ENV = 'ds3'
+    deploy_kw.update({
+        'deploy_env': 'local',
+        'current_release': 'test_dataset',
+        'http_host': 'localhost',
+        'site_url_root': 'http://localhost:8000',
+        'proj_dir': os.path.expanduser('~/local.roundup'),
+        'deploy_dir': os.path.expanduser('~/www/dev.roundup.hms.harvard.edu'),
+        'python_exe': '/Library/Frameworks/Python.framework/Versions/2.7/bin/python2.7',
+        'blast_bin_dir': '/usr/local/ncbi/blast/bin',
+        'proj_bin_dir': '/Users/td23/bin',
+        'no_lsf': True,
+        'mail_method': '', # not sure how to get postfix working.
+        })
+    env.is_deploy_set = True
+    env.is_local = True
+    
+    env.hosts = ['localhost']
+    env.run = lrun
+    env.cd = lcd
+    env.rsync = fabutil.lrsync
+
+    
+@task
+def ds(dsid):
+    '''
+    dsid: id of the dataset, e.g. '3'
+    '''
+    deploy_kw.update({
+        'deploy_env': 'dataset',
+        'current_release': dsid,
+        'http_host': 'roundup.hms.harvard.edu',
+        'site_url_root': 'http://roundup.hms.harvard.edu',
+        'proj_dir': '/groups/cbi/roundup',
+        'deploy_dir': '/groups/cbi/roundup/datasets/{0}/code'.format(dsid),
+        'python_exe': '/groups/cbi/virtualenvs/roundup-1.0/bin/python', # works on debian squeeze
+        'blast_bin_dir': '/opt/blast-2.2.24/bin',
+        'proj_bin_dir': '/home/td23/bin',
+        'no_lsf': False,
+        'mail_method': 'qmail',
+        })
+    env.is_deploy_set = True
 
     
 @task
@@ -67,62 +139,99 @@ def dev():
     '''
     execute this task first to do stuff on dev
     '''
-    global DEPLOY_ENV
-    DEPLOY_ENV = 'dev'
+    deploy_kw.update({
+        'deploy_env': 'dev',
+        'current_release': 'test_dataset',
+        'http_host': 'dev.roundup.hms.harvard.edu',
+        'site_url_root': 'http://dev.roundup.hms.harvard.edu',
+        'proj_dir': '/groups/cbi/dev.roundup',
+        'deploy_dir': '/www/dev.roundup.hms.harvard.edu',
+        'python_exe': '/groups/cbi/virtualenvs/roundup-1.0/bin/python', # works on debian squeeze
+        'blast_bin_dir': '/opt/blast-2.2.24/bin',
+        'proj_bin_dir': '/home/td23/bin',
+        'no_lsf': False,
+        'mail_method': 'qmail',
+        })
+    env.is_deploy_set = True
 
-    
+
 @task
 def prod():
     '''
     execute this task first to do stuff on prod
     '''
-    global DEPLOY_ENV
-    DEPLOY_ENV = 'prod'
+    deploy_kw.update({
+        'deploy_env': 'prod',
+        'current_release': '3',
+        'http_host': 'roundup.hms.harvard.edu',
+        'site_url_root': 'http://roundup.hms.harvard.edu',
+        'proj_dir': '/groups/cbi/roundup',
+        'deploy_dir': '/www/roundup.hms.harvard.edu',
+        'python_exe': '/groups/cbi/virtualenvs/roundup-1.0/bin/python', # works on debian squeeze
+        'blast_bin_dir': '/opt/blast-2.2.24/bin',
+        'proj_bin_dir': '/home/td23/bin',
+        'no_lsf': False,
+        'mail_method': 'qmail',
+        })
+    env.is_deploy_set = True
+
+
+#######
+# TASKS
+#######
 
     
 @task
-def initProject():
+@setup_deploy_env
+def init_deploy_env():
     '''
-    a project contains the data that persists across changes to the codebase.  Like results and log files.
-    this should be called once, not every time code is deployed.
+    sets up the directories used to contain code and the project data that persists
+    across changes to the codebase, like results and log files.
+    this should be called once per deployment environment, not every time code is deployed.
     '''
-    cmd = 'mkdir -p datasets log tmp'
-    if DEPLOY_ENV == 'local':
-        with lcd(deploy_env_kw[DEPLOY_ENV]['projectRoot']):
-            local(cmd)
-    else:
-        with cd(deploy_env_kw[DEPLOY_ENV]['projectRoot']):
-            run(cmd)
+    dirs = [os.path.join(deploy_kw['proj_dir'], d) for d in ['datasets', 'log', 'tmp']]
+    print dirs
+    cmd1 = 'mkdir -p ' + ' '.join(dirs)
+    cmd2 = 'mkdir -p ' + deploy_kw['deploy_dir']
+    env.run(cmd1)
+    env.run(cmd2)
 
 
 @task
+@setup_deploy_env
 def clean():
     '''
     If host is specified, user should also be specified, and vice versa.
     Remove deployed code, dirs and link.  Remake dirs and link.
     '''
-    if DEPLOY_ENV == 'local':
-        return
-
-    with cd(deploy_env_kw[DEPLOY_ENV]['deployRoot']):
-        # clean code dir and link
-        run('rm -rf webapp/* docroot')
-        # make code dir (and dir to link to)
-        run('mkdir -p webapp/public')
-        # make link (b/c apache likes docroot and passenger likes webapp/public).
-        run('ln -s webapp/public docroot')
+    cmds = ['rm -rf webapp/* docroot', # clean code dir and link
+            'mkdir -p webapp/public', # make code dir (and dir to link to)
+            'ln -s webapp/public docroot' # make link (b/c apache likes docroot and passenger likes webapp/public).
+            ]
+    with env.cd(deploy_kw['deploy_dir']):
+        for cmd in cmds:
+            env.run(cmd)
 
 
 @task
+@setup_deploy_env
 def deploy():
     '''
     If host is specified, user should also be specified, and vice versa.
     Copy files from src to deployment dir, including renaming one file.
     '''
-    if DEPLOY_ENV == 'local':
-        return
 
-    deployRoot = deploy_env_kw[DEPLOY_ENV]['deployRoot']
+    deploy_dir = deploy_kw['deploy_dir']
+
+    # instantiate template files with concrete variable values for this deployment environment.
+    infile = os.path.join(BASE_DIR, 'webapp/public/.htaccess.template')
+    outfile = os.path.join(BASE_DIR, 'webapp/public/.htaccess')
+    fabutil.file_format(infile, outfile, keywords=deploy_kw)
+    
+    infile = os.path.join(BASE_DIR, 'webapp/deployenv.py.template')
+    outfile = os.path.join(BASE_DIR, 'webapp/deployenv.py')
+    fabutil.file_format(infile, outfile, keywords=deploy_kw)
+
 
     # copy files to remote destintation, excluding backups, .svn dirs, etc.
     # do not deploy these files/dirs.
@@ -132,46 +241,19 @@ def deploy():
     for e in deployExcludes:
         filterArgs += ['-f', '- {}'.format(e)]
     options = ['--delete', '-avz'] + filterArgs
-    rsync(options, src='webapp', dest=deployRoot, cwd=BASE_DIR, user=env.user, host=env.host)
+    env.rsync(options, src='webapp', dest=deploy_dir, cwd=BASE_DIR, user=env.user, host=env.host)
 
-    with cd(deployRoot):
-        # rename the deployment specific .htacccess file
-        run('cp -p webapp/public/.htaccess.{} webapp/public/.htaccess'.format(DEPLOY_ENV))
-        # rename the deployment specific deploy_env.py file
-        run('cp -p webapp/deploy_env.{}.py webapp/deploy_env.py'.format(DEPLOY_ENV))
-        # tell passenger to restart
-        run ('touch webapp/tmp/restart.txt')
+    # touch passenger restart.txt, so passenger will pick up the changes.
+    with env.cd(deploy_dir):
+        env.run ('touch webapp/tmp/restart.txt')
 
     
 @task
+@setup_deploy_env
 def all():
     execute(clean)
     execute(deploy)
 
-
-#################
-# OTHER FUNCTIONS
-#################
-
-
-def rsync(options, src, dest, user=None, host=None, cwd=None):
-    '''
-    options: list of rsync options, e.g. ['--delete', '-avz']
-    src: source directory (or files).  Note: rsync behavior varies depending on whether or not src dir ends in '/'.
-    dest: destination directory.
-    cwd: change (using subprocess) to cwd before running rsync.
-    This is a helper function for running rsync locally, via subprocess.  Note: shell=False.
-    '''
-    # if remote user and host specified, copy there instead of locally.
-    if user and host:
-        destStr = '{}@{}:{}'.format(user, host, dest)
-    else:
-        destStr = dest
-
-    args = ['rsync'] + options + [src, destStr]
-    print args
-    subprocess.check_call(args, cwd=cwd)
-    
 
 if __name__ == '__main__':
     main()
