@@ -579,11 +579,12 @@ def extractFromDats(ds, dats=None, writing=True, cleanDirs=False, bufSize=500000
     print 'all done.', datetime.datetime.now()
     
 
-def formatGenomes(ds, onGrid=False, clean=False):
+def formatGenomes(ds, onGrid=False, clean=False, jobSize=40):
     '''
     ds: dataset for which to format genomes
     onGrid: if true, formatting will broken into many jobs that get distributed on lsf grid. 
     clean: if True, all jobs will be run.  Otherwise only incomplete jobs will run.
+    jobSize: granularity of splits when running onGrid.  Smaller = more jobs = done sooner, ideally.
     Format genomes for blast.  Formatting is broken into several jobs which are run serially
     on the local machine or distributed on the lsf grid.
     '''
@@ -593,7 +594,7 @@ def formatGenomes(ds, onGrid=False, clean=False):
 
     # To speed formatting, break into jobs and parallelize on LSF.
     funcName = 'roundup_dataset.formatSomeGenomes'
-    jobs = [(funcName, {'ds': ds, 'genomes': gs}) for gs in util.groupsOfN(genomes, 40)] # util.splitIntoN(genomes, 20)]
+    jobs = [(funcName, {'ds': ds, 'genomes': gs}) for gs in util.groupsOfN(genomes, jobSize)] # util.splitIntoN(genomes, 20)]
     print jobs
     ns = getDatasetId(ds) + '_format_genomes'
     lsfOptions = ['-q', config.LSF_SHORT_QUEUE]
@@ -603,13 +604,8 @@ def formatGenomes(ds, onGrid=False, clean=False):
 
 
 def formatSomeGenomes(ds, genomes):
-    genomeToCount = getGenomeToCount(ds)
     for genome in genomes:
         fastaPath = getGenomeFastaPath(ds, genome)
-
-        # paranoid check: our count of sequences should equal the actual number of sequences in the fasta file.
-        assert genomeToCount[genome] == fasta.numSeqsInFastaDb(fastaPath)
-        
         print 'format {}'.format(genome)
         rsd.formatForBlast(fastaPath)
         
