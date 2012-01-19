@@ -579,6 +579,18 @@ def extractFromDats(ds, dats=None, writing=True, cleanDirs=False, bufSize=500000
     print 'all done.', datetime.datetime.now()
     
 
+def updateGenomeCounts(ds):
+    '''
+    Update dataset metadata with the sequence count of each genome fasta file.
+    '''
+    genomes = getGenomes(ds)
+    genomeToCount = {}
+    for g in genomes:
+        genomeToCount[g] = fasta.numSeqsInFastaDb(getGenomeFastaPath(ds, g))
+        print g, genomeToCount[g]
+    updateMetadata(ds, {'genomeToCount': genomeToCount})
+
+
 def formatGenomes(ds, onGrid=False, clean=False, jobSize=40):
     '''
     ds: dataset for which to format genomes
