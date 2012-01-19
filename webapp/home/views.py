@@ -505,7 +505,7 @@ def browse(request):
                 genome = form.cleaned_data['primary_genome']
                 seqIds = roundup_db.getSeqIdsForGeneName(geneName=browseId, genome=genome)
                 if not seqIds: # no seq ids matching the gene name were found.  oh no!
-                    message = 'In your Browse query, Roudnup did not find the gene named "{}" in the genome "{}".  Try searching for a gene name.'.format(browseId, genome)
+                    message = 'In your Browse query, Roudnup did not find the gene named "{}" in the genome "{}".  Try searching for a gene name.'.format(browseId, GENOME_TO_NAME[genome])
                     # store result in cache, so can do a redirect/get. 
                     key = makeUniqueId()
                     roundup_util.cacheSet(key, {'message': message, 'search_type': 'contains', 'query_string': browseId})
