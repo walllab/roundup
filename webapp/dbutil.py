@@ -11,8 +11,6 @@ Things this module does not do:
   Generate SQL, since that can be database-specific too. (some exceptions might apply.)
 '''
 
-from __future__ import with_statement
-
 import contextlib
 import logging
 
@@ -20,7 +18,8 @@ import logging
 class OnePool(object):
     '''
     An instance is a callable object that returns an open connection.  Multiple calls will return the same connection,
-    if the connection is still "live".  It will open a new connection if necessary.
+    if the connection is still "live".  It will open a new connection if no connection is open yet or the existing
+    connection is closed (or otherwise fails.)
     '''
     def __init__(self, open_conn):
         '''
@@ -45,8 +44,10 @@ class OnePool(object):
             try:
                 selectSQL(self.conn, 'SELECT 1')
                 return True
-            except Exception: # <module>.OperationalError happens when the db connection times out.
-                logging.exception('Error encountered in OnePool._ping')
+            except Exception as e: # OperationalError 2006 happens when the db connection times out.
+                if not e.args or e.args[0] != 2006:
+                    # only log non-2006 execptions
+                    logging.exception('Exception encountered when pinging connection in OnePool._ping.')
                 return False
         else:
             return False
