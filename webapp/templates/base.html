@@ -109,15 +109,17 @@ div.panel-flexible div.panel-row-3 div.panel-col-1 { width: 98%; }
 <div id="footer">
 <div class="content">
 <p>This material is based upon work supported by the National Science Foundation under Grant Nos. 0543480 and 0640809 and the National Institutes of Health under Grant No. LM009261. Any opinions, findings, and conclusions or recommendations expressed in this material are those of the author(s) and do not necessarily reflect the views of the National Science Foundation or National Institutes of Health.</p>
-<p class="copy">Copyright (©) 2004-2009 President and Fellows of Harvard College. All Rights Reserved</p>
+<p class="copy">Copyright (©) 2004-{% now "Y" %} President and Fellows of Harvard College. All Rights Reserved</p>
 </div>
 </div>
 <!-- end footer -->
 
 </div> <!-- end wrap -->
 
+{% comment %}
 <!-- activate select elements using chosen -->
 <script type="text/javascript"> $(".chzn-select").chosen(); </script>
+{% endcomment %}
 
 </body>
 </html>

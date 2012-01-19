@@ -103,9 +103,11 @@ def dropRelease(release):
 
 def createRelease(release):
     sqls = ['''CREATE TABLE IF NOT EXISTS {}
-            (id tinyint unsigned auto_increment primary key, name varchar(100) NOT NULL) ENGINE = InnoDB'''.format(releaseTable(release, 'divergences')),
+            (id tinyint unsigned auto_increment primary key,
+            name varchar(100) NOT NULL) ENGINE = InnoDB'''.format(releaseTable(release, 'divergences')),
             '''CREATE TABLE IF NOT EXISTS {}
-            (id tinyint unsigned auto_increment primary key, name varchar(100) NOT NULL) ENGINE = InnoDB'''.format(releaseTable(release, 'evalues')),
+            (id tinyint unsigned auto_increment primary key,
+            name varchar(100) NOT NULL) ENGINE = InnoDB'''.format(releaseTable(release, 'evalues')),
             '''CREATE TABLE IF NOT EXISTS {}
             (id int unsigned auto_increment primary key,
             external_sequence_id varchar(100) NOT NULL,
@@ -185,13 +187,14 @@ def loadRelease(release, genomesFile, divergencesFile, evaluesFile, seqsFile, se
     Why use LOAD DATA INFILE?  Because it is very fast relative to insert.  a discussion of insertion speed: http://dev.mysql.com/doc/refman/5.1/en/insert-speed.html
     
     '''
+    loadGenomes(release, genomesFile)
+
     sqls = ['LOAD DATA LOCAL INFILE %s INTO TABLE {}'.format(releaseTable(release, 'divergences')), 
             'LOAD DATA LOCAL INFILE %s INTO TABLE {}'.format(releaseTable(release, 'evalues')), 
             'LOAD DATA LOCAL INFILE %s INTO TABLE {}'.format(releaseTable(release, 'sequence')), 
             'LOAD DATA LOCAL INFILE %s INTO TABLE {}'.format(releaseTable(release, 'sequence_to_go_term')), 
             ]
-    argsList = [[genomesFile], [divergencesFile], [evaluesFile], [seqsFile], [seqToGoTermsFile]]
-    loadGenomes(release, genomesFile)
+    argsList = [[divergencesFile], [evaluesFile], [seqsFile], [seqToGoTermsFile]]
     with connCM() as conn:
         for sql, args in zip(sqls, argsList):
             print sql, args

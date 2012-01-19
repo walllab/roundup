@@ -15,57 +15,23 @@ import lsf
 # DEPLOYMENT ENVIRONMENT SPECIFIC CONFIGURATION
 ###############################################
 
-# NOTE: deployment magic.  when code is deployed to, e.g. production, deploy_env.py.prod -> deploy_env.py.
-import deploy_env
-DEPLOY_ENV = deploy_env.DEPLOY_ENV
-PYTHON_EXE = deploy_env.PYTHON_EXE
-os.environ['ROUNDUP_DEPLOY_ENV'] = DEPLOY_ENV # put deployment env in the environment for the java pipeline.
+import deployenv
+DEPLOY_ENV = deployenv.DEPLOY_ENV
+PYTHON_EXE = deployenv.PYTHON_EXE
+BLAST_BIN_DIR = deployenv.BLAST_BIN_DIR
+PROJ_BIN_DIR = deployenv.PROJ_BIN_DIR # location of kalign
+SITE_URL_ROOT = deployenv.SITE_URL_ROOT
+NO_LSF = deployenv.NO_LSF
+MAIL_METHOD = deployenv.MAIL_METHOD
+CURRENT_RELEASE = deployenv.CURRENT_RELEASE
+PROJ_DIR = deployenv.PROJ_DIR
+HTTP_HOST = deployenv.HTTP_HOST
 
+os.environ['ROUNDUP_DEPLOY_ENV'] = DEPLOY_ENV # put deployment env in the environment for the java pipeline.
 WEBAPP_PATH = os.path.dirname(os.path.abspath(__file__))
 LSF_SHORT_QUEUE = 'shared_15m'
 LSF_MEDIUM_QUEUE = 'shared_2h'
 LSF_LONG_QUEUE = os.environ.get('ROUNDUP_LSF_LONG_QUEUE', 'shared_unlimited')
-
-
-if DEPLOY_ENV == 'prod':
-    CURRENT_RELEASE = '2'
-    PROJ_DIR = '/groups/cbi/roundup'
-    MAIL_METHOD = 'qmail'
-    HTTP_HOST = 'roundup.hms.harvard.edu'
-    SITE_URL_ROOT = 'http://{}'.format(HTTP_HOST)
-    BLAST_BIN_DIR = '/opt/blast-2.2.24/bin'
-    PROJ_BIN_DIR = '/home/td23/bin' # location of kalign
-    NO_LSF = False
-    LSF_SHORT_QUEUE = 'shared_lenny'
-    LSF_MEDIUM_QUEUE = 'shared_lenny'
-    LSF_LONG_QUEUE = 'shared_lenny'
-elif DEPLOY_ENV == 'dev': 
-    CURRENT_RELEASE = 'test_dataset'
-    PROJ_DIR = '/groups/cbi/dev.roundup'
-    MAIL_METHOD = 'qmail'
-    HTTP_HOST = 'dev.roundup.hms.harvard.edu'
-    SITE_URL_ROOT = 'http://{}'.format(HTTP_HOST)
-    BLAST_BIN_DIR = '/opt/blast-2.2.24/bin'
-    PROJ_BIN_DIR = '/home/td23/bin' # location of kalign
-    NO_LSF = False
-elif DEPLOY_ENV == 'local': 
-    CURRENT_RELEASE = 'test_dataset'
-    PROJ_DIR = os.path.expanduser('~/local.roundup')
-    MAIL_METHOD = '' # not sure how to get postfix working.
-    HTTP_HOST = 'localhost'
-    SITE_URL_ROOT = 'http://{}:8000'.format(HTTP_HOST)
-    BLAST_BIN_DIR = '/usr/local/ncbi/blast/bin'
-    PROJ_BIN_DIR = '/Users/td23/bin' # location of kalign
-    NO_LSF = True
-elif DEPLOY_ENV == 'ds3': 
-    CURRENT_RELEASE = '3'
-    PROJ_DIR = '/groups/cbi/roundup'
-    MAIL_METHOD = 'qmail'
-    HTTP_HOST = 'dev.roundup.hms.harvard.edu'
-    SITE_URL_ROOT = 'http://{}'.format(HTTP_HOST)
-    BLAST_BIN_DIR = '/opt/blast-2.2.24/bin'
-    PROJ_BIN_DIR = '/home/td23/bin' # location of kalign
-    NO_LSF = False
 
 CURRENT_DATASET = os.path.join(PROJ_DIR, 'datasets', CURRENT_RELEASE)
 LOG_FILE = os.path.join(PROJ_DIR, 'log/app.log')

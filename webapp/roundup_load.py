@@ -31,6 +31,7 @@ import orthutil
 def loadDatabase(ds, dropCreate=True, writeLookups=True, writeSeqs=True, readSeqsMetadata=True, loadTables=True):
     '''
     Drop and create the genomes, divergences, evalues, sequence, and sequence_to_go_terms tables
+    Does NOT load orthologs.
     Write files for each table that can be loaded with LOAD DATA INFILE.
     Why use LOAD DATA INFILE?  Because it is very fast relative to insert.  a discussion of insertion speed: http://dev.mysql.com/doc/refman/5.1/en/insert-speed.html
     Load the files into the tables.

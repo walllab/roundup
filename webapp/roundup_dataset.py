@@ -19,20 +19,6 @@
 
 '''
 
-# # make a test dataset from an existing dataset
-# cd /www/dev.roundup.hms.harvard.edu/webapp && time python -c "import roundup_dataset
-# ds = '/groups/cbi/td23/test_dataset'
-# roundup_dataset.prepareDataset(ds)
-# "
-# mkdir /groups/cbi/td23/test_dataset
-# python -c 'import subprocess;
-# cmd = "time rsync -avz --delete /groups/cbi/roundup/datasets/3/genomes/{}* /groups/cbi/td23/test_dataset/genomes &"
-# cmds = [cmd.format(i) for i in range(10)]
-# for cmd in cmds:
-#   subprocess.call(cmd, shell=True)
-#   '
-# time rsync -avz --delete /groups/cbi/roundup/datasets/3/metadata* /groups/cbi/td23/test_dataset
-
 # # prepare a computation using only a few small genomes
 # cd /www/dev.roundup.hms.harvard.edu/webapp && time python -c "import roundup_dataset
 # ds = '/groups/cbi/td23/test_dataset'
@@ -42,8 +28,6 @@
 # roundup_dataset.setGenomes(ds, genomes)
 # roundup_dataset.prepareJobs(ds, numJobs=10)
 # "
-
-
 
 # taxon used for genome b/c orgCode can be used for multiple organisms (e.g. subspecies).
 # orgName used for genomeName
@@ -78,6 +62,7 @@ import uuid
 
 # our modules
 import config
+import dbutil
 import fasta
 import kvstore
 import lsf
@@ -594,11 +579,24 @@ def extractFromDats(ds, dats=None, writing=True, cleanDirs=False, bufSize=500000
     print 'all done.', datetime.datetime.now()
     
 
-def formatGenomes(ds, onGrid=False, clean=False):
+def updateGenomeCounts(ds):
+    '''
+    Update dataset metadata with the sequence count of each genome fasta file.
+    '''
+    genomes = getGenomes(ds)
+    genomeToCount = {}
+    for g in genomes:
+        genomeToCount[g] = fasta.numSeqsInFastaDb(getGenomeFastaPath(ds, g))
+        print g, genomeToCount[g]
+    updateMetadata(ds, {'genomeToCount': genomeToCount})
+
+
+def formatGenomes(ds, onGrid=False, clean=False, jobSize=40):
     '''
     ds: dataset for which to format genomes
     onGrid: if true, formatting will broken into many jobs that get distributed on lsf grid. 
     clean: if True, all jobs will be run.  Otherwise only incomplete jobs will run.
+    jobSize: granularity of splits when running onGrid.  Smaller = more jobs = done sooner, ideally.
     Format genomes for blast.  Formatting is broken into several jobs which are run serially
     on the local machine or distributed on the lsf grid.
     '''
@@ -608,7 +606,7 @@ def formatGenomes(ds, onGrid=False, clean=False):
 
     # To speed formatting, break into jobs and parallelize on LSF.
     funcName = 'roundup_dataset.formatSomeGenomes'
-    jobs = [(funcName, {'ds': ds, 'genomes': gs}) for gs in util.groupsOfN(genomes, 40)] # util.splitIntoN(genomes, 20)]
+    jobs = [(funcName, {'ds': ds, 'genomes': gs}) for gs in util.groupsOfN(genomes, jobSize)] # util.splitIntoN(genomes, 20)]
     print jobs
     ns = getDatasetId(ds) + '_format_genomes'
     lsfOptions = ['-q', config.LSF_SHORT_QUEUE]
@@ -618,13 +616,8 @@ def formatGenomes(ds, onGrid=False, clean=False):
 
 
 def formatSomeGenomes(ds, genomes):
-    genomeToCount = getGenomeToCount(ds)
     for genome in genomes:
         fastaPath = getGenomeFastaPath(ds, genome)
-
-        # paranoid check: our count of sequences should equal the actual number of sequences in the fasta file.
-        assert genomeToCount[genome] == fasta.numSeqsInFastaDb(fastaPath)
-        
         print 'format {}'.format(genome)
         rsd.formatForBlast(fastaPath)
         
@@ -1426,7 +1419,8 @@ STATS_CACHE = {}
 def getStatsStore(ds):
     if ds not in STATS_CACHE:
         dsId = getDatasetId(ds)
-        kv = kvstore.KVStore(util.ClosingFactoryCM(config.openDbConn), ns='roundup_dataset_{}_{}'.format(dsId, 'stats'))
+        # kv = kvstore.KVStore(util.ClosingFactoryCM(config.openDbConn), ns='roundup_dataset_{}_{}'.format(dsId, 'stats'))
+        kv = kvstore.KVStore(util.FactoryCM(dbutil.OnePool(config.openDbConn)), ns='roundup_dataset_{}_{}'.format(dsId, 'stats'))
         STATS_CACHE[ds] = kv
     return STATS_CACHE[ds]
     

@@ -24,76 +24,153 @@ git checkout master
 # THE MAKING OF A DATASET / RELEASE
 ###################################
 
-# First figure out which release this is.  If it is the second release of 2011, then the release name 2011_02 and the dataset is /groups/cbi/roundup/datasets/2011_02
+# Figure out which release this is.  If the latest release is 2, then this release is 3 and the dataset is /groups/cbi/roundup/datasets/3
 # many of these steps take a while, minutes to hours.  computeJobs takes weeks (on a large dataset).
-cd /www/dev.roundup.hms.harvard.edu/webapp && time python -c 'import roundup_dataset; ds = "/groups/cbi/roundup/datasets/2011_02"; roundup_dataset.prepareDataset(ds)'
 
+# deploy code to the dataset.  Many steps take hours, days, or weeks, so code is deployed independent from dev or prod code
+# so they can vary without interfering with each other.
+fab ds:3 init_deploy_env
+
+# some commands require >8GB RAM, so increase the resource requirement on lsf so job is not killed.
+bsub -Is -q shared_int_12h -R "rusage[mem=16384]" bash
+
+# change dir to where the code is located
+cd /groups/cbi/roundup/datasets/3/code/webapp
+
+
+# create a dataset on orchestra
+time python -c "import roundup_dataset; ds = '/groups/cbi/roundup/datasets/3'; roundup_dataset.prepareDataset(ds)"
+
+# download and process sources
+time python -c "import roundup_dataset; ds = '/groups/cbi/roundup/datasets/3'; roundup_dataset.downloadSources(ds)"
+time python -c "import roundup_dataset; ds = '/groups/cbi/roundup/datasets/3'; roundup_dataset.processSources(ds)"
+
+# create a dataset on orchestra, the directories and other bits that make up a dataset.
+time python -c "import roundup_dataset; ds = '/groups/cbi/roundup/datasets/3'; roundup_dataset.prepareDataset(ds)"
+# download and process sources
 # sometimes this needs to be rerun a few times, since the downloads of the large dat files can fail.
-cd /www/dev.roundup.hms.harvard.edu/webapp && time python -c 'import roundup_dataset; ds = "/groups/cbi/roundup/datasets/2011_02"; roundup_dataset.downloadSources(ds)'
+time python -c "import roundup_dataset; ds = '/groups/cbi/roundup/datasets/3'; roundup_dataset.downloadSources(ds)"
+time python -c "import roundup_dataset; ds = '/groups/cbi/roundup/datasets/3'; roundup_dataset.processSources(ds)"
+# extract some metadata
+time python -c "import roundup_dataset; ds = '/groups/cbi/roundup/datasets/3'; roundup_dataset.extractUniprotRelease(ds)"
+time python -c "import roundup_dataset; ds = '/groups/cbi/roundup/datasets/3'; roundup_dataset.extractTaxonData(ds)"
+time python -c "import roundup_dataset; ds = '/groups/cbi/roundup/datasets/3'; roundup_dataset.extractFromGeneOntology(ds)"
+# look at dats for the counts of various genomes, completes, reference, sprot, etc.
+time python -c "import roundup_dataset; ds = '/groups/cbi/roundup/datasets/3'; roundup_dataset.examineDats(ds)"
+# look for bad surprises
+cat dat_surprises.txt | cut -f1 | sort | uniq
 
-cd /www/dev.roundup.hms.harvard.edu/webapp && time python -c 'import roundup_dataset; ds = "/groups/cbi/roundup/datasets/2011_02"; roundup_dataset.splitUniprotIntoGenomes(ds)'
-cd /www/dev.roundup.hms.harvard.edu/webapp && time python -c 'import roundup_dataset; ds = "/groups/cbi/roundup/datasets/2011_02"; roundup_dataset.formatGenomes(ds)'
-cd /www/dev.roundup.hms.harvard.edu/webapp && time python -c 'import roundup_dataset; ds = "/groups/cbi/roundup/datasets/2011_02"; roundup_dataset.extractFromFasta(ds)'
-cd /www/dev.roundup.hms.harvard.edu/webapp && time python -c 'import roundup_dataset; ds = "/groups/cbi/roundup/datasets/2011_02"; roundup_dataset.extractFromIdMapping(ds)'
-cd /www/dev.roundup.hms.harvard.edu/webapp && time python -c 'import roundup_dataset; ds = "/groups/cbi/roundup/datasets/2011_02"; roundup_dataset.extractTaxonData(ds)'
-cd /www/dev.roundup.hms.harvard.edu/webapp && time python -c 'import roundup_dataset; ds = "/groups/cbi/roundup/datasets/2011_02"; roundup_dataset.extractFromGeneOntology(ds)'
-cd /www/dev.roundup.hms.harvard.edu/webapp && time python -c 'import roundup_dataset; ds = "/groups/cbi/roundup/datasets/2011_02"; roundup_dataset.extractUniprotRelease(ds)'
 
-# the taxon ids for some genomes in UniProt Release 2011_06 did not have corresponding taxon info from ncbi.  these steps are to find those taxons and manually add the data.
-cd /www/dev.roundup.hms.harvard.edu/webapp && time python -c 'import roundup_dataset; ds = "/groups/cbi/roundup/datasets/2011_02"; roundup_dataset.findMissingTaxonToData(ds)'
-cd /www/dev.roundup.hms.harvard.edu/webapp && time python -c 'import roundup_dataset; ds = "/groups/cbi/roundup/datasets/2011_02"; roundup_dataset.setMissingTaxonToData(ds)'
+time python -c "import roundup_dataset; ds = '/groups/cbi/roundup/datasets/3'; roundup_dataset.setGenomesFromCounts(ds)"
+# some taxons will be missing data, either b/c they do not have an ncbi taxon id or b/c they have several (perhaps they are in transition
+# from one id to another)
+time python -c "import roundup_dataset; ds = '/groups/cbi/roundup/datasets/3'; roundup_dataset.findMissingTaxonToData(ds)"
+# same missing taxons as in uniprot release 2011_10
+# fix the missing taxon data
+time python -c "import roundup_dataset; 
+ds = '/groups/cbi/roundup/datasets/3';
+missingData = {
+'654926': {roundup_dataset.NAME: 'Ectocarpus siliculosus virus 1 (isolate New Zealand/Kaikoura/1988)',
+           roundup_dataset.CAT_CODE: 'V',
+           roundup_dataset.CAT_NAME: 'Viruses and Viroids'},
+'654925': {roundup_dataset.NAME: 'Emiliania huxleyi virus 86 (isolate United Kingdom/English Channel/1999)',
+           roundup_dataset.CAT_CODE: 'V',
+           roundup_dataset.CAT_NAME: 'Viruses and Viroids'},
+'1054147': {roundup_dataset.NAME: 'Dictyostelium fasciculatum (strain SH3)',
+           roundup_dataset.CAT_CODE: 'E',
+           roundup_dataset.CAT_NAME: 'Eukaryota'},
+'587202': {roundup_dataset.NAME: 'Variola virus (isolate Human/Japan/Yamada MS-2(A)/1946)',
+           roundup_dataset.CAT_CODE: 'V',
+           roundup_dataset.CAT_NAME: 'Viruses and Viroids'},
+'587203': {roundup_dataset.NAME: 'Variola virus (isolate Human/Brazil/v66-39/1966)',
+           roundup_dataset.CAT_CODE: 'V',
+           roundup_dataset.CAT_NAME: 'Viruses and Viroids'},
+'587201': {roundup_dataset.NAME: 'Variola virus (isolate Human/South Africa/102/1965)',
+           roundup_dataset.CAT_CODE: 'V',
+           roundup_dataset.CAT_NAME: 'Viruses and Viroids'},
+}
+roundup_dataset.setMissingTaxonToData(ds, missingData)"
 
-cd /www/dev.roundup.hms.harvard.edu/webapp && time python -c 'import roundup_dataset; ds = "/groups/cbi/roundup/datasets/2011_02"; roundup_dataset.prepareComputation(ds)'
-cd /www/dev.roundup.hms.harvard.edu/webapp && time python -c 'import roundup_dataset; ds = "/groups/cbi/roundup/datasets/2011_02"; roundup_dataset.computeJobs(ds)'
-cd /www/dev.roundup.hms.harvard.edu/webapp && time python -c 'import roundup_dataset; ds = "/groups/cbi/roundup/datasets/2011_02"; roundup_dataset.extractDatasetStats(ds)'
-cd /www/dev.roundup.hms.harvard.edu/webapp && time python -c 'import roundup_dataset; ds = "/groups/cbi/roundup/datasets/2011_02"; roundup_dataset.extractPerformanceStats(ds)'
+# confirm that you fixed all missing taxon data
+time python -c "import roundup_dataset; ds = '/groups/cbi/roundup/datasets/3'; roundup_dataset.findMissingTaxonToData(ds)"
+# extract lots of information, including the fasta genomes from the dat files.
+time python -c "import roundup_dataset; ds = '/groups/cbi/roundup/datasets/3'; roundup_dataset.extractFromDats(ds)"
+# format the fasta genomes.  run on lsf to speed it up.
+time python -c "import roundup_dataset; ds = '/groups/cbi/roundup/datasets/3'; roundup_dataset.formatGenomes(ds, onGrid=True)"
+# prepare jobs that will compute orthologs
+time python -c "import roundup_dataset; ds = '/groups/cbi/roundup/datasets/3'; roundup_dataset.prepareJobs(ds)"
 
-# making all genomes and orthologs available for download.
-cd /www/dev.roundup.hms.harvard.edu/webapp && time python -c 'import roundup_dataset; ds = "/groups/cbi/roundup/datasets/2011_02"; roundup_dataset.processGenomesForDownload(ds)'
-cd /www/dev.roundup.hms.harvard.edu/webapp && time python -c 'import roundup_dataset; ds = "/groups/cbi/roundup/datasets/2011_02"; roundup_dataset.collateOrthologs(ds)'
+# compute the orthologs on lsf.  This takes a long time (weeks, months).  When jobs fail, rerun this command to resubmit them to lsf.
+time python -c "import roundup_dataset; ds = '/groups/cbi/roundup/datasets/3'; roundup_dataset.computeJobs(ds)"
+# when all jobs are done, run again to confirm that all jobs are done.
+time python -c "import roundup_dataset; ds = '/groups/cbi/roundup/datasets/3'; roundup_dataset.computeJobs(ds)"
+
+# compare differences between two datasets and save those differences in a "changelog".
+time python -c "import roundup_dataset; ds = '/groups/cbi/roundup/datasets/3';
+others = ['/groups/cbi/roundup/datasets/2']
+roundup_dataset.makeChangeLog(ds, others)"
+
+# when computation is finished, extract stats and prepare files for download
+bsub time python -c "import roundup_dataset; ds = '/groups/cbi/roundup/datasets/3'; roundup_dataset.extractDatasetStats(ds)"
+bsub time python -c "import roundup_dataset; ds = '/groups/cbi/roundup/datasets/3'; roundup_dataset.extractPerformanceStats(ds)"
+# make all genomes and orthologs available for download.
+bsub time python -c "import roundup_dataset; ds = '/groups/cbi/roundup/datasets/3'; roundup_dataset.processGenomesForDownload(ds)"
+bsub time python -c "import roundup_dataset; ds = '/groups/cbi/roundup/datasets/3'; roundup_dataset.collateOrthologs(ds)"
 # orthoxml is skipped b/c the orthoxml files are too large.
-# cd /www/dev.roundup.hms.harvard.edu/webapp && time python -c 'import roundup_dataset; ds = "/groups/cbi/roundup/datasets/2011_02"; roundup_dataset.convertToOrthoXML(ds)'
-cd /www/dev.roundup.hms.harvard.edu/webapp && time python -c 'import roundup_dataset; ds = "/groups/cbi/roundup/datasets/2011_02"; roundup_dataset.zipDownloadPaths(ds)'
+# time python -c "import roundup_dataset; ds = '/groups/cbi/roundup/datasets/3'; roundup_dataset.convertToOrthoXML(ds)"
+# when genomes and orthologs are ready for download, compress genomes and ortholog download files.  This takes a long time.  Could be parallelized.
+bsub time python -c "import roundup_dataset; ds = '/groups/cbi/roundup/datasets/3'; roundup_dataset.zipDownloadPaths(ds)"
 
-# this is done on the day one releases to production.  Or it can be set manually by passing in a datetime.date object.
-cd /www/dev.roundup.hms.harvard.edu/webapp && time python -c 'import roundup_dataset; ds = "/groups/cbi/roundup/datasets/2011_02"; roundup_dataset.setReleaseDate(ds)'
 
 #####################################
 # LOADING A DATASET INTO THE DATABASE
 #####################################
 
-# Commands show how to use ROUNDUP_MYSQL_SERVER and ROUNDUP_MYSQL_DB environment variables to make the dev code load into the prod database.
-# Merely prepend the right env vars to the command.
+# inspect the tables using phpMyAdmin to get a sense of the size of the tables you will be inserting.
+# make sure there is enough space in the database
+https://orchestra.med.harvard.edu/phpMyAdmin/index.php
 
-# load genomes, divergences, evalues, sequence, and sequence_to_go_term tables into database using dev code and prod database
-cd /www/dev.roundup.hms.harvard.edu/webapp && ROUNDUP_MYSQL_SERVER=mysql.cl.med.harvard.edu ROUNDUP_MYSQL_DB=roundup time python -c "import roundup_load;
-ds = '/groups/cbi/roundup/datasets/201106_dataset'
-roundup_load.loadDatabase(ds)
+# drop older unused dataset tables if not enough space.
+# drop roundup_1_* tables, the tables from penultimate release.
+# echo 'drop table if exists roundup_1_divergences, roundup_1_evalues,
+# roundup_1_genomes, roundup_1_results, roundup_1_sequence, roundup_1_sequence_to_go_term' | mysql roundup
+cd /groups/cbi/roundup/datasets/3/code/webapp && time python -c "import roundup_db
+release = '1'
+roundup_db.dropRelease(release)
+roundup_db.dropReleaseResults(release)
 "
 
-# drop/create the results table.  track what has been loaded with a dones table.  use dev code and prod database.
-cd /www/dev.roundup.hms.harvard.edu/webapp && ROUNDUP_MYSQL_SERVER=mysql.cl.med.harvard.edu ROUNDUP_MYSQL_DB=roundup time python -c "import roundup_load;
-ds = '/groups/cbi/roundup/datasets/201106_dataset'
-roundup_load.initLoadOrthDatas(ds)
-"
+# load sequences, genomes, etc.
+cd /groups/cbi/roundup/datasets/3/code/webapp && \
+bsub -R "rusage[mem=16384]" time python -c "import roundup_load; ds = '/groups/cbi/roundup/datasets/3'; roundup_load.loadDatabase(ds)"
 
-# load orthologs into the results table.  this takes a while.  hours or days for a big dataset. 
-# if this job fails, rerunning the command will resume it (more or less) from where it left off.
-cd /www/dev.roundup.hms.harvard.edu/webapp && ROUNDUP_MYSQL_SERVER=mysql.cl.med.harvard.edu ROUNDUP_MYSQL_DB=roundup bsub -q shared_12h time python -c "import roundup_load;
-ds = '/groups/cbi/roundup/datasets/201106_dataset'
-roundup_load.loadOrthDatas(ds)
-"
+# when that is done, prepare to load orthologs
+cd /groups/cbi/roundup/datasets/3/code/webapp && \
+bsub -R "rusage[mem=16384]" time python -c "import roundup_load; ds = '/groups/cbi/roundup/datasets/3'; roundup_load.initLoadOrthDatas(ds)"
+# when that is done, load orthologs.  This can take a day or two.
+cd /groups/cbi/roundup/datasets/3/code/webapp && \
+bsub -R "rusage[mem=16384]" time python -c "import roundup_load; ds = '/groups/cbi/roundup/datasets/3'; roundup_load.loadOrthDatas(ds)"
 
-# after (a day or so when) the loadResulta job finishes.  Run it again to confirm that everything has loaded.
-cd /www/dev.roundup.hms.harvard.edu/webapp && ROUNDUP_MYSQL_SERVER=mysql.cl.med.harvard.edu ROUNDUP_MYSQL_DB=roundup bsub -q shared_12h time python -c "import roundup_load;
-ds = '/groups/cbi/roundup/datasets/201106_dataset'
-roundup_load.loadOrthDatas(ds)
-"
+# when that is done, run again to confirm that everything is loaded.  This should run quickly (a few minutes?).
+cd /groups/cbi/roundup/datasets/3/code/webapp && \
+bsub -R "rusage[mem=16384]" time python -c "import roundup_load; ds = '/groups/cbi/roundup/datasets/3'; roundup_load.loadOrthDatas(ds)"
 
-cd /www/dev.roundup.hms.harvard.edu/webapp && ROUNDUP_MYSQL_SERVER=mysql.cl.med.harvard.edu ROUNDUP_MYSQL_DB=roundup time python -c "import roundup_load;
-ds = '/groups/cbi/roundup/datasets/2010_01'
-roundup_load.loadDatabase(ds)
-"
+
+#############################################
+# RELEASE A DATASET TO THE PRODUCTION WEBSITE
+#############################################
+
+# Set the release date of the dataset.
+# This is done on the day the dataset is released on the production website.  
+# Or it can be set manually by passing in a datetime.date object.
+time python -c "import roundup_dataset; ds = '/groups/cbi/roundup/datasets/3'; roundup_dataset.setReleaseDate(ds)"
+
+# Update the current dataset of the production website
+# by changing 'current_release' in the prod() task and redeploying to production
+# This seems wrong.  This stuff should probably be done in the database.
+cd ~/work/roundup
+emacs fabfile.py
+fab prod deploy
 
 
 ##################################################################

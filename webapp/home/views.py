@@ -505,7 +505,7 @@ def browse(request):
                 genome = form.cleaned_data['primary_genome']
                 seqIds = roundup_db.getSeqIdsForGeneName(geneName=browseId, genome=genome)
                 if not seqIds: # no seq ids matching the gene name were found.  oh no!
-                    message = 'In your Browse query, Roudnup did not find the gene named "{}" in the genome "{}".  Try searching for a gene name.'.format(browseId, genome)
+                    message = 'In your Browse query, Roundup did not find any gene named "{}" in the genome "{}".  Try searching for a gene name.'.format(browseId, GENOME_TO_NAME[genome])
                     # store result in cache, so can do a redirect/get. 
                     key = makeUniqueId()
                     roundup_util.cacheSet(key, {'message': message, 'search_type': 'contains', 'query_string': browseId})
@@ -530,8 +530,8 @@ def browse(request):
 
     # example = json.dumps({'primary_genome': '559292', 'identifier': 'Q03834',
     #                       'identifier_type': 'seq_id_type', 'secondary_genomes': ['9606', '10090']})
-    example = json.dumps({'primary_genome': 'Saccharomyces cerevisiae (strain ATCC 204508 / S288c)',
-                          'identifier': 'Q03834', 'identifier_type': 'seq_id_type',
+    example = json.dumps({'primary_genome': 'Drosophila melanogaster',
+                          'identifier': 'Q9VVT2', 'identifier_type': 'seq_id_type',
                           'secondary_genomes': 'Homo sapiens\nMus musculus\n'})
     # example = "{'primary_genome': 'MYCGE', 'secondary_genomes': ['MYCHH', 'MYCH1']}" # javascript
     # , 'include_gene_name': 'true', 'include_go_term': 'true'}" # javascript

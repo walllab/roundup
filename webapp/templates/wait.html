@@ -8,7 +8,7 @@ message
 
 {% block content %}
 <script type="text/javascript">
-$(function(){waitOnJob("{{ job }}", "{{ url }}");});
+$(function(){waitOnJob("{% url 'home.views.job_ready' %}", "{{ job }}", "{{ url }}");});
 </script>
 <p id="wait_msg">{{ message }}</p>
 {% endblock content %}
