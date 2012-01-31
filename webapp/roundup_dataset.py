@@ -1035,6 +1035,7 @@ def cleanGenomes(ds):
 def computeJobs(ds):
     '''
     submit all incomplete and non-running jobs to lsf, so they can compute their respective pairs.
+    returns: True if all jobs are done.
     '''
     # awkward: a dataset job is a name of a directory and a set of pairs to compute orthologs for.
     # and a workflow job is a tuple of function name and keywords
@@ -1043,7 +1044,7 @@ def computeJobs(ds):
     ns = getDatasetId(ds) + '_compute_jobs'
     workflowJobs = [(func, {'ds': ds, 'job': job}) for job in jobs]
     lsfOptions = ['-R', 'rusage[tmp=500]', '-q', config.LSF_LONG_QUEUE]
-    workflow.runJobs(ns, workflowJobs, names=jobs, lsfOptions=lsfOptions, onGrid=True, devnull=True)
+    return workflow.runJobs(ns, workflowJobs, names=jobs, lsfOptions=lsfOptions, onGrid=True, devnull=True)
 
 
 def computeJob(ds, job):
