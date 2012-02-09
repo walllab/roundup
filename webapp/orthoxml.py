@@ -62,7 +62,8 @@ class Notes(object):
 class Gene(object):
     def __init__(self, iden, geneId=None, protId=None, transcriptId=None):
         '''
-        iden: required.  the id used to identify the gene in the orthoxml document.
+        iden: required.  the integer (or string of an integer) id used to identify the gene in the orthoxml document.
+          Unique among other gene ids in the document.
         geneId: an external gene identifier, presumably from the database associated with this Gene.
         protId: an external protein identifier, presumably from the database associated with this Gene.
         transcriptId: an external transcript identifier, presumably from the database associated with this Gene.

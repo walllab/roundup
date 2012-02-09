@@ -845,13 +845,25 @@ def getDownloadPaths(ds):
 
 
 def makeOrthoxmlSpecies(genomeToGenes, genomeToName, genomeToTaxon, uniprotRelease):
+    '''
+    Create a orthoxml.Species object for each genome in genomeToGenes, generating document-unique ids for each gene.
+    returns: a list of orthoxml.Species objects, and a dict from gene to the integer id used as a gene id
+    for the genes in the Species list.
+    '''
     speciesList = []
+    geneToIden = {}
+    iden = 0 # orthoxml wants a interger gene id for each gene, internal to the xml document.
     for genome in genomeToGenes:
-        genes = [orthoxml.Gene(gene, protId=gene) for gene in genomeToGenes[genome]]
+        genes = []
+        for gene in genomeToGenes[genome]:
+            iden += 1
+            genes.append(orthoxml.Gene(iden, protId=gene))
+            geneToIden[gene] = iden
+        # genes = [orthoxml.Gene(gene, protId=gene) for gene in genomeToGenes[genome]]
         database = orthoxml.Database("Uniprot", uniprotRelease, genes=genes, protLink="http://www.uniprot.org/uniprot/")
         species = orthoxml.Species(genomeToName[genome], genomeToTaxon[genome], [database])
         speciesList.append(species)
-    return speciesList
+    return speciesList, geneToIden
 
 
 def convertOrthDatasToXml(ds, orthDatas, orthDatasAgain, xmlOut):
@@ -879,7 +891,7 @@ def convertOrthDatasToXml(ds, orthDatas, orthDatasAgain, xmlOut):
             genomeToGenes[sdb].add(sid)
         
     print 'making species'
-    speciesList = makeOrthoxmlSpecies(genomeToGenes, genomeToName, genomeToTaxon, uniprotRelease)    
+    speciesList, geneToIden = makeOrthoxmlSpecies(genomeToGenes, genomeToName, genomeToTaxon, uniprotRelease)    
 
     scoreDef = orthoxml.ScoreDef('dist', 'Maximum likelihood evolutionary distance')
 
@@ -889,8 +901,8 @@ def convertOrthDatasToXml(ds, orthDatas, orthDatasAgain, xmlOut):
         for params, orthologs in orthDatasAgain:
             qdb, sdb, div, evalue = params
             for qid, sid, dist in orthologs:
-                qGeneRef = orthoxml.GeneRef(qid)
-                sGeneRef = orthoxml.GeneRef(sid)
+                qGeneRef = orthoxml.GeneRef(geneToIden[qid])
+                sGeneRef = orthoxml.GeneRef(geneToIden[sid])
                 group = orthoxml.OrthologGroup([qGeneRef, sGeneRef], scores=[orthoxml.Score(scoreDef.id, dist)])
                 yield group
 
@@ -914,7 +926,7 @@ def convertOrthGroupsToXml(ds, groups, genomeToGenes, div, evalue, xmlOut):
     roundupRelease = getReleaseName(ds)
     
     print 'making species'
-    speciesList = makeOrthoxmlSpecies(genomeToGenes, genomeToName, genomeToTaxon, uniprotRelease)    
+    speciesList, geneToIden = makeOrthoxmlSpecies(genomeToGenes, genomeToName, genomeToTaxon, uniprotRelease)    
 
     scoreDef = orthoxml.ScoreDef('avgdist', 'Mean maximum likelihood evolutionary distance of all orthologous pairs in a group')
     
@@ -922,7 +934,7 @@ def convertOrthGroupsToXml(ds, groups, genomeToGenes, div, evalue, xmlOut):
 
     def groupGen():
         for genes, avgDist in groups:
-            geneRefs = [orthoxml.GeneRef(gene) for gene in genes]
+            geneRefs = [orthoxml.GeneRef(geneToIden[gene]) for gene in genes]
             score = orthoxml.Score(scoreDef.id, str(avgDist))
             group = orthoxml.OrthologGroup(geneRefs, scores=[score])
             yield group

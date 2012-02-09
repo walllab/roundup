@@ -261,8 +261,7 @@ def download(request):
     orthologsSizes = [util.humanBytes(os.path.getsize(path)) for path in orthologsPaths]
     orthologsFilenames = [os.path.basename(path) for path in orthologsPaths]
     orthologsData = zip(divEvalues, orthologsFilenames, orthologsSizes)
-    # example = "{'first_genome': '9606', 'second_genome': '10090'}"
-    example = "{'first_genome': 'HUMAN', 'second_genome': 'MOUSE'}"
+    example = "{'first_genome': '9606', 'second_genome': '10090'}"
     # example = json.dumps({'first_genome': 'Homo sapiens', 'second_genome': 'Mus musculus'})
     return django.shortcuts.render(request, 'download.html', {'form': form, 'nav_id': 'download', 'form_doc_id': 'download',
                                                          'form_action': django.core.urlresolvers.reverse(download), 'form_example': example,
