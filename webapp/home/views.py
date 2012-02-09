@@ -341,9 +341,7 @@ def lookup(request):
     else:
         form = LookupForm() # An unbound form
 
-    # example = "{'fasta': '>example_nameline\\nMYSIVKEIIVDPYKRLKWGFIPVKRQVEDLPDDLNSTEIV\\nTISNSIQSHETAENFITTTSEKDQLHFETSSYSEHKDNVN\\nVTRSYEYRDEADRPWWRFFDEQEYRINEKERSHNKWYS\\nWFKQGTSFKEKKLLIKLDVLLAFYSCIAYWVKYLD', 'genome': '559292'}"
-    # example = "{'fasta': '>example_nameline\\nMYSIVKEIIVDPYKRLKWGFIPVKRQVEDLPDDLNSTEIV\\nTISNSIQSHETAENFITTTSEKDQLHFETSSYSEHKDNVN\\nVTRSYEYRDEADRPWWRFFDEQEYRINEKERSHNKWYS\\nWFKQGTSFKEKKLLIKLDVLLAFYSCIAYWVKYLD', 'genome': 'Saccharomyces cerevisiae (strain ATCC 204508 / S288c)'}"
-    example = "{'fasta': '>example_nameline\\nMYSIVKEIIVDPYKRLKWGFIPVKRQVEDLPDDLNSTEIV\\nTISNSIQSHETAENFITTTSEKDQLHFETSSYSEHKDNVN\\nVTRSYEYRDEADRPWWRFFDEQEYRINEKERSHNKWYS\\nWFKQGTSFKEKKLLIKLDVLLAFYSCIAYWVKYLD', 'genome': 'YEAST'}"
+    example = "{'fasta': '>example_nameline\\nMNFLWKGRRFLIAGILPTFEGAADEIVDKENKTYKAFLASKPPEETGLERLKQMFTIDEF', 'genome': '7227'}"
     return django.shortcuts.render(request, 'lookup.html', {'form': form, 'nav_id': 'lookup', 'form_doc_id': 'lookup',
                                                             'form_action': django.core.urlresolvers.reverse(lookup), 'form_example': example})
 
@@ -591,9 +589,7 @@ def cluster(request):
     else:
         form = ClusterForm(initial={'genomes_filter': [value for value, name in CAT_CHOICES]}) # An unbound form
 
-    # example = "{'genomes': ['9606', '10090', '559292']}" # Human, Mouse, Yeast (S. cerevisiae)
-    example = json.dumps({'genomes': 'Homo sapiens\nMus musculus\nSaccharomyces cerevisiae (strain ATCC 204508 / S288c)\n'})
-    # example = "{'genomes': ['MYCGE', 'MYCHH', 'MYCHP']}"
+    example = json.dumps({'genomes': 'Homo sapiens\nMus musculus\nDrosophila melanogaster\n'})
     return django.shortcuts.render(request, 'cluster.html',
                                    {'form': form, 'nav_id': 'cluster', 'form_doc_id': 'cluster', 'chosen_ids': ['id_genomes'],
                                     'form_action': django.core.urlresolvers.reverse(cluster), 'form_example': example,
