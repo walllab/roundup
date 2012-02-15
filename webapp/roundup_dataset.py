@@ -789,15 +789,26 @@ def collateOrthologs(ds):
             fh.close()
 
 
-def convertToOrthoXML(ds, onGrid=True, clean=False):
+def convertToOrthoXML(ds, origin, originVersion, databaseName, databaseVersion, protLink=None, onGrid=True, clean=False):
     '''
+    origin: e.g. 'roundup'
+    originVersion: e.g. getReleaseName(ds)
+    databaseName: e.g. 'Uniprot'
+    databaseVersion: e.g. getUniprotRelease(ds)
+    protLink: e.g. 'http://www.uniprot.org/uniprot/'
     convert collated orthologs files to orthoxml format.
     clean: if True, will delete the xml files if they already exist, and also clean the dones for these jobs
     onGrid: if True, will convert txt files to xml in parallel on lsf.  Otherwise, will run serially in this process.
     '''
     divEvalues, txtPaths, xmlPaths = getDownloadPaths(ds)
     ns = getDatasetId(ds) + '_to_orthoxml'
-    jobs = [('roundup_dataset.convertTxtToOrthoXML', {'ds': ds, 'txtPath': txtPath, 'xmlPath': xmlPath}) for txtPath, xmlPath in zip(txtPaths, xmlPaths)]
+    jobs = []
+    for txtPath, xmlPath in zip(txtPaths, xmlPaths):
+        func = 'roundup_dataset.convertTxtToOrthoXML'
+        kws = {'ds': ds, 'txtPath': txtPath, 'xmlPath': xmlPath,
+               'origin': origin, 'originVersion': originVersion, 
+               'databaseName': databaseName, 'databaseVersion': databaseVersion, 'protLink': protLink}
+        jobs.append((func, kws))
     lsfOptions = ['-q '+config.LSF_LONG_QUEUE]
     if clean:
         for xmlPath in xmlPaths:
@@ -825,7 +836,7 @@ def zipDownloadPath(path):
         subprocess.check_call(['gzip', path])
 
 
-def convertTxtToOrthoXML(ds, txtPath, xmlPath):
+def convertTxtToOrthoXML(ds, txtPath, xmlPath, origin, originVersion, databaseName, databaseVersion, protLink):
     '''
     WARNING: xml files on the production roundup dataset are too big.  This step should be skipped.
     txtPath: a orthdatas file
@@ -833,7 +844,8 @@ def convertTxtToOrthoXML(ds, txtPath, xmlPath):
     '''
     print txtPath, '=>', xmlPath
     with open(xmlPath, 'w') as xmlOut:
-        convertOrthDatasToXml(ds, orthutil.orthDatasFromFileGen(txtPath), orthutil.orthDatasFromFileGen(txtPath), xmlOut)
+        convertOrthDatasToXml(ds, orthutil.orthDatasFromFileGen(txtPath), orthutil.orthDatasFromFileGen(txtPath), xmlOut,
+                              origin, originVersion, databaseName, databaseVersion, protLink)
 
 
 def getDownloadPaths(ds):
@@ -844,7 +856,7 @@ def getDownloadPaths(ds):
     return divEvalues, txtPaths, xmlPaths
 
 
-def makeOrthoxmlSpecies(genomeToGenes, genomeToName, genomeToTaxon, uniprotRelease):
+def makeOrthoxmlSpecies(genomeToGenes, genomeToName, genomeToTaxon, databaseName, databaseVersion, protLink):
     '''
     Create a orthoxml.Species object for each genome in genomeToGenes, generating document-unique ids for each gene.
     returns: a list of orthoxml.Species objects, and a dict from gene to the integer id used as a gene id
@@ -860,13 +872,13 @@ def makeOrthoxmlSpecies(genomeToGenes, genomeToName, genomeToTaxon, uniprotRelea
             genes.append(orthoxml.Gene(iden, protId=gene))
             geneToIden[gene] = iden
         # genes = [orthoxml.Gene(gene, protId=gene) for gene in genomeToGenes[genome]]
-        database = orthoxml.Database("Uniprot", uniprotRelease, genes=genes, protLink="http://www.uniprot.org/uniprot/")
+        database = orthoxml.Database(databaseName, databaseVersion, genes=genes, protLink=protLink)
         species = orthoxml.Species(genomeToName[genome], genomeToTaxon[genome], [database])
         speciesList.append(species)
     return speciesList, geneToIden
 
 
-def convertOrthDatasToXml(ds, orthDatas, orthDatasAgain, xmlOut):
+def convertOrthDatasToXml(ds, orthDatas, orthDatasAgain, xmlOut, origin, originVersion, databaseName, databaseVersion, protLink):
     '''
     orthDatas: iter of orthDatas
     orthDatasAgain: another iter of the same orthDatas.  
@@ -880,7 +892,6 @@ def convertOrthDatasToXml(ds, orthDatas, orthDatasAgain, xmlOut):
     print 'getting metadata'
     genomeToName = getGenomeToName(ds)
     genomeToTaxon = getGenomeToTaxon(ds)
-    uniprotRelease = getUniprotRelease(ds)
     
     print 'pass 1: collecting genes'
     genomeToGenes = collections.defaultdict(set)
@@ -891,7 +902,7 @@ def convertOrthDatasToXml(ds, orthDatas, orthDatasAgain, xmlOut):
             genomeToGenes[sdb].add(sid)
         
     print 'making species'
-    speciesList, geneToIden = makeOrthoxmlSpecies(genomeToGenes, genomeToName, genomeToTaxon, uniprotRelease)    
+    speciesList, geneToIden = makeOrthoxmlSpecies(genomeToGenes, genomeToName, genomeToTaxon, databaseName, databaseVersion, protLink)
 
     scoreDef = orthoxml.ScoreDef('dist', 'Maximum likelihood evolutionary distance')
 
@@ -907,12 +918,13 @@ def convertOrthDatasToXml(ds, orthDatas, orthDatasAgain, xmlOut):
                 yield group
 
     notes = orthoxml.Notes('These orthologs were computed using the following Reciprocal Smallest Distance (RSD) parameters: divergence={} and evalue={}.  See http://roundup.hms.harvard.edu for more information about Roundup and RSD.'.format(div, evalue))
-    for xmlText in orthoxml.toOrthoXML('roundup', getReleaseName(ds), speciesList, groupGen(), scoreDefs=[scoreDef], notes=notes):
+    for xmlText in orthoxml.toOrthoXML(origin, originVersion, speciesList, groupGen(), scoreDefs=[scoreDef], notes=notes):
         xmlOut.write(xmlText)
 
 
 def convertOrthGroupsToXml(ds, groups, genomeToGenes, div, evalue, xmlOut):
     '''
+    ds: used to lookup genome names, taxons, roundup dataset release, and uniprot release.
     groups: a iterable of tuples of (genes, avgDist) for a group of orthologous genes.  avgDist is the mean distance of all orthologous pairs in the group.
     genomeToGenes: a dict from genome to the genes in that genome.
     div: the divergence threshold used to compute the orthologs in groups
@@ -922,11 +934,14 @@ def convertOrthGroupsToXml(ds, groups, genomeToGenes, div, evalue, xmlOut):
     print 'getting metadata'
     genomeToName = getGenomeToName(ds)
     genomeToTaxon = getGenomeToTaxon(ds)
-    uniprotRelease = getUniprotRelease(ds)
     roundupRelease = getReleaseName(ds)
+    databaseName = 'Uniprot'
+    databaseVersion = getUniprotRelease(ds)
+    protLink = "http://www.uniprot.org/uniprot/"
     
     print 'making species'
-    speciesList, geneToIden = makeOrthoxmlSpecies(genomeToGenes, genomeToName, genomeToTaxon, uniprotRelease)    
+    speciesList, geneToIden = makeOrthoxmlSpecies(genomeToGenes, genomeToName, genomeToTaxon, databaseName,
+                                                  databaseVersion, protLink)
 
     scoreDef = orthoxml.ScoreDef('avgdist', 'Mean maximum likelihood evolutionary distance of all orthologous pairs in a group')
     

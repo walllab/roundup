@@ -16,10 +16,21 @@ Download an compressed archive containing a FASTA file for every genome in Round
 </p>
 <h2>Download Archived Orthologs</h2>
 <p>
-Download a compressed file containing all the orthologs for a given combination of divergence and e-value parameters:
+Download a compressed text file containing all the orthologs for a given combination of divergence and e-value parameters:
 <ul>
 {% for div_evalue, filename, size in orthologs_data %}
 <li><a href="{% url 'home.views.download_orthologs' div_evalue.0 div_evalue.1 %}">{{ filename }}</a> ({{ size }})</li>
+{% endfor %}
+</ul>
+</p>
+<h2>Download Orthologs for the Quest for Orthologs Reference Proteomes</h2>
+<p>
+Download a compressed <a href="http://seqxml.org/">OrthoXML</a> file containing all the orthologs for the 
+<a href="http://www.ebi.ac.uk/reference_proteomes/">Reference Proteomes</a> of the <a href="http://questfororthologs.org/">Quest for Orthologs</a> using a
+divergence of 0.8 and e-value of 1e-5:
+<ul>
+{% for version, filename, size in qfo_data %}
+<li>Reference Proteomes version {{ version }}: <a href="{% url 'home.views.download_quest_for_orthologs' version %}">{{ filename }}</a> ({{ size }})</li>
 {% endfor %}
 </ul>
 </p>

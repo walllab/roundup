@@ -51,6 +51,9 @@ os.environ['PATH'] = ':'.join(pathDirs + [os.environ.get('PATH', '')]) if os.env
 # Configure environment to run LSF commands
 lsf.setEnviron('/opt/lsf/7.0/linux2.6-glibc2.3-x86_64', '/opt/lsf/conf')
 
+# QUEST FOR ORTHOLOGS
+QFO_VERSIONS = ['2011_04']
+
 
 #######################################
 # TMP DIRS, WORKING DIRS, SCRATCH SPACE

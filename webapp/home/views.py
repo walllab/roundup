@@ -210,6 +210,36 @@ def api_download_orthologs(request, divergence, evalue):
         raise django.http.Http404
     
 
+def download_quest_for_orthologs(request, version):
+    # validate params
+    if version in config.QFO_VERSIONS:
+        kw = {'version': version}
+        desc = 'Downloading orthologs for Quest for Orthologs Reference Proteomes version {}'.format(version)
+        data = {'desc': desc, 'download_url': django.core.urlresolvers.reverse(api_download_quest_for_orthologs, kwargs=kw)}
+        return django.shortcuts.render(request, 'download_inform.html', data)        
+    else:
+        raise django.http.Http404
+
+
+def get_qfo_path_and_size(version):
+    path = os.path.join(config.PROJ_DIR, 'quest_for_orthologs', version, 'download', 'roundup_qfo_{}_orthologs.xml.gz'.format(version))
+    size = os.path.getsize(path)
+    return path, size
+
+
+def api_download_quest_for_orthologs(request, version):
+    # validate params
+    if version in config.QFO_VERSIONS:
+        path, size = get_qfo_path_and_size(version)
+        filename = os.path.basename(path)
+        response = django.http.HttpResponse(open(path, 'rb'), content_type='application/x-gzip')
+        response['Content-Disposition'] = 'attachment; filename={}'.format(filename)
+        response['Content-Length'] = str(size)
+        return response
+    else:
+        raise django.http.Http404
+    
+
 class RawForm(django.forms.Form):
     first_genome = django.forms.ChoiceField(choices=GENOME_CHOICES)
     second_genome = django.forms.ChoiceField(choices=GENOME_CHOICES)
@@ -261,11 +291,16 @@ def download(request):
     orthologsSizes = [util.humanBytes(os.path.getsize(path)) for path in orthologsPaths]
     orthologsFilenames = [os.path.basename(path) for path in orthologsPaths]
     orthologsData = zip(divEvalues, orthologsFilenames, orthologsSizes)
+    qfoData = []
+    for version in config.QFO_VERSIONS:
+        path, size = get_qfo_path_and_size(version)
+        qfoData.append((version, os.path.basename(path), util.humanBytes(size)))
     example = "{'first_genome': '9606', 'second_genome': '10090'}"
     # example = json.dumps({'first_genome': 'Homo sapiens', 'second_genome': 'Mus musculus'})
     return django.shortcuts.render(request, 'download.html', {'form': form, 'nav_id': 'download', 'form_doc_id': 'download',
                                                          'form_action': django.core.urlresolvers.reverse(download), 'form_example': example,
-                                                         'genomes_filename': genomesFilename, 'genomes_size': genomesSize, 'orthologs_data': orthologsData})
+                                                         'genomes_filename': genomesFilename, 'genomes_size': genomesSize,
+                                                              'orthologs_data': orthologsData, 'qfo_data': qfoData})
 
 
 def raw_download(request, first_genome, second_genome, divergence, evalue):
