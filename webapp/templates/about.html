@@ -74,10 +74,29 @@ Roundup is based upon work supported by the National Science Foundation under Gr
 <h1>publications</h1> 
 <div class="content">
 <ul>
-<li><a href="http://bioinformatics.oxfordjournals.org/content/22/16/2044">Roundup: a multi-genome repository of orthologs and evolutionary distances.</a></li>
-<li><a href="http://bioinformatics.oxfordjournals.org/content/19/13/1710" title="RSD: Detecting putative orthologs">Reciprocal smallest distance (RSD): Detecting putative orthologs.</a></li>
-<li><a href="http://www.ncbi.nlm.nih.gov/pubmed/18025688">Ortholog detection using the reciprocal smallest distance algorithm.</a></li>
-<li><a href="http://www.ncbi.nlm.nih.gov/pubmed/21258651">Cost-effective cloud computing: a case study using the comparative genomics tool, roundup.</a></li>
+    <li><a
+        href="http://bioinformatics.oxfordjournals.org/content/early/2012/01/13/bioinformatics.bts006">
+        Roundup 2.0: Enabling comparative genomics for over 1800 genomes.
+Deluca TF, Cui J, Jung JY, St Gabriel KC, Wall DP.
+Bioinformatics. 2012</a></li>
+<li><a href="http://www.ncbi.nlm.nih.gov/pubmed/22172058">Phylogenetically informed logic relationships improve detection of biological network organization.
+Cui J, Deluca TF, Jung JY, Wall DP.
+BMC Bioinformatics. 2011</a></li>
+<li><a href="http://www.ncbi.nlm.nih.gov/pubmed/21856738">Detecting biological network organization and functional gene orthologs.
+Cui J, DeLuca TF, Jung JY, Wall DP.
+Bioinformatics. 2011</a></li>
+<li><a href="http://www.ncbi.nlm.nih.gov/pubmed/21258651">Cost-effective cloud computing: a case study using the comparative genomics tool, roundup.
+Kudtarkar P, Deluca TF, Fusaro VA, Tonellato PJ, Wall DP.
+Evol Bioinform Online. 2010</a></li>
+<li><a href="http://www.ncbi.nlm.nih.gov/pubmed/18025688">Ortholog detection using the reciprocal smallest distance algorithm.
+Wall DP, Deluca T.
+Methods Mol Biol. 2007</a></li>
+<li><a href="http://bioinformatics.oxfordjournals.org/content/22/16/2044">Roundup: a multi-genome repository of orthologs and evolutionary distances.
+Deluca TF, Wu IH, Pu J, Monaghan T, Peshkin L, Singh S, Wall DP.
+Bioinformatics. 2006</a></li>
+<li><a href="http://bioinformatics.oxfordjournals.org/content/19/13/1710">Detecting putative orthologs.
+Wall DP, Fraser HB, Hirsh AE.
+Bioinformatics. 2003</a></li>
 <ul/>
 </div> 
 </div>  
@@ -90,7 +109,11 @@ Roundup is based upon work supported by the National Science Foundation under Gr
 Roundup Release {{ release }} ({{ release_date }}) uses the following data sources:
 <ul>
 <li>
-<a href="http://www.uniprot.org">UniProt</a>, specifically UniProtKB/Swiss-Prot and UniProtKB/TrEMBL from Uniprot Release {{ uniprot_release }}, is used as a source for protein sequences from complete genomes, for sequence annotations, and for genome annotations.
+<a href="http://www.uniprot.org">UniProt</a>, specifically UniProtKB/Swiss-Prot
+and UniProtKB/TrEMBL from Uniprot Release {{ uniprot_release }}, is used as a
+source for protein sequences from complete genomes, for sequence annotations,
+and for genome annotations.  Roundup only includes organisms from UniProtKB
+that have sequences that have been marked with the "Complete proteome" keyword. 
 </li>
 <li>
 <a href="http://www.ncbi.nlm.nih.gov/taxonomy">The NCBI Taxonomy database</a> is used as a source for genome annotations.
