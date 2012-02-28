@@ -41,7 +41,11 @@
 
 <p><a id="cluster"></a></p> 
 <h3>Retrieve Phylogenetic Profiles</h3> 
-<div id="doctext">Retrieve all phylogenetic profiles for a set of organisms.  Phylogenetic profiles are subgraphs in which the nodes are proteins from the genomes selected and the edges are undirected orthologous relationships computed by the reciprocal smallest distance (RSD) algorithm.</div> 
+<div id="doctext">Retrieve all phylogenetic profiles for a set of organisms.
+    Phylogenetic profiles are <a
+        href="http://en.wikipedia.org/wiki/Connected_component_(graph_theory)">connected
+        components</a> whose nodes are proteins from the genomes selected and
+    whose edges represent an orthologous relationship computed by the reciprocal smallest distance (RSD) algorithm.</div> 
 <p><b>Parameters</b></p> 
 <ul> 
 <li> 
@@ -59,9 +63,46 @@
 </li> 
 </ul> 
 
+<p><a id="orthtextformat"></a></p>
+<h3>Ortholog Text Format</h3>
+<p>
+Inspired by the easy to parse <a href="http://web.expasy.org/docs/userman.html">Uniprot dat
+    file format</a>, a text file containing serialized
+orthologs starts with a parameters row, continues with 0 or more ortholog rows, 
+then has an end row.  A parameter row starts with 'PA', then contains the
+query genome taxon id, subject genome taxon id, divergence thresold, and e-value threshold used
+to generate the orthologs.  An ortholog row starts with 'OR' and contains the id of the sequence
+from the query genome, the id of the sequence from the subject genome, and the
+maximum likelihood distance between the sequences.  An end row only contains
+'//'.  All the values of parameter and ortholog rows are tab separated. 
+</p>
+<p>
+A pair of genomes with no orthologs (which does happen on
+rare occasions), would only have a parameter row and end row.  If a file
+contains orthologs for
+multiple pairs of genomes or multiple sets of parameters, The parameter row for
+the next set of orthologs follows the end row of the previous set of orthologs.
+It is easy to write a streaming, ad-hoc parser for this format.  Or 
+<a href="{% url 'home.views.contact' %}">contact us</a>
+if you would like a parser written in Python.
+<p>
+Example snippet:
+<pre>
+PA      377629  553174  0.2     1e-20
+OR      C5BPU7  D9RR02  1.4127
+OR      C5BKE0  D9RR03  2.1041
+//
+PA      502025  521010  0.2     1e-20
+//
+</pre>
+</p>
+
 <p><a id="download"></a></p> 
 <h3>Download Raw Data</h3> 
-<p>Download the raw data for a pair of genomes, choosing the parameters of the Reciprocal Smallest Distance (RSD) algorithm used to generate the data.  Raw data contains one row for every ortholog.  Each row contains 3 tab-separated values: the gene sequence id from the First Genome, the gene sequence id from Second Genome, and the maximum likelihood estimation of evolutionary distance between those genes.  For more user-friendly results, consider using the Browse or Retrieve Phylogenetic Profiles queries.</p> 
+<p>Download orthologs for a pair of genomes, choosing the parameters of the
+Reciprocal Smallest Distance (RSD) algorithm used to generate the data.
+Orthologs can be downloaded in 
+<a href="{% url 'home.views.documentation' %}#orthtextformat">text</a> or <a href="http://seqxml.org/xml/Main.html">OrthoXML</a> format.  Raw data contains one row for every ortholog.  Each row contains 3 tab-separated values: the gene sequence id from the First Genome, the gene sequence id from Second Genome, and the maximum likelihood estimation of evolutionary distance between those genes.  For more user-friendly results, consider using the Browse or Retrieve Phylogenetic Profiles queries.</p> 
 <p><b>Parameters</b></p> 
 <ul> 
 <li> 

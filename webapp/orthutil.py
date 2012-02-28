@@ -90,6 +90,7 @@ def orthDatasToFile(orthDatas, path, mode='w'):
 
 def orthDatasToStr(orthDatas):
     '''
+    orthDatas: a list of rsd orthDatas. orthData is a pair of params and orthologs
     serialize orthDatas as a string.
     returns: a string containing the serialized orthDatas.
     '''
@@ -100,6 +101,7 @@ def orthDatasToStr(orthDatas):
 
 def orthDatasToStream(orthDatas, handle):
     '''
+    orthDatas: a list of rsd orthDatas. orthData is a pair of params and orthologs
     handle: an open io stream (e.g. a filehandle or a StringIO) to which the orthDatas are written
     the handle is not opened or closed in this function.
     '''

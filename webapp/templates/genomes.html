@@ -11,7 +11,14 @@ a desc is a tuple of acc, name, taxon, cat, catName, size.
 Roundup contains {{ num_genomes }} genomes: {{ num_eukaryota }} Eukaryota, {{ num_bacteria }} Bacteria, {{ num_archaea }} Archaea, and {{ num_viruses }} Viruses and Viroids.
 </p>
 <p>
-Below is a list detailing every genome in Roundup.  It includes the NCBI taxonomy id, the genome name, the number of protein sequences in the genome, and the NCBI Category.
+Below is a list detailing every genome in Roundup.  It includes the NCBI 
+taxonomy id, the genome name, the number of protein sequences in the genome, 
+and the NCBI Category.  All genomes in Roundup come from The UniProt 
+Knowledgebase. See the <a href="{% url 'home.views.about' %}">About</a> page 
+for more details on the data sources in Roundup.  A genome 
+is included in Roundup if it contains at least {{ min_genome_size }} protein sequences marked 
+with the keyword "Complete proteome" in UniProt.  As more genomes are marked
+complete by UniProt, they will be added to future versions of Roundup.
 </p>
 <table id="genome_descs">
 <tr>

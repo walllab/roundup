@@ -26,6 +26,7 @@ import lsf
 import models
 import orthquery
 import orthresult
+import orthutil
 import roundup_common
 import roundup_dataset
 import roundup_db
@@ -112,7 +113,9 @@ def genomes(request):
     num_eukaryota, num_archaea, num_bacteria, num_viruses = [len(g) for g in (eukaryota, archaea, bacteria, viruses)]
     num_genomes = num_eukaryota + num_archaea + num_bacteria + num_viruses
     kw = {'nav_id': 'genomes', 'descGroups': [eukaryota, archaea, bacteria, viruses], 'num_genomes': num_genomes,
-          'num_eukaryota': num_eukaryota, 'num_archaea': num_archaea, 'num_bacteria': num_bacteria, 'num_viruses': num_viruses}
+          'num_eukaryota': num_eukaryota, 'num_archaea': num_archaea, 
+          'num_bacteria': num_bacteria, 'num_viruses': num_viruses,
+          'min_genome_size': roundup_dataset.MIN_GENOME_SIZE}
     return django.shortcuts.render(request, 'genomes.html', kw)
 
 
@@ -277,20 +280,25 @@ def download(request):
             logging.debug(form.cleaned_data)
             first_genome, second_genome = sorted((form.cleaned_data['first_genome'], form.cleaned_data['second_genome']))
             contentType = form.cleaned_data['format']
-            kwargs = {'first_genome': first_genome, 'second_genome': second_genome, 'divergence': form.cleaned_data['divergence'], 'evalue': form.cleaned_data['evalue']}
+            kwargs = {'first_genome': first_genome, 'second_genome': second_genome, 
+                      'divergence': form.cleaned_data['divergence'], 'evalue': form.cleaned_data['evalue']}
             # redirect the post to a get.  http://en.wikipedia.org/wiki/Post/Redirect/Get
             return django.shortcuts.redirect(django.core.urlresolvers.reverse(raw_download, kwargs=kwargs)+'?ct={}'.format(contentType))
     else:
         form = RawForm() # An unbound form
 
+    # gather all the data for genomes, orthlogs, etc., needed to render the main download page.
+    # genome fasta files
     genomesPath = roundup_dataset.getDownloadGenomesPath(config.CURRENT_DATASET)
     genomesSize = util.humanBytes(os.path.getsize(genomesPath))
     genomesFilename = os.path.basename(genomesPath)
+    # bulk orthologs for parameter combinations
     divEvalues = roundup_common.genDivEvalueParams()
     orthologsPaths = [roundup_dataset.getDownloadOrthologsPath(config.CURRENT_DATASET, div, evalue) for div, evalue in divEvalues]
     orthologsSizes = [util.humanBytes(os.path.getsize(path)) for path in orthologsPaths]
     orthologsFilenames = [os.path.basename(path) for path in orthologsPaths]
     orthologsData = zip(divEvalues, orthologsFilenames, orthologsSizes)
+    # orthologs for the quest for orthologs reference genomes
     qfoData = []
     for version in config.QFO_VERSIONS:
         path, size = get_qfo_path_and_size(version)
@@ -331,7 +339,8 @@ def api_raw_download(request, first_genome, second_genome, divergence, evalue):
     form = RawForm(kw)
     if form.is_valid() and contentType in RAW_CONTENT_TYPES:
         if contentType == CT_TXT:
-            orthologsTxt = roundup_util.getRawResults((first_genome, second_genome, divergence, evalue))
+            orthData = roundup_util.getOrthData((first_genome, second_genome, divergence, evalue))
+            orthologsTxt = orthutil.orthDatasToStr([orthData])
             response = django.http.HttpResponse(orthologsTxt, content_type='text/plain')
             response['Content-Disposition'] = 'attachment; filename={}_{}_{}_{}.txt'.format(first_genome, second_genome, divergence, evalue)
             return response

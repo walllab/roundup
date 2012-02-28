@@ -16,7 +16,7 @@ Download an compressed archive containing a FASTA file for every genome in Round
 </p>
 <h2>Download Archived Orthologs</h2>
 <p>
-Download a compressed text file containing all the orthologs for a given combination of divergence and e-value parameters:
+Download a compressed <a href="{% url 'home.views.documentation' %}#orthtextformat">text</a> file containing all the orthologs for a given combination of divergence and e-value parameters:
 <ul>
 {% for div_evalue, filename, size in orthologs_data %}
 <li><a href="{% url 'home.views.download_orthologs' div_evalue.0 div_evalue.1 %}">{{ filename }}</a> ({{ size }})</li>
