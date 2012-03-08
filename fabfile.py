@@ -29,6 +29,7 @@ On the ec2-instance for user ec2-user, I have in ~/.ssh/authorized_keys, the cbi
 import functools
 import getpass
 import os
+import shutil
 import subprocess
 import sys
 
@@ -38,12 +39,10 @@ from fabric.api import local as lrun
 
 import fabutil
 
-# http://stackoverflow.com/questions/6725244/running-fabric-script-locally
+# set env.run, cd, rsync, and exists
+fabutil.setremote()
 # the defaults are to deploy remotely to orchestra.
 env.hosts = ['orchestra.med.harvard.edu']
-env.run = run
-env.cd = cd
-env.rsync = fabutil.rsync
 
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 
@@ -61,15 +60,9 @@ env.is_local = False
 deploy_kw = {
     'deploy_env': '',
     'current_release': '',
-    'http_host': '',
-    'site_url_root': '',
     'proj_dir': '',
     'deploy_dir': '',
     'python_exe': '/groups/cbi/virtualenvs/roundup-1.0/bin/python', # works on debian squeeze
-    'blast_bin_dir': '/opt/blast-2.2.24/bin',
-    'proj_bin_dir': '/home/td23/bin',
-    'no_lsf': False,
-    'mail_method': 'qmail',
     }
 
 
@@ -94,23 +87,15 @@ def local():
     deploy_kw.update({
         'deploy_env': 'local',
         'current_release': 'test_dataset',
-        'http_host': 'localhost',
-        'site_url_root': 'http://localhost:8000',
         'proj_dir': os.path.expanduser('~/local.roundup'),
-        'deploy_dir': os.path.expanduser('~/www/dev.roundup.hms.harvard.edu'),
+        'deploy_dir': os.path.expanduser('~/www/local.roundup.hms.harvard.edu'),
         'python_exe': '/Library/Frameworks/Python.framework/Versions/2.7/bin/python2.7',
-        'blast_bin_dir': '/usr/local/ncbi/blast/bin',
-        'proj_bin_dir': '/Users/td23/bin',
-        'no_lsf': True,
-        'mail_method': '', # not sure how to get postfix working.
         })
     env.is_deploy_set = True
     env.is_local = True
     
+    fabutil.setlocal()
     env.hosts = ['localhost']
-    env.run = lrun
-    env.cd = lcd
-    env.rsync = fabutil.lrsync
 
     
 @task
@@ -121,15 +106,9 @@ def ds(dsid):
     deploy_kw.update({
         'deploy_env': 'dataset',
         'current_release': dsid,
-        'http_host': 'roundup.hms.harvard.edu',
-        'site_url_root': 'http://roundup.hms.harvard.edu',
         'proj_dir': '/groups/cbi/roundup',
         'deploy_dir': '/groups/cbi/roundup/datasets/{0}/code'.format(dsid),
         'python_exe': '/groups/cbi/virtualenvs/roundup-1.0/bin/python', # works on debian squeeze
-        'blast_bin_dir': '/opt/blast-2.2.24/bin',
-        'proj_bin_dir': '/home/td23/bin',
-        'no_lsf': False,
-        'mail_method': 'qmail',
         })
     env.is_deploy_set = True
 
@@ -142,15 +121,9 @@ def dev():
     deploy_kw.update({
         'deploy_env': 'dev',
         'current_release': 'test_dataset',
-        'http_host': 'dev.roundup.hms.harvard.edu',
-        'site_url_root': 'http://dev.roundup.hms.harvard.edu',
         'proj_dir': '/groups/cbi/dev.roundup',
         'deploy_dir': '/www/dev.roundup.hms.harvard.edu',
         'python_exe': '/groups/cbi/virtualenvs/roundup-1.0/bin/python', # works on debian squeeze
-        'blast_bin_dir': '/opt/blast-2.2.24/bin',
-        'proj_bin_dir': '/home/td23/bin',
-        'no_lsf': False,
-        'mail_method': 'qmail',
         })
     env.is_deploy_set = True
 
@@ -163,15 +136,9 @@ def prod():
     deploy_kw.update({
         'deploy_env': 'prod',
         'current_release': '3',
-        'http_host': 'roundup.hms.harvard.edu',
-        'site_url_root': 'http://roundup.hms.harvard.edu',
         'proj_dir': '/groups/cbi/roundup',
         'deploy_dir': '/www/roundup.hms.harvard.edu',
         'python_exe': '/groups/cbi/virtualenvs/roundup-1.0/bin/python', # works on debian squeeze
-        'blast_bin_dir': '/opt/blast-2.2.24/bin',
-        'proj_bin_dir': '/home/td23/bin',
-        'no_lsf': False,
-        'mail_method': 'qmail',
         })
     env.is_deploy_set = True
 
@@ -221,17 +188,37 @@ def deploy():
     Copy files from src to deployment dir, including renaming one file.
     '''
 
+    deploy_env = deploy_kw['deploy_env']
     deploy_dir = deploy_kw['deploy_dir']
 
-    # instantiate template files with concrete variable values for this deployment environment.
-    infile = os.path.join(BASE_DIR, 'webapp/public/.htaccess.template')
+    # instantiate template files with concrete variable values for this
+    # deployment environment.
+    infile = os.path.join(BASE_DIR, 'deploy/.htaccess.template')
     outfile = os.path.join(BASE_DIR, 'webapp/public/.htaccess')
-    fabutil.file_format(infile, outfile, keywords=deploy_kw)
+    fabutil.file_format(infile, outfile, keywords={'deploy_dir': deploy_dir})
     
-    infile = os.path.join(BASE_DIR, 'webapp/deployenv.py.template')
-    outfile = os.path.join(BASE_DIR, 'webapp/deployenv.py')
-    fabutil.file_format(infile, outfile, keywords=deploy_kw)
+    infile = os.path.join(BASE_DIR, 'deploy/passenger_wsgi.py.template')
+    outfile = os.path.join(BASE_DIR, 'webapp/passenger_wsgi.py')
+    fabutil.file_format(infile, outfile, 
+            keywords={'python_exe': deploy_kw['python_exe']})
 
+    infile = os.path.join(BASE_DIR, 'deploy/generated.py.template')
+    outfile = os.path.join(BASE_DIR, 'webapp/config/generated.py')
+    fabutil.file_format(infile, outfile, 
+            keywords={'deploy_env': deploy_env,
+                      'proj_dir': deploy_kw['proj_dir'],
+                      'current_release': deploy_kw['current_release']})
+
+    # copy deploy env configution files
+    srcfile = os.path.join(BASE_DIR, 'deploy/{}/secrets.py'.format(deploy_env))
+    dest = os.path.join(BASE_DIR, 'webapp/config')
+    shutil.copy2(srcfile, dest)
+    srcfile = os.path.join(BASE_DIR, 'deploy/defaults.py')
+    dest = os.path.join(BASE_DIR, 'webapp/config')
+    shutil.copy2(srcfile, dest)
+    srcfile = os.path.join(BASE_DIR, 'deploy/{}/env.py'.format(deploy_env))
+    dest = os.path.join(BASE_DIR, 'webapp/config')
+    shutil.copy2(srcfile, dest)
 
     # copy files to remote destintation, excluding backups, .svn dirs, etc.
     # do not deploy these files/dirs.
