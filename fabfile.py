@@ -209,15 +209,20 @@ def deploy():
                       'proj_dir': deploy_kw['proj_dir'],
                       'current_release': deploy_kw['current_release']})
 
-    # copy deploy env configution files
-    srcfile = os.path.join(BASE_DIR, 'deploy/{}/secrets.py'.format(deploy_env))
+    # copy secrets files
+    srcfile = os.path.join(BASE_DIR, 'deploy/secrets/defaults.py')
+    dest = os.path.join(BASE_DIR, 'webapp/config/secrets')
+    shutil.copy2(srcfile, dest)
+    srcfile = os.path.join(BASE_DIR, 'deploy/secrets/{}.py'.format(deploy_env))
+    dest = os.path.join(BASE_DIR, 'webapp/config/secrets/env.py')
+    shutil.copy2(srcfile, dest)
+
+    # copy configution files
+    srcfile = os.path.join(BASE_DIR, 'deploy/config/defaults.py')
     dest = os.path.join(BASE_DIR, 'webapp/config')
     shutil.copy2(srcfile, dest)
-    srcfile = os.path.join(BASE_DIR, 'deploy/defaults.py')
-    dest = os.path.join(BASE_DIR, 'webapp/config')
-    shutil.copy2(srcfile, dest)
-    srcfile = os.path.join(BASE_DIR, 'deploy/{}/env.py'.format(deploy_env))
-    dest = os.path.join(BASE_DIR, 'webapp/config')
+    srcfile = os.path.join(BASE_DIR, 'deploy/config/{}.py'.format(deploy_env))
+    dest = os.path.join(BASE_DIR, 'webapp/config/env.py')
     shutil.copy2(srcfile, dest)
 
     # copy files to remote destintation, excluding backups, .svn dirs, etc.
