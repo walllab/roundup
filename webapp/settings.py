@@ -4,9 +4,10 @@ import os
 
 # roundup project configuration
 import config
+import config.secrets
 
 
-DEBUG = True
+DEBUG = config.DJANGO_DEBUG
 TEMPLATE_DEBUG = DEBUG
 
 ADMINS = (
@@ -92,7 +93,10 @@ STATICFILES_FINDERS = (
 )
 
 # Make this unique, and don't share it with anybody.
-SECRET_KEY = 'jd=!@1fr9$#obstrxj#!%cfhz-ojck3c5uejvhd4870gi6)y=m'
+# Oops.  Published key on the web.  Time to change it.
+# SECRET_KEY = 'jd=!@1fr9$#obstrxj#!%cfhz-ojck3c5uejvhd4870gi6)y=m'
+SECRET_KEY = config.secrets.DJANGO_SECRET_KEY
+
 
 # List of callables that know how to import templates from various sources.
 TEMPLATE_LOADERS = (

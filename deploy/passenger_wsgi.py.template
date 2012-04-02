@@ -2,17 +2,16 @@
 import datetime
 import os
 import sys
+import traceback
 
-# add to sys.path the location of user-defined modules
-# assume user-defined modules (e.g. index.py) are located with passenger_wsgi.py, this file.
-sys.path.append(os.path.dirname(__file__))
 
-import deployenv
-if sys.executable != deployenv.PYTHON_EXE:
-    os.execl(deployenv.PYTHON_EXE, deployenv.PYTHON_EXE, *sys.argv)
+# passenger: replace python interpreter from apache with python2.7
+PYTHON_EXE = '{python_exe}'
+if sys.executable != PYTHON_EXE:
+    os.execl(PYTHON_EXE, PYTHON_EXE, *sys.argv)
+
 
 def exceptionLoggingMiddleware(application, logfile):
-    import traceback
     def logApp(environ, start_response):
         try:
             return application(environ, start_response)
@@ -37,13 +36,19 @@ def putDbCredsInEnvWSGIMiddleware(application):
     return putCredsApp
 
 
-# run a django wsgi-application using phusion passenger: https://github.com/kwe/passenger-django-wsgi-example/tree/django
-os.environ['DJANGO_SETTINGS_MODULE'] = 'settings'
-import django.core.handlers.wsgi
+# add to sys.path the location of user-defined modules
+# assume user-defined modules (e.g. index.py) are located with passenger_wsgi.py, this file.
+sys.path.append(os.path.dirname(__file__))
+
 
 # RUNNING A WSGI-APP USING PASSENGER requires setting 'application' to a wsgi-app
 
+# run a django wsgi-application using phusion passenger: https://github.com/kwe/passenger-django-wsgi-example/tree/django
+os.environ['DJANGO_SETTINGS_MODULE'] = 'settings'
+import django.core.handlers.wsgi
 application = django.core.handlers.wsgi.WSGIHandler()
+
+# add middleware to put database credentials in the environment and log some exceptions
 application = putDbCredsInEnvWSGIMiddleware(application)
 application = exceptionLoggingMiddleware(application, os.path.expanduser('~/passenger_wsgi.log'))
 

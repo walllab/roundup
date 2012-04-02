@@ -1,9 +1,31 @@
 
-##########################
-# FABRIC UTILITY FUNCTIONS
-##########################
+'''
+FABRIC UTILITY FUNCTIONS
+'''
 
+import os
 import subprocess
+
+
+import fabric.api
+from fabric.api import env
+import fabric.contrib.files
+
+# http://stackoverflow.com/questions/6725244/running-fabric-script-locally
+def setremote():
+    env.run = fabric.api.run
+    env.cd = fabric.api.cd
+    env.rsync = rsync
+    env.exists = fabric.contrib.files.exists
+    return env
+
+def setlocal():
+    env.run = fabric.api.local
+    env.cd = fabric.api.lcd
+    env.rsync = lrsync
+    env.exists = os.path.exists
+    return env
+
 
 def file_format(infile, outfile, args=None, keywords=None):
     '''
@@ -29,7 +51,8 @@ def lrsync(options, src, dest, cwd=None, **kwds):
     src: source directory (or files).  Note: rsync behavior varies depending on whether or not src dir ends in '/'.
     dest: destination directory.
     cwd: change (using subprocess) to cwd before running rsync.
-    This is a helper function for using rsync on localhost, via subprocess.  Note: shell=False.
+    This is a helper function for using rsync to sync files to localhost.
+    It uses subprocess.  Note: shell=False.
     Use rsync() to sync files to a remote host.
     '''
     args = ['rsync'] + options + [src, dest]

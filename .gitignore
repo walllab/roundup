@@ -1,16 +1,13 @@
-# Ignore Mac OS X metadata files
-.DS_Store
 
-# Ignore backups and compiled files
-*~
-*.py[co]
-*.old
-*.class
-#*#
 
-# Ignore all tmp dirs and everything in them
-tmp/*
-tmp/**/*
-**/tmp/*
-**/tmp/**/*
+# ignore copied or generated files
+webapp/passenger_wsgi.py
+webapp/public/.htaccess
+webapp/config/defaults.py
+webapp/config/env.py
+webapp/config/generated.py
+
+# ignore secrets/credentials files
+secrets/
+secrets.py
 
