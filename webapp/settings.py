@@ -7,7 +7,7 @@ import config
 import config.secrets
 
 
-DEBUG = True
+DEBUG = config.DJANGO_DEBUG
 TEMPLATE_DEBUG = DEBUG
 
 ADMINS = (

@@ -7,6 +7,7 @@ import platform
 
 
 import logging.config
+import mailutil
 import orchmysql
 import lsf
 
@@ -17,6 +18,7 @@ import lsf
 # Variables from defaults, env, and generated.
 # BLAST_BIN_DIR, LOG_FROM_ADDR, SITE_URL_ROOT NO_LSF, CURRENT_RELEASE,
 # PROJ_DIR, HTTP_HOST PROJ_BIN_DIR
+# DJANGO_DEBUG
 from config.defaults import *
 from config.env import *
 from config.generated import *
@@ -45,6 +47,10 @@ lsf.setEnviron('/opt/lsf/7.0/linux2.6-glibc2.3-x86_64', '/opt/lsf/conf')
 # QUEST FOR ORTHOLOGS
 QFO_VERSIONS = ['2011_04']
 
+# Mailing
+# function for sending a single text email
+sendtextmail = mailutil.make_sendtextmail(sendmail)
+
 
 #######################################
 # TMP DIRS, WORKING DIRS, SCRATCH SPACE
@@ -62,7 +68,6 @@ CACHE_TABLE = 'roundup_cache'
 
 
 #########
-# LOGGING
 #########
 LOG_TO_ADDRS = ['todddeluca@gmail.com']
 LOG_SUBJECT = 'Roundup Logging Message'

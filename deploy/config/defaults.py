@@ -15,6 +15,10 @@ LOG_FROM_ADDR = 'roundup-noreply@hms.harvard.edu'
 SITE_URL_ROOT = 'http://roundup.hms.harvard.edu'
 HTTP_HOST = 'roundup.hms.harvard.edu'
 
+# never deploy django in production with DEBUG==True
+# https://docs.djangoproject.com/en/dev/ref/settings/#debug
+DJANGO_DEBUG = False
+
 
 # function for sending a single email
 sendmail = mailutil.SMTP('smtp.orchestra', 25).sendone

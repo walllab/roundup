@@ -31,7 +31,6 @@ import roundup_common
 import roundup_dataset
 import roundup_db
 import roundup_util
-import sendmail
 import util
 
 
@@ -153,7 +152,7 @@ Requestor contact information:
 
 %(message)s
 '''%form.cleaned_data
-            sendmail.sendmail(form.cleaned_data['email'], [rtEmail], form.cleaned_data['subject'], message, method=config.MAIL_METHOD)
+            config.sendtextmail(form.cleaned_data['email'], [rtEmail], form.cleaned_data['subject'], message) 
             # redirect the post to a get.  http://en.wikipedia.org/wiki/Post/Redirect/Get
             return django.shortcuts.redirect(django.core.urlresolvers.reverse(contact_thanks))
     else:
@@ -756,6 +755,8 @@ def orth_result(request, resultId):
             response = django.http.HttpResponse(page, content_type='text/xml')
             response['Content-Disposition'] = 'attachment; filename=roundup_result_{}_{}.xml'.format(resultType, resultId)
             return response
+        else:
+            raise django.http.Http404
     else:
         raise django.http.Http404
     
