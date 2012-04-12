@@ -64,7 +64,7 @@ DISPLAY_NAME_MAP = {'fasta': 'FASTA Sequence', 'genome': 'Genome',
 
 CT_XML = 'xml'
 CT_TXT = 'txt'
-RAW_CONTENT_TYPE_CHOICES = [(CT_TXT, 'Text'), (CT_XML, 'OrthoXML')]
+RAW_CONTENT_TYPE_CHOICES = [(CT_XML, 'OrthoXML'), (CT_TXT, 'Text')]
 RAW_CONTENT_TYPE_TO_NAME = dict(RAW_CONTENT_TYPE_CHOICES)
 RAW_CONTENT_TYPES = RAW_CONTENT_TYPE_TO_NAME.keys()
 
@@ -341,7 +341,7 @@ def api_raw_download(request, first_genome, second_genome, divergence, evalue):
             orthData = roundup_util.getOrthData((first_genome, second_genome, divergence, evalue))
             orthologsTxt = orthutil.orthDatasToStr([orthData])
             response = django.http.HttpResponse(orthologsTxt, content_type='text/plain')
-            response['Content-Disposition'] = 'attachment; filename={}_{}_{}_{}.txt'.format(first_genome, second_genome, divergence, evalue)
+            response['Content-Disposition'] = 'attachment; filename=roundup_orthologs_for_{}_{}_{}_{}.txt'.format(first_genome, second_genome, divergence, evalue)
             return response
         elif contentType == CT_XML:
             orthData = roundup_util.getOrthData((first_genome, second_genome, divergence, evalue))
@@ -349,7 +349,7 @@ def api_raw_download(request, first_genome, second_genome, divergence, evalue):
                 roundup_dataset.convertOrthDatasToXml(config.CURRENT_DATASET, [orthData], [orthData], handle)
                 orthologsXml = handle.getvalue()
             response = django.http.HttpResponse(orthologsXml, content_type='text/xml')
-            response['Content-Disposition'] = 'attachment; filename={}_{}_{}_{}.xml'.format(first_genome, second_genome, divergence, evalue)
+            response['Content-Disposition'] = 'attachment; filename=roundup_orthologs_for_{}_{}_{}_{}.xml'.format(first_genome, second_genome, divergence, evalue)
             return response
     else:
         raise django.http.Http404
@@ -749,11 +749,11 @@ def orth_result(request, resultId):
             return django.shortcuts.render(request, 'wide.html', {'html': page, 'nav_id': 'browse'})
         elif templateType == orthresult.DOWNLOAD_TEMPLATE:
             response = django.http.HttpResponse(page, content_type='text/plain')
-            response['Content-Disposition'] = 'attachment; filename=roundup_result_{}_{}.txt'.format(resultType, resultId)
+            response['Content-Disposition'] = 'attachment; filename=roundup_gene_clusters_for_result_{}.txt'.format(resultId)
             return response
         elif templateType == orthresult.DOWNLOAD_XML_TEMPLATE:
             response = django.http.HttpResponse(page, content_type='text/xml')
-            response['Content-Disposition'] = 'attachment; filename=roundup_result_{}_{}.xml'.format(resultType, resultId)
+            response['Content-Disposition'] = 'attachment; filename=roundup_gene_clusters_for_result_{}.xml'.format(resultId)
             return response
         else:
             raise django.http.Http404
