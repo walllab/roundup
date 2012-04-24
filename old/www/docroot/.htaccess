@@ -1,9 +1,0 @@
-Allow from 24.61.46.150
-php_value memory_limit 1024M
-
-Options +FollowSymLinks
-
-Options  +execCGI
-AddHandler cgi-script  .py
-
-DirectoryIndex index.html index.py index.rb index.do index.php index.cgi
