@@ -20,13 +20,13 @@
 '''
 
 # # prepare a computation using only a few small genomes
-# cd /www/dev.roundup.hms.harvard.edu/webapp && time python -c "import roundup_dataset
+# cd /www/dev.roundup.hms.harvard.edu/webapp && time python -c "import roundup.dataset
 # ds = '/groups/cbi/td23/test_dataset'
 # orgCodes = 'MYCGE MYCGF MYCGH MYCH1 MYCH2 MYCH7 MYCHH MYCHJ MYCHP'.split()
 # genomes = '243273 708616 710128 907287 295358 262722 872331 262719 347256'.split()
-# roundup_dataset.prepareDataset(ds)
-# roundup_dataset.setGenomes(ds, genomes)
-# roundup_dataset.prepareJobs(ds, numJobs=10)
+# roundup.dataset.prepareDataset(ds)
+# roundup.dataset.setGenomes(ds, genomes)
+# roundup.dataset.prepareJobs(ds, numJobs=10)
 # "
 
 # taxon used for genome b/c orgCode can be used for multiple organisms (e.g. subspecies).
@@ -419,29 +419,29 @@ def setMissingTaxonToData(ds, missingTaxonToData):
     '''
     update taxonToData with data for the genome taxons that were missing data.
     # example of updating taxonToData with missing taxon data
-    cd /www/dev.roundup.hms.harvard.edu/webapp && time python -c "import roundup_dataset;
+    cd /www/dev.roundup.hms.harvard.edu/webapp && time python -c "import roundup.dataset;
     ds = '/groups/cbi/roundup/datasets/3'
     missingData = {
-    '654926': {roundup_dataset.NAME: 'Ectocarpus siliculosus virus 1 (isolate New Zealand/Kaikoura/1988)',
-    roundup_dataset.CAT_CODE: 'V',
-    roundup_dataset.CAT_NAME: 'Viruses and Viroids'},
-    '654925': {roundup_dataset.NAME: 'Emiliania huxleyi virus 86 (isolate United Kingdom/English Channel/1999)',
-    roundup_dataset.CAT_CODE: 'V',
-    roundup_dataset.CAT_NAME: 'Viruses and Viroids'},
-    '1054147': {roundup_dataset.NAME: 'Dictyostelium fasciculatum (strain SH3)',
-    roundup_dataset.CAT_CODE: 'E',
-    roundup_dataset.CAT_NAME: 'Eukaryota'},
-    '587202': {roundup_dataset.NAME: 'Variola virus (isolate Human/Japan/Yamada MS-2(A)/1946)',
-    roundup_dataset.CAT_CODE: 'V',
-    roundup_dataset.CAT_NAME: 'Viruses and Viroids'},
-    '587203': {roundup_dataset.NAME: 'Variola virus (isolate Human/Brazil/v66-39/1966)',
-    roundup_dataset.CAT_CODE: 'V',
-    roundup_dataset.CAT_NAME: 'Viruses and Viroids'},
-    '587201': {roundup_dataset.NAME: 'Variola virus (isolate Human/South Africa/102/1965)',
-    roundup_dataset.CAT_CODE: 'V',
-    roundup_dataset.CAT_NAME: 'Viruses and Viroids'},
+    '654926': {roundup.dataset.NAME: 'Ectocarpus siliculosus virus 1 (isolate New Zealand/Kaikoura/1988)',
+    roundup.dataset.CAT_CODE: 'V',
+    roundup.dataset.CAT_NAME: 'Viruses and Viroids'},
+    '654925': {roundup.dataset.NAME: 'Emiliania huxleyi virus 86 (isolate United Kingdom/English Channel/1999)',
+    roundup.dataset.CAT_CODE: 'V',
+    roundup.dataset.CAT_NAME: 'Viruses and Viroids'},
+    '1054147': {roundup.dataset.NAME: 'Dictyostelium fasciculatum (strain SH3)',
+    roundup.dataset.CAT_CODE: 'E',
+    roundup.dataset.CAT_NAME: 'Eukaryota'},
+    '587202': {roundup.dataset.NAME: 'Variola virus (isolate Human/Japan/Yamada MS-2(A)/1946)',
+    roundup.dataset.CAT_CODE: 'V',
+    roundup.dataset.CAT_NAME: 'Viruses and Viroids'},
+    '587203': {roundup.dataset.NAME: 'Variola virus (isolate Human/Brazil/v66-39/1966)',
+    roundup.dataset.CAT_CODE: 'V',
+    roundup.dataset.CAT_NAME: 'Viruses and Viroids'},
+    '587201': {roundup.dataset.NAME: 'Variola virus (isolate Human/South Africa/102/1965)',
+    roundup.dataset.CAT_CODE: 'V',
+    roundup.dataset.CAT_NAME: 'Viruses and Viroids'},
     }
-    roundup_dataset.setMissingTaxonToData(ds, missingTaxonToData)
+    roundup.dataset.setMissingTaxonToData(ds, missingTaxonToData)
     "
     '''
     taxonToData = getTaxonToData(ds)
@@ -603,7 +603,7 @@ def formatGenomes(ds, onGrid=False, clean=False, jobSize=40):
     random.shuffle(genomes) # shuffle so each job will have roughly the same amount of large and small genomes.
 
     # To speed formatting, break into jobs and parallelize on LSF.
-    funcName = 'roundup_dataset.formatSomeGenomes'
+    funcName = 'roundup.dataset.formatSomeGenomes'
     jobs = [(funcName, {'ds': ds, 'genomes': gs}) for gs in util.groupsOfN(genomes, jobSize)] # util.splitIntoN(genomes, 20)]
     print jobs
     ns = getDatasetId(ds) + '_format_genomes'
@@ -793,7 +793,7 @@ def zipDownloadPaths(ds, onGrid=False, clean=False):
     '''
     divEvalues, txtPaths, xmlPaths = getDownloadPaths(ds)
     ns = getDatasetId(ds) + '_zip_download'
-    jobs = [('roundup_dataset.zipDownloadPath', {'path': path}) for path in txtPaths + xmlPaths if os.path.exists(path)]
+    jobs = [('roundup.dataset.zipDownloadPath', {'path': path}) for path in txtPaths + xmlPaths if os.path.exists(path)]
     lsfOptions = ['-q '+config.LSF_LONG_QUEUE]
     if clean:
         workflow.dropDones(ns)
@@ -828,7 +828,7 @@ def convertToOrthoXML(ds, origin, originVersion, databaseName, databaseVersion, 
     ns = getDatasetId(ds) + '_to_orthoxml'
     jobs = []
     for txtPath, xmlPath in zip(txtPaths, xmlPaths):
-        func = 'roundup_dataset.convertTxtToOrthoXML'
+        func = 'roundup.dataset.convertTxtToOrthoXML'
         kws = {'ds': ds, 'txtPath': txtPath, 'xmlPath': xmlPath,
                'origin': origin, 'originVersion': originVersion, 
                'databaseName': databaseName, 'databaseVersion': databaseVersion, 'protLink': protLink}
@@ -1078,7 +1078,7 @@ def computeJobs(ds):
     # awkward: a dataset job is a name of a directory and a set of pairs to compute orthologs for.
     # and a workflow job is a tuple of function name and keywords
     jobs = sorted(getJobs(ds))
-    func = 'roundup_dataset.computeJob'
+    func = 'roundup.dataset.computeJob'
     ns = getDatasetId(ds) + '_compute_jobs'
     workflowJobs = [(func, {'ds': ds, 'job': job}) for job in jobs]
     lsfOptions = ['-R', 'rusage[tmp=500]', '-q', config.LSF_LONG_QUEUE]

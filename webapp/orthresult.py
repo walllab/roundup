@@ -16,7 +16,7 @@ import util
 import nested
 import logging
 import roundup_common
-import roundup_dataset
+import roundup.dataset
 import fasta
 import BioUtilities
 
@@ -45,7 +45,7 @@ RESULT_TYPES = (ORTH_RESULT, GENE_RESULT, TERM_RESULT, TEST_RESULT, GENE_SUMMARY
                 
 TERM_PROMISCUITY_LIMIT = 100
 BEST_GENOMES_FOR_GENE_NAMES = ['Homo_sapiens.aa', 'Mus_musculus.aa', 'Drosophila_melanogaster.aa', 'Caenorhabditis_elegans.aa', 'Saccharomyces_cerevisiae.aa']
-GENOME_TO_NAME = roundup_dataset.getGenomeToName(config.CURRENT_DATASET)
+GENOME_TO_NAME = roundup.dataset.getGenomeToName(config.CURRENT_DATASET)
 
 
 def genomeDisplayName(genome):
@@ -181,7 +181,7 @@ def clusterResultToOrthoxml(resultId, urlFunc, otherParams={}):
     div = result['divergence']
     evalue = result['evalue']
     with io.BytesIO() as handle:
-        roundup_dataset.convertOrthGroupsToXml(ds, groups, genomeToGenes, div, evalue, handle)
+        roundup.dataset.convertOrthGroupsToXml(ds, groups, genomeToGenes, div, evalue, handle)
         return handle.getvalue()
 
 
@@ -706,7 +706,7 @@ def resultToGeneView(resultId, urlFunc, otherParams={}):
         content += '<li>'+genomeDisplayName(genome)+'<br/><pre>'
         for seqId in selectedRow[i]:
             try:
-                fastaPath = roundup_dataset.getGenomeIndexPath(config.CURRENT_DATASET, genome)
+                fastaPath = roundup.dataset.getGenomeIndexPath(config.CURRENT_DATASET, genome)
                 # fastaPath = roundup_common.fastaFileForDbPath(roundup_common.makeDbPath(genome))
                 logging.debug('fastaPath: {}'.format(fastaPath))
                 content += BioUtilities.getFastaForId(seqIdToDataMap.get(seqId, {}).get(roundup_common.EXTERNAL_SEQUENCE_ID_KEY), fastaPath)

@@ -19,7 +19,7 @@ import cacheutil
 import orthresult
 import roundup_common
 import roundup_db
-import roundup_dataset
+import roundup.dataset
 import util
 
 
@@ -75,23 +75,23 @@ def getRawResults(params):
         
 
 def getDatasetStats():
-    return roundup_dataset.getDatasetStats(config.CURRENT_DATASET)
+    return roundup.dataset.getDatasetStats(config.CURRENT_DATASET)
     
 
 def getSourceUrls(ds=config.CURRENT_DATASET):
-    return roundup_dataset.getSourceUrls(ds)
+    return roundup.dataset.getSourceUrls(ds)
 
 
 def getRelease(ds=config.CURRENT_DATASET):
-    return roundup_dataset.getReleaseName(ds)
+    return roundup.dataset.getReleaseName(ds)
 
 
 def getReleaseDate(ds=config.CURRENT_DATASET):
-    return roundup_dataset.getReleaseDate(ds)
+    return roundup.dataset.getReleaseDate(ds)
 
 
 def getUniprotRelease(ds=config.CURRENT_DATASET):
-    return roundup_dataset.getUniprotRelease(ds)
+    return roundup.dataset.getUniprotRelease(ds)
 
 
 def getGenomesAndNames():

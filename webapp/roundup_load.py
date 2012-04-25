@@ -8,7 +8,7 @@ loadOrthDatas():  Loads orthologs into the results table.  uses INSERT INTO.  LO
   I want them compressed to save space in the db and network transfer time (though that might not be an issue).
  - it takes a long time to load results and if the job is suspended on lsf, the db connection will be load, causing the load job to fail.
 
-bad?: Currently knows implementation details of roundup_db.  Most of this code could be in roundup_db, but I do not want roundup_db to depend on roundup_dataset.
+bad?: Currently knows implementation details of roundup_db.  Most of this code could be in roundup_db, but I do not want roundup_db to depend on roundup.dataset.
 '''
 
 
@@ -16,7 +16,7 @@ import os
 import itertools
 
 import roundup_common
-import roundup_dataset
+import roundup.dataset
 import roundup_db
 import workflow
 import nested
@@ -38,7 +38,7 @@ def loadDatabase(ds, dropCreate=True, writeLookups=True, writeSeqs=True, readSeq
     The flags are for use during testing and debugging, when you do not want to spend the time required to, e.g. read in the sequence metadata.
     '''
     
-    release = roundup_dataset.getDatasetId(ds)
+    release = roundup.dataset.getDatasetId(ds)
 
     if dropCreate:
         print 'dropping and creating tables'
@@ -47,9 +47,9 @@ def loadDatabase(ds, dropCreate=True, writeLookups=True, writeSeqs=True, readSeq
 
     print 'creating unique ids for genes, genomes, divs, and evalues'
     print '...loading genomeToGenes'
-    genomeToGenes = roundup_dataset.getGenomeToGenes(ds)
+    genomeToGenes = roundup.dataset.getGenomeToGenes(ds)
     print '...creating ids'
-    genomes = roundup_dataset.getGenomes(ds)
+    genomes = roundup.dataset.getGenomes(ds)
     genomeToId = dict([(genome, i) for i, genome in enumerate(genomes, 1)])
     # only use genes from genomes used by dataset, not all genomes.
     # sometimes a dataset does not compute orthologs for all genomes in the genomes dir, e.g. if you are running a test computation.
@@ -63,17 +63,17 @@ def loadDatabase(ds, dropCreate=True, writeLookups=True, writeSeqs=True, readSeq
     if readSeqsMetadata:
         print 'reading in metadata about genomes, terms, and genes'
         print '...genomeToGenes'
-        genomeToGenes = roundup_dataset.getGenomeToGenes(ds)
+        genomeToGenes = roundup.dataset.getGenomeToGenes(ds)
         print '...geneToName'
-        geneToName = roundup_dataset.getGeneToName(ds)
+        geneToName = roundup.dataset.getGeneToName(ds)
         print '...geneToGenome'
-        geneToGenome = roundup_dataset.getGeneToGenome(ds)
+        geneToGenome = roundup.dataset.getGeneToGenome(ds)
         print '...geneToGoTerms'
-        geneToGoTerms = roundup_dataset.getGeneToGoTerms(ds)
+        geneToGoTerms = roundup.dataset.getGeneToGoTerms(ds)
         print '...geneToGeneIds'
-        geneToGeneIds = roundup_dataset.getGeneToGeneIds(ds)
+        geneToGeneIds = roundup.dataset.getGeneToGeneIds(ds)
         print '...termToData'
-        termToData = roundup_dataset.getTermToData(ds)
+        termToData = roundup.dataset.getTermToData(ds)
 
 
 
@@ -86,10 +86,10 @@ def loadDatabase(ds, dropCreate=True, writeLookups=True, writeSeqs=True, readSeq
 
         if writeLookups:
             print 'writing lookup tables'
-            genomeToName = roundup_dataset.getGenomeToName(ds)
-            genomeToTaxon = roundup_dataset.getGenomeToTaxon(ds)
-            genomeToCount = roundup_dataset.getGenomeToCount(ds)
-            taxonToData = roundup_dataset.getTaxonToData(ds)
+            genomeToName = roundup.dataset.getGenomeToName(ds)
+            genomeToTaxon = roundup.dataset.getGenomeToTaxon(ds)
+            genomeToCount = roundup.dataset.getGenomeToCount(ds)
+            taxonToData = roundup.dataset.getTaxonToData(ds)
             writeGenomesTable(genomes, genomeToId, genomeToName, genomeToTaxon, genomeToCount, taxonToData, genomesFile)
             writeLookupTable(divs, divToId, divsFile)
             writeLookupTable(evalues, evalueToId, evaluesFile)
@@ -108,9 +108,9 @@ def loadDatabase(ds, dropCreate=True, writeLookups=True, writeSeqs=True, readSeq
 def makeIds(ds):
     print 'creating unique ids for genes, genomes, divs, and evalues'
     print '...loading genomeToGenes'
-    genomeToGenes = roundup_dataset.getGenomeToGenes(ds)
+    genomeToGenes = roundup.dataset.getGenomeToGenes(ds)
     print '...creating ids'
-    genomes = roundup_dataset.getGenomes(ds)
+    genomes = roundup.dataset.getGenomes(ds)
     genomeToId = dict([(genome, i) for i, genome in enumerate(genomes, 1)])
     # only use genes from genomes used by dataset, not all genomes.
     # sometimes a dataset does not compute orthologs for all genomes in the genomes dir, e.g. if you are running a test computation.
@@ -137,8 +137,8 @@ def writeSeqToGoTermsTable(genes, geneToId, geneToGoTerms, termToData, seqToGoTe
             for term in geneToGoTerms[gene]:
                 if term in termToData: # terms can be missing b/c term to data only contains biological_process, not molecular_function terms.
                     i += 1
-                    termName = termToData[term][roundup_dataset.NAME]
-                    termType = termToData[term][roundup_dataset.TYPE]
+                    termName = termToData[term][roundup.dataset.NAME]
+                    termType = termToData[term][roundup.dataset.TYPE]
                     fh.write('{}\t{}\t{}\t{}\t{}\n'.format(i, geneToId[gene], term, termName, termType))
 
 
@@ -175,9 +175,9 @@ def writeGenomesTable(genomes, genomeToId, genomeToName, genomeToTaxon, genomeTo
             gid = genomeToId[genome]
             name = genomeToName[genome]
             taxon = genomeToTaxon[genome]
-            taxonName = taxonToData[taxon][roundup_dataset.NAME]
-            catCode = taxonToData[taxon][roundup_dataset.CAT_CODE]
-            catName = taxonToData[taxon][roundup_dataset.CAT_NAME]
+            taxonName = taxonToData[taxon][roundup.dataset.NAME]
+            catCode = taxonToData[taxon][roundup.dataset.CAT_CODE]
+            catName = taxonToData[taxon][roundup.dataset.CAT_NAME]
             numSeqs = genomeToCount[genome]
             fh.write('\t'.join(str(f) for f in (gid, genome, name, taxon, taxonName, catCode, catName, numSeqs)) + '\n')
     
@@ -200,12 +200,12 @@ def workflowDonesNamespace(release):
 
     
 def cleanOrthDatasDones(ds):
-    release = roundup_dataset.getDatasetId(ds)
+    release = roundup.dataset.getDatasetId(ds)
     workflow.dropDones(workflowDonesNamespace(release))
 
     
 def initLoadOrthDatas(ds):
-    release = roundup_dataset.getDatasetId(ds)
+    release = roundup.dataset.getDatasetId(ds)
     print 'dropping and creating results table'
     roundup_db.dropReleaseResults(release)
     roundup_db.createReleaseResults(release)
@@ -217,7 +217,7 @@ def loadOrthDatas(ds):
     '''
     load orthDatas serially.  takes a long time.  use dones to resume job if it dies.
     '''
-    release = roundup_dataset.getDatasetId(ds)
+    release = roundup.dataset.getDatasetId(ds)
 
     print 'getting ids'
     genomeToId = roundup_db.getGenomeToId(release)
@@ -226,7 +226,7 @@ def loadOrthDatas(ds):
     geneToId = roundup_db.getSequenceToId(release)
 
     print 'loading orthDatas'
-    for path in roundup_dataset.getOrthologsFiles(ds):
+    for path in roundup.dataset.getOrthologsFiles(ds):
         if workflow.isDone(workflowDonesNamespace(release), path):
             print 'already loaded:', path
         else:
