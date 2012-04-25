@@ -46,32 +46,30 @@
 
 
 # standard library modules
+import argparse
 import collections
+import datetime
 import glob
 import itertools
 import json
-import datetime
 import logging
 import os
 import random
 import re
 import shutil
 import subprocess
+import sys
 import time
-import uuid
 
 # our modules
 import config
 import dbutil
 import fasta
 import kvstore
-import lsf
-import lsfdispatch
 import nested
 import orthoxml
 import orthutil
 import roundup_common
-import roundup_db
 import rsd
 import uniprot
 import util
@@ -1461,7 +1459,7 @@ def getStatsStore(ds):
     if ds not in STATS_CACHE:
         dsId = getDatasetId(ds)
         # kv = kvstore.KVStore(util.ClosingFactoryCM(config.openDbConn), ns='roundup_dataset_{}_{}'.format(dsId, 'stats'))
-        kv = kvstore.KVStore(util.FactoryCM(dbutil.OnePool(config.openDbConn)), ns='roundup_dataset_{}_{}'.format(dsId, 'stats'))
+        kv = kvstore.KVStore(util.FactoryCM(dbutil.Reuser(config.openDbConn)), ns='roundup_dataset_{}_{}'.format(dsId, 'stats'))
         STATS_CACHE[ds] = kv
     return STATS_CACHE[ds]
     
@@ -1476,7 +1474,7 @@ def deleteStats(ds):
 
 def getStats(ds, key):
     '''
-    if key is not present, returns an empty dict
+    returns: a dict of stats.  if key is not present, returns an empty dict
     '''
     return getStatsStore(ds).get(key, default={})
 
@@ -1526,7 +1524,7 @@ def getPairStats(ds, qdb, sdb):
 
 def extractDatasetStats(ds):
     '''
-    num genomes, num pairs, total num orthologs.
+    update the dataset metadata with num genomes, num pairs, total num orthologs.
     '''
     numGenomes = len(getGenomes(ds))
     numPairs = len(getPairs(ds))
@@ -1539,6 +1537,7 @@ def extractDatasetStats(ds):
 def extractPerformanceStats(ds, pairs=None):
     '''
     pairs: default is to collect stats for all pairs.  It can be useful for testing to set pairs to a specific list of pairs.
+    times are in seconds.
     '''
     blastStats = {}
     rsdStats = {}
@@ -1571,91 +1570,97 @@ def extractPerformanceStats(ds, pairs=None):
     print 'saving stats'
     setData(ds, BLAST_STATS, blastStats)
     setData(ds, RSD_STATS, rsdStats)
-        
+       
+
+def main():
+    '''
+    Command line functionality.  These commands are meant to simplify the
+    syntax for making a dataset.
+    '''
+
+    # wrappers to transform arguments from subparsers into the
+    # appropriate function call.
+    def prepare_dataset(args):
+        return prepareDataset(args.dataset)
+
+    def set_genomes(args):
+        return setGenomes(args.dataset)
+
+    def format(args):
+        return formatGenomes(args.dataset, clean=True)
+
+    def prepare_jobs(args):
+        return prepareJobs(args.dataset, numJobs=args.num)
+
+    def compute(args):
+        return computeJobs(args.dataset)
+
+    def collate(args):
+        return collateOrthologs(args.dataset)
+
+    def convert_to_orthoxml(args):
+        return convertToOrthoXML(args.dataset, args.origin, 
+                args.origin_version, args.database, args.database_version, 
+                onGrid=True, clean=True)
+
+    
+    parser = argparse.ArgumentParser(description='')
+    subparsers = parser.add_subparsers(dest='action')
+
+    # prepare_dataset 
+    prepare_dataset_parser = subparsers.add_parser('prepare_dataset', help='initialize the dataset directory and tables.')
+    prepare_dataset_parser.add_argument('dataset', help='root directory of the dataset')
+    prepare_dataset_parser.set_defaults(func=prepare_dataset)
+
+    # set_genomes metadata
+    set_genomes_parser = subparsers.add_parser('set_genomes', help='set genomes metadata in the dataset')
+    set_genomes_parser.add_argument('dataset', help='root directory of the dataset')
+    set_genomes_parser.set_defaults(func=set_genomes)
+
+    # format genomes
+    format_parser = subparsers.add_parser('format', help='format genomes in the dataset')
+    format_parser.add_argument('dataset', help='root directory of the dataset')
+    format_parser.set_defaults(func=format)
+
+    # prepare ortholog jobs 
+    prepare_jobs_parser = subparsers.add_parser('prepare_jobs', help='prepare_jobs genomes in the dataset')
+    prepare_jobs_parser.add_argument('dataset', help='root directory of the dataset')
+    prepare_jobs_parser.add_argument('-n', '--num', type=int, required=True,
+            help='number of jobs in which to split the dataset pairs. e.g. 1000')
+    prepare_jobs_parser.set_defaults(func=prepare_jobs)
+
+    # compute orthologs
+    compute_parser = subparsers.add_parser('compute', help='compute orthologs')
+    compute_parser.add_argument('dataset', help='root directory of the dataset')
+    compute_parser.set_defaults(func=compute) 
+    
+    # collate orthologs
+    collate_parser = subparsers.add_parser('collate', help='collate orthologs in the dataset')
+    collate_parser.add_argument('dataset', help='root directory of the dataset')
+    collate_parser.set_defaults(func=collate)
+
+    # convert_to_orthoxml
+    convert_to_orthoxml_parser = subparsers.add_parser('convert_to_orthoxml', 
+            help='convert dataset orthologs to orthoxml')
+    convert_to_orthoxml_parser.add_argument('dataset', help='root directory of the dataset')
+    convert_to_orthoxml_parser.add_argument('--origin', required=True, help='The source of the orthologs. e.g. roundup.')
+    convert_to_orthoxml_parser.add_argument('--origin-version', required=True, help='The version of the orthologs. e.g. 3.0')
+    convert_to_orthoxml_parser.add_argument('--database', required=True, help='The database name of the source of genomes. e.g. Uniprot')
+    convert_to_orthoxml_parser.add_argument('--database-version', required=True, help='The version of the source genomes. e.g. 2012_04')
+    convert_to_orthoxml_parser.set_defaults(func=convert_to_orthoxml)
+
+    # parse command line arguments and invoke the appropriate handler.
+    args = parser.parse_args()
+    args.func(args)
+
+
+if __name__ == '__main__':
+    main()
 
 ########################
 # DEPRECATED / UNUSED
 ########################
 
-
-
-
-# CONVERSION OF ORTHOLOGS.TXT FILES FROM OLD TO NEW FORMAT
-# old format: tab-separated qdb, sdb, div, evalue, qid, sid, and dist.
-# example line: LACJO   YEAS7   0.2     1e-15   Q74IU0  A6ZM40  1.7016
-# all lines are the same.
-# pros: very simple.  each line describes all the params.
-# cons: bigger files.  can not represent a pair of genomes (and div, evalue) that has no orthologs.  also, a bit of a pain to parse into groups of orthologs
-
-# new format:
-# a set of orthologs starts with a params row, then has 0 or more ortholog rows, then has an end row.
-# Like this:
-# PA\tLACJO\tYEAS7\t0.2\t1e-15
-# OR\tQ74IU0\tA6ZM40\t1.7016
-# OR\tQ74K17\tA6ZKK5\t0.8215
-# //
-# pros: smaller files.  easier to parse.  can represent a set of parameters with no orthologs.
-# cons: not all rows are identical in format, so requires a stateful parser.  but that is required anyway.
-    
-def convertOrthologs(ds):
-    convertedDir = os.path.join(ds, 'converted')
-    if not os.path.exists(convertedDir):
-        os.mkdir(convertedDir)
-    orthologsFiles = getOrthologsFiles(ds)
-    oldAndNewFiles = [(path, os.path.join(convertedDir, os.path.basename(path))) for path in orthologsFiles]
-    # convertOrthologsFiles(oldAndNewFiles)
-    # parallelize on lsf, b/c takes about 7 seconds per file and I have 4000 files.
-    funcName = 'roundup_dataset.convertOrthologsFiles'
-    for pairsList in util.splitIntoN(oldAndNewFiles, 200):
-        keywords = {'oldAndNewFiles': pairsList}
-        # convertOrthologsFiles(pairsList)
-        print lsfdispatch.dispatch(funcName, keywords=keywords)
-
-    
-def convertOrthologsFiles(oldAndNewFiles):
-    for path, newPath in oldAndNewFiles:
-        print path, '=>', newPath
-        convertOrthologsFile(path, newPath)
-
-        
-def convertOrthologsFile(path, newPath):
-    START = True
-    qdb = sdb = div = evalue = None
-    orthologs = []
-    with open(newPath, 'w') as fh, open(path) as fh2:
-        for line in fh2:
-            # example line: LACJO   YEAS7   0.2     1e-15   Q74IU0  A6ZM40  1.7016
-            qdb2, sdb2, div2, evalue2, qid, sid, dist = line.strip().split('\t')
-            if START: # start a new group of orthologs.
-                qdb = qdb2
-                sdb = sdb2
-                div = div2
-                evalue = evalue2
-                orthologs = [(qid, sid, dist)]
-                START = False
-            elif qdb != qdb2 or sdb != sdb2 or div != div2 or evalue != evalue2: # a new group of orthologs.  write out last group and start a new group.
-                fh.write('PA\t{}\t{}\t{}\t{}\n'.format(qdb, sdb, div, evalue))
-                for ortholog in orthologs:
-                    fh.write('OR\t{}\t{}\t{}\n'.format(*ortholog))
-                fh.write('//\n')
-                qdb = qdb2
-                sdb = sdb2
-                div = div2
-                evalue = evalue2                    
-                orthologs = [(qid, sid, dist)]
-            else: # append to the current group of orthologs
-                orthologs.append((qid, sid, dist))
-        if qdb is not None: # at end of file, write out the current group (if any) of orthologs
-            fh.write('PA\t{}\t{}\t{}\t{}\n'.format(qdb, sdb, div, evalue))
-            for ortholog in orthologs:
-                fh.write('OR\t{}\t{}\t{}\n'.format(*ortholog))
-            fh.write('//\n')
-            
-            
-
-############
-# DEPRECATED
-############
 
 
 # last line - python emacs bug fix
