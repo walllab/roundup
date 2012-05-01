@@ -7,58 +7,109 @@ This allows one to restart a failed workflow and pick up where one left off.
 Functions for storing what is done.  Useful even when not distributing jobs on lsf, for example, when running a long job that has many serial steps.
 '''
 
-import kvstore
-import util
 import config
+import dones
+import kvstore
 import lsf
 import lsfdispatch
+import util
 
 
 #########
 # TESTING
 #########
+import time
 
-# cd /www/dev.roundup.hms.harvard.edu/webapp && python -c 'import workflow; workflow.testRunTasks()'
-# cd /www/dev.roundup.hms.harvard.edu/webapp && python -c 'import workflow; workflow.cleanTestRunTasks()'
+# cd /www/dev.roundup.hms.harvard.edu/webapp && python -c 'import workflow; workflow.testWorkflowSync()'
+# cd /www/dev.roundup.hms.harvard.edu/webapp && python -c 'import workflow; workflow.testWorkflowAsync()'
+# cd /www/dev.roundup.hms.harvard.edu/webapp && python -c 'import workflow; workflow.testCleanJobs()'
 
 TEST_NS = 'test_workflow'
 
-def testWorkflow(onGrid=False):
+def testWorkflowSync():
+    # start: no jobs are done.
     assert not testJobsAllDone()
     assert not testJobsAllDone(useNames=True)
-    assert testRunJobs(onGrid=onGrid)
+    # run jobs with default names, asserting that they are done and 
+    # jobs with non-default names are not done.
+    assert testRunJobsSync()
     assert testJobsAllDone()
     assert not testJobsAllDone(useNames=True)
-    assert testRunJobs(onGrid=onGrid)
-    assert testJobsAllDone()
-    assert not testJobsAllDone(useNames=True)
-    assert testRunJobs(onGrid=onGrid, useNames=True)
-    assert testJobsAllDone()
+    # run jobs with non-default names, asserting that they are done
+    assert testRunJobsSync(useNames=True)
     assert testJobsAllDone(useNames=True)
-    assert testRunJobs(onGrid=onGrid)
+    # run Jobs with default and non-default names.
+    # they should not be rerun.
+    assert testRunJobsSync()
+    assert testRunJobsSync(useNames=True)
+    # clean up tables and make sure jobs are now not done.
     testCleanJobs()
     assert not testJobsAllDone()
     assert not testJobsAllDone(useNames=True)
-    testCleanJobs()
-    unmarkDone(TEST_NS, 'foo')
-    unmarkDone(TEST_NS, 'foo')
+    # finally, clean up tables.
     testCleanJobs()
 
-    
+
+def testWorkflowAsync(wait=60):
+    '''
+    wait: how long (in seconds) to wait before asserting that all jobs are
+    done.  tune this so that lsf has time to finish all the jobs.
+    '''
+    # start: no jobs are done.
+    assert not testJobsAllDone()
+    assert not testJobsAllDone(useNames=True)
+    # run jobs with default names.
+    # assert that they are not yet done (since they are launching on the grid.)
+    # Also jobs with non-default names are not done.
+    assert not testRunJobsAsync()
+    assert not testJobsAllDone()
+    assert not testJobsAllDone(useNames=True)
+    # wait for jobs to finish and assert that they are all done.
+    time.sleep(wait)
+    assert testJobsAllDone()
+    # run jobs with non-default names
+    # assert they are not yet done, since they just launched on lsf.
+    assert not testRunJobsAsync(useNames=True)
+    assert not testJobsAllDone(useNames=True)
+    # wait for jobs to finish and assert that they are all done.
+    time.sleep(wait)
+    assert testJobsAllDone(useNames=True)
+    # run Jobs with default and non-default names.
+    # they should not be rerun and should return true, since
+    # the jobs should be all done.
+    assert testRunJobsAsync()
+    assert testRunJobsAsync(useNames=True)
+    # clean up tables and make sure jobs are now not done.
+    testCleanJobs()
+    assert not testJobsAllDone()
+    assert not testJobsAllDone(useNames=True)
+    # finally, clean up tables.
+    testCleanJobs()
+
+
+def testCleanJobs():
+    return getDones(TEST_NS).clean() 
+
+
 def testJobsAndNames(useNames=False):
+    '''
+    useNames: if true, names are different from the default job names, which
+    tests the path of a user giving jobs their own names.
+    '''
     numJobs = 2
     jobs = [('workflow.exampleFunc', {'msg': 'test {}'.format(i)}) for i in range(numJobs)]
     names = ['lovely_{}'.format(i) for i in range(numJobs)] if useNames else None
     return jobs, names
 
 
-def testRunJobs(onGrid=False, useNames=False):
+def testRunJobsSync(useNames=False):
     jobs, names = testJobsAndNames(useNames)
-    return runJobs(TEST_NS, jobs, names, lsfOptions=['-q', 'shared_15m'], onGrid=onGrid)
+    return runJobsSyncLocal(TEST_NS, jobs, names)
 
 
-def testCleanJobs():
-    return dropDones(TEST_NS)
+def testRunJobsAsync(useNames=False):
+    jobs, names = testJobsAndNames(useNames)
+    return runJobsAsyncGrid(TEST_NS, jobs, names, lsfOptions=['-q', 'shared_15m'])
 
 
 def testJobsAllDone(useNames=False):
@@ -72,7 +123,6 @@ def testJobNamesAllDone():
 
 
 def exampleFunc(msg='hello world', secs=1):
-    import time
     time.sleep(secs)
     print msg
     
@@ -81,12 +131,40 @@ def exampleFunc(msg='hello world', secs=1):
 # JOB FUNCTIONS
 ###############
 
-# the point of "jobs" functions is to run jobs on lsf.
+# the point of "jobs" functions is to run jobs on lsf (or locally).
 # the functions keep track of which jobs are running and which are done.
 # if a job fails or exits while running, it can be restarted.
 # Only jobs which are not done or not already running will be restarted.
 
-def runJobs(ns, jobs, names=None, lsfOptions=None, onGrid=False, devnull=False):
+def runJobsSyncLocal(ns, jobs, names=None):
+    '''
+    ns: a namespace to keep jobs organized.
+    jobs: a list of tuples of func and keyword arguments
+    names: a optional list of names for the jobs.  There should be one name per job.  Names should be unique
+      within the namespace.  Names are submitted as part of an lsf job name (-J option), so avoid funny characters.
+      Names are useful if you want descriptive names in the dones table or on lsf.
+
+    Run jobs locally and syncronously.  Return when all jobs are done (or if there is an exception).
+    Done jobs will not be run.  This allows running multiple times without
+    redoing done jobs, which can be useful when one or more jobs fail.
+    If jobs fail (does that ever happen?) this function can be rerun and it
+    will only rerun the not done jobs.
+    Returns: True iff all jobs are done.
+    '''
+    names = _makeJobNames(jobs, names)
+    if len(jobs) != len(set(names)):
+        raise Exception('if names parameter is given, it must have a unique name for each job.')
+
+    for job, name in zip(jobs, names):
+        if getDones(ns).done(name):
+            print 'job already done. ns={}, name={}'.format(ns, name)
+        else:
+            _runJob(ns, job, name)
+
+    return jobsAllDone(ns, jobs, names)
+
+
+def runJobsAsyncGrid(ns, jobs, names=None, lsfOptions=None, devnull=False):
     '''
     ns: a namespace to keep jobs organized.
     jobs: a list of tuples of func and keyword arguments
@@ -94,57 +172,77 @@ def runJobs(ns, jobs, names=None, lsfOptions=None, onGrid=False, devnull=False):
       within the namespace.  Names are submitted as part of an lsf job name (-J option), so avoid funny characters.
       Names are useful if you want descriptive names in the dones table or on lsf.
     lsfOptions: a list of lsf options.  '-J <job_name>' and '-o /dev/null' are appended to the list by default.
-    onGrid: if True, jobs are distributed on lsf.  Otherwise, jobs are executed serially in the current process.  defaults to True.
     devnull: if False, '-o /dev/null' is not appended to the lsf options.
-    Run jobs, either on lsf or locally.  Done jobs will not be run.  Jobs already running on lsf will not be resubmitted.
-    Otherwise the job will be run or submitted to lsf to be run.
-    Tracks which jobs are done and are already running, so runJobs() can be rerun without rerunning finished or running jobs.
-    If jobs fail (does that ever happen?) this function can be rerun to resubmit only the incomplete jobs that are not running.
+
+    Run jobs asynchronously on lsf.  I.e. Submit them to LSF and then return.
+    Track which jobs are done or running.  
+    To see when all jobs are finished, poll with this function or jobsAllDone().
+    If jobs fail (does that ever happen?) this function can be rerun to
+    resubmit only the incomplete jobs that are not currently running.
     Returns: True iff all jobs are done.
     '''
-    names = makeJobNames(jobs, names)
+    names = _makeJobNames(jobs, names)
     lsfOptions = lsfOptions if lsfOptions else []
     if len(jobs) != len(set(names)):
         raise Exception('if names parameter is given, it must have a unique name for each job.')
     lsfJobNames = ['{}_{}'.format(ns, name) for name in names]
-
-    # what job names are currently on lsf.
-    if onGrid:
-        onJobNames = set(lsf.getOnJobNames())
+    onJobNames = set(lsf.getOnJobNames())
     
     for job, name, lsfJobName in zip(jobs, names, lsfJobNames):
-        if isDone(ns, name):
+        if getDones(ns).done(name):
             print 'job already done. ns={}, name={}'.format(ns, name)
-        elif onGrid: # run async on grid
-            if lsfJobName in onJobNames: # lsf.isJobNameOn(lsfJobName):
+        elif lsfJobName in onJobNames: 
                 print 'job already running. ns={}, name={}'.format(ns, name)
-            else:
-                print 'starting job. ns={}, name={}'.format(ns, name)
-                func = 'workflow.runJob'
-                kw = {'ns': ns, 'job': job, 'name': name}
-                options = list(lsfOptions)+['-J', lsfJobName]
-                print 'lsf job id:', lsfdispatch.dispatch(func, keywords=kw, lsfOptions=options, devnull=devnull)
-        else: # run sync on
-            runJob(ns, job, name)
+        else:
+            print 'starting job. ns={}, name={}'.format(ns, name)
+            func = 'workflow._runJob'
+            kw = {'ns': ns, 'job': job, 'name': name}
+            options = list(lsfOptions)+['-J', lsfJobName]
+            print 'lsf job id:', lsfdispatch.dispatch(func, keywords=kw, lsfOptions=options, devnull=devnull)
 
     return jobsAllDone(ns, jobs, names)
 
 
-def runJob(ns, job, name):
+def reset(ns):
+    '''
+    Unmark all the jobs currently marked done.
+    '''
+    getDones(ns).clean()
+
+
+def jobsAllDone(ns, jobs, names=None):
+    '''
+    Returns True iff all the jobs in the namespace are marked done.
+    '''
+    return getDones(ns).all_done(_makeJobNames(jobs, names))
+    
+
+def jobNamesAllDone(ns, names):
+    '''
+    Returns True iff all the names in the namespace are marked done.
+    This function is useful if you do not want to pass all the jobs as a parameter,
+    when all you need are their names.
+    '''
+    return getDones(ns).all_done(names)
+    
+
+def _runJob(ns, job, name):
     '''
     ns: a namespace to keep jobs organized.
     job: a tuple of a fully qualified function name and keywords arguments.
     name: a name for the job, which should be unique in the namespace.
-    the job will not run if it is done already.
+    Run a single job synchronously and locally.  Used by the runJobs*()
+    functions.
+    Will not run if it is done already.
     '''
     
     func, kw = job
-    if not isDone(ns, name):
+    if not getDones(ns).done(name):
         util.dispatch(func, keywords=kw)
-        markDone(ns, name)
+        getDones(ns).mark(name)
 
 
-def makeJobNames(jobs, names=None):
+def _makeJobNames(jobs, names=None):
     '''
     jobs: a list of jobs
     names: if not None, names must be as long as jobs.
@@ -156,22 +254,6 @@ def makeJobNames(jobs, names=None):
     return names
 
 
-def jobsAllDone(ns, jobs, names=None):
-    '''
-    Returns True iff all the jobs in the namespace are marked done.
-    '''
-    return allDone(ns, makeJobNames(jobs, names))
-    
-
-def jobNamesAllDone(ns, names):
-    '''
-    Returns True iff all the names in the namespace are marked done.
-    This function is useful if you do not want to pass all the jobs as a parameter,
-    when all you need are their names.
-    '''
-    return allDone(ns, names)
-    
-
 ###########
 # DONES
 ###########
@@ -181,57 +263,10 @@ def jobNamesAllDone(ns, names):
 # pros: concurrency. fast even with millions of dones.
 # cons: different mysql db for dev and prod, so must use the prod code on a prod dataset.
 
-def allDone(ns, keys):
-    '''
-    Return: True iff all the keys are done.
-    '''
-    # implementation note: use generator b/c any/all are short-circuit functions
-    return all(isDone(ns, key) for key in keys)
-
-
-def anyDone(ns, keys):
-    '''
-    Return: True iff any of the keys are done.
-    '''
-    # implementation note: use generator b/c any/all are short-circuit functions
-    return any(isDone(ns, key) for key in keys)
-
-
-def isDone(ns, key):
-    '''
-    Return: True iff the key is done.
-    '''
-    return getDonesStore(ns).exists(key)
-
- 
-def markDone(ns, key):
-    return getDonesStore(ns).add(key)
-
-
-def unmarkDone(ns, key):
-    return getDonesStore(ns).remove(key)
-
-
-# def createDones(ns):
-#     getDonesStore(ns).create()
-
-
-def dropDones(ns):
-    getDonesStore(ns).drop()
-    del DONES_CACHE[ns]
-
-
-def resetDones(ns):
-    getDonesStore(ns).reset()
-
-
 DONES_CACHE = {}
-def getDonesStore(ns):
-    '''
-    ns: namespace for these dones.  will become part of a table name, so use letters, numbers, and underscores only
-    '''
+def getDones(ns):
     if ns not in DONES_CACHE:
-        DONES_CACHE[ns] = kvstore.KStore(util.ClosingFactoryCM(config.openDbConn), ns='workflow_dones_{}'.format(ns))
-        DONES_CACHE[ns].create()
+        DONES_CACHE[ns] = dones.Dones('workflow_dones_{}'.format(ns), config.openDbConn)
     return DONES_CACHE[ns]
-    
+
+

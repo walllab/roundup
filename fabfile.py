@@ -5,10 +5,15 @@ Deploy code to development environment on orchestra:
 
     fab dev deploy
 
-Deploy code to a specific dataset (e.g. 3)
+Deploy code to a specific roundup dataset (e.g. 3)
 
-    fab ds:3 deploy
-    
+    fab dsid:3 deploy
+   
+Deploy code to a dataset directory 
+e.g. /groups/cbi/roundup/quest_for_orthologs/2012_04
+
+    fab dsdir:/groups/cbi/roundup/quest_for_orthologs/2012_04 deploy
+
 Do a clean deployment of code to production
 
     fab prod all
@@ -99,15 +104,35 @@ def local():
 
     
 @task
-def ds(dsid):
+def dsdir(ds_dir):
     '''
-    dsid: id of the dataset, e.g. '3'
+    ds_dir: the directory of the dataset.
+    e.g. /groups/cbi/roundup/datasets/3
+    Setup code for deployment to an arbitrary dataset directory.
     '''
+    ds_id = os.path.basename(ds_dir)
     deploy_kw.update({
         'deploy_env': 'dataset',
-        'current_release': dsid,
+        'current_release': ds_id,
         'proj_dir': '/groups/cbi/roundup',
-        'deploy_dir': '/groups/cbi/roundup/datasets/{0}/code'.format(dsid),
+        'deploy_dir': ds_dir,
+        'python_exe': '/groups/cbi/virtualenvs/roundup-1.0/bin/python', # works on debian squeeze
+        })
+    env.is_deploy_set = True
+
+    
+@task
+def dsid(ds_id):
+    '''
+    ds_id: id of the dataset, e.g. '3'
+    Setup code for deployement to a production roundup dataset.
+    '''
+    ds_dir = '/groups/cbi/roundup/datasets/{0}/code'.format(ds_id)
+    deploy_kw.update({
+        'deploy_env': 'dataset',
+        'current_release': ds_id,
+        'proj_dir': '/groups/cbi/roundup',
+        'deploy_dir': ds_dir,
         'python_exe': '/groups/cbi/virtualenvs/roundup-1.0/bin/python', # works on debian squeeze
         })
     env.is_deploy_set = True
@@ -238,6 +263,7 @@ def deploy():
     # touch passenger restart.txt, so passenger will pick up the changes.
     with env.cd(deploy_dir):
         env.run ('touch webapp/tmp/restart.txt')
+        env.run('ln -s {} webapp/python'.format(deploy_kw['python_exe']))
 
     
 @task
