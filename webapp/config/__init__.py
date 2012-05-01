@@ -115,22 +115,27 @@ logging.config.dictConfig(LOGGING_CONFIG)
 
 # host comes from env or config file
 MYSQL_HOST = os.environ.get('ROUNDUP_MYSQL_SERVER') if os.environ.has_key('ROUNDUP_MYSQL_SERVER') \
-             else config.secrets.MYSQL_HOST if hasattr(config.secrets, 'MYSQL_HOST') else None
+             else config.secrets.MYSQL_HOST if config.secrets.MYSQL_HOST \
+             else None
 # db comes from env or config file
 MYSQL_DB = os.environ.get('ROUNDUP_MYSQL_DB') if os.environ.has_key('ROUNDUP_MYSQL_DB') \
-           else config.secrets.MYSQL_DATABASE if hasattr(config.secrets, 'MYSQL_DATABASE') else None
+           else config.secrets.MYSQL_DATABASE if config.secrets.MYSQL_DATABASE \
+           else None
 # user comes from env or config file or the current user
 MYSQL_USER = os.environ.get('ROUNDUP_MYSQL_USER') if os.environ.has_key('ROUNDUP_MYSQL_USER') \
-             else config.secrets.MYSQL_USER if hasattr(config.secrets, 'MYSQL_USER') else getpass.getuser()
+             else config.secrets.MYSQL_USER if config.secrets.MYSQL_USER \
+             else getpass.getuser()
 # password comes vrom env or config file or .my.cnf
 MYSQL_PASSWORD = os.environ.get('ROUNDUP_MYSQL_PASSWORD') if os.environ.has_key('ROUNDUP_MYSQL_PASSWORD') \
-                 else config.secrets.MYSQL_PASSWORD if hasattr(config.secrets, 'MYSQL_PASSWORD') else orchmysql.getCnf()['password']
+                 else config.secrets.MYSQL_PASSWORD if config.secrets.MYSQL_PASSWORD \
+                 else orchmysql.getCnf()['password']
 
 
 def openDbConn(host=MYSQL_HOST, db=MYSQL_DB, user=MYSQL_USER, password=MYSQL_PASSWORD):
     '''
     returns: an open python DB API connection to the mysql host and db.  caller is responsible for closing the connection.
     '''
+    # include one paused retry in case db is getting hammered.
     return orchmysql.openConn(host, db, user, password, retries=1, sleep=1)
 
 
