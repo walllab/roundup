@@ -28,7 +28,7 @@ import orthquery
 import orthresult
 import orthutil
 import roundup_common
-import roundup_dataset
+import roundup.dataset
 import roundup_db
 import roundup_util
 import util
@@ -114,7 +114,7 @@ def genomes(request):
     kw = {'nav_id': 'genomes', 'descGroups': [eukaryota, archaea, bacteria, viruses], 'num_genomes': num_genomes,
           'num_eukaryota': num_eukaryota, 'num_archaea': num_archaea, 
           'num_bacteria': num_bacteria, 'num_viruses': num_viruses,
-          'min_genome_size': roundup_dataset.MIN_GENOME_SIZE}
+          'min_genome_size': roundup.dataset.MIN_GENOME_SIZE}
     return django.shortcuts.render(request, 'genomes.html', kw)
 
 
@@ -178,7 +178,7 @@ def download_genomes(request):
 
 
 def api_download_genomes(request):
-    path = roundup_dataset.getDownloadGenomesPath(config.CURRENT_DATASET)
+    path = roundup.dataset.getDownloadGenomesPath(config.CURRENT_DATASET)
     size = os.path.getsize(path)
     filename = os.path.basename(path)
     response = django.http.HttpResponse(open(path, 'rb'), content_type='application/x-gzip')
@@ -201,7 +201,7 @@ def download_orthologs(request, divergence, evalue):
 def api_download_orthologs(request, divergence, evalue):
     # validate params
     if divergence in roundup_common.DIVERGENCES and evalue in roundup_common.EVALUES:
-        path = roundup_dataset.getDownloadOrthologsPath(config.CURRENT_DATASET, divergence, evalue)
+        path = roundup.dataset.getDownloadOrthologsPath(config.CURRENT_DATASET, divergence, evalue)
         size = os.path.getsize(path)
         filename = os.path.basename(path)
         response = django.http.HttpResponse(open(path, 'rb'), content_type='application/x-gzip')
@@ -288,12 +288,12 @@ def download(request):
 
     # gather all the data for genomes, orthlogs, etc., needed to render the main download page.
     # genome fasta files
-    genomesPath = roundup_dataset.getDownloadGenomesPath(config.CURRENT_DATASET)
+    genomesPath = roundup.dataset.getDownloadGenomesPath(config.CURRENT_DATASET)
     genomesSize = util.humanBytes(os.path.getsize(genomesPath))
     genomesFilename = os.path.basename(genomesPath)
     # bulk orthologs for parameter combinations
     divEvalues = roundup_common.genDivEvalueParams()
-    orthologsPaths = [roundup_dataset.getDownloadOrthologsPath(config.CURRENT_DATASET, div, evalue) for div, evalue in divEvalues]
+    orthologsPaths = [roundup.dataset.getDownloadOrthologsPath(config.CURRENT_DATASET, div, evalue) for div, evalue in divEvalues]
     orthologsSizes = [util.humanBytes(os.path.getsize(path)) for path in orthologsPaths]
     orthologsFilenames = [os.path.basename(path) for path in orthologsPaths]
     orthologsData = zip(divEvalues, orthologsFilenames, orthologsSizes)
@@ -346,7 +346,7 @@ def api_raw_download(request, first_genome, second_genome, divergence, evalue):
         elif contentType == CT_XML:
             orthData = roundup_util.getOrthData((first_genome, second_genome, divergence, evalue))
             with io.BytesIO() as handle:
-                roundup_dataset.convertOrthDatasToXml(config.CURRENT_DATASET, [orthData], [orthData], handle)
+                roundup.dataset.convertOrthDatasToXml(config.CURRENT_DATASET, [orthData], [orthData], handle)
                 orthologsXml = handle.getvalue()
             response = django.http.HttpResponse(orthologsXml, content_type='text/xml')
             response['Content-Disposition'] = 'attachment; filename=roundup_orthologs_for_{}_{}_{}_{}.xml'.format(first_genome, second_genome, divergence, evalue)
@@ -374,7 +374,7 @@ def lookup(request):
         if form.is_valid(): # All validation rules pass
             logging.debug(form.cleaned_data)
             genome, fasta = form.cleaned_data['genome'], form.cleaned_data['fasta'] 
-            seqId = BioUtilities.findSeqIdWithFasta(fasta, roundup_dataset.getGenomeIndexPath(config.CURRENT_DATASET, genome))
+            seqId = BioUtilities.findSeqIdWithFasta(fasta, roundup.dataset.getGenomeIndexPath(config.CURRENT_DATASET, genome))
             # store result in cache, so can do a redirect/get. 
             key = makeUniqueId()
             roundup_util.cacheSet(key, {'genome': genome, 'fasta': fasta, 'seqId': seqId})

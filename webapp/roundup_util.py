@@ -19,7 +19,7 @@ import cacheutil
 import orthresult
 import roundup_common
 import roundup_db
-import roundup_dataset
+import roundup.dataset
 import util
 
 
@@ -75,54 +75,23 @@ def getRawResults(params):
         
 
 def getDatasetStats():
-    return roundup_dataset.getDatasetStats(config.CURRENT_DATASET)
+    return roundup.dataset.getDatasetStats(config.CURRENT_DATASET)
     
 
 def getSourceUrls(ds=config.CURRENT_DATASET):
-    return roundup_dataset.getSourceUrls(ds)
+    return roundup.dataset.getSourceUrls(ds)
 
 
 def getRelease(ds=config.CURRENT_DATASET):
-    return roundup_dataset.getReleaseName(ds)
+    return roundup.dataset.getReleaseName(ds)
 
 
 def getReleaseDate(ds=config.CURRENT_DATASET):
-    return roundup_dataset.getReleaseDate(ds)
+    return roundup.dataset.getReleaseDate(ds)
 
 
 def getUniprotRelease(ds=config.CURRENT_DATASET):
-    return roundup_dataset.getUniprotRelease(ds)
-
-
-def getSourcesHtml(ds=config.CURRENT_DATASET):
-    '''
-    generate the sources page html div, and store it in the metadata.
-    '''
-    html = '''<p id="sources_desc">
-Roundup Release {} uses the following data sources:
-<ul>
-<li>
-<a href="http://www.uniprot.org">UniProt</a>, specifically UniProtKB/Swiss-Prot and UniProtKB/TrEMBL from Release {}, is used as a source for protein sequences from complete genomes, for sequence annotations, and for genome annotations.
-</li>
-<li>
-<a href="http://www.ncbi.nlm.nih.gov/taxonomy">The NCBI Taxonomy database</a> is used as a source for genome annotations.
-</li>
-<li>
-<a href="http://geneontology.org/">Gene Ontology</a> is used for sequence annotations.
-</li>
-</ul>
-</p>
-<p id="source_urls">
-The following is a comprehensive list of files that were downloaded for this Roundup release.  All sources are publicly available.
-<ul>
-'''.format(roundup_dataset.getReleaseName(ds), roundup_dataset.getUniprotRelease(ds))
-    for url in roundup_dataset.getSourceUrls(ds):
-        html += '<li><a href="{}">{}</a></li>\n'.format(url, url)
-    html += '''
-</ul>
-</p>
-'''
-    return html
+    return roundup.dataset.getUniprotRelease(ds)
 
 
 def getGenomesAndNames():
