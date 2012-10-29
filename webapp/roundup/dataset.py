@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 
 '''
 # CONCEPTS YOU NEED TO KNOW TO UNDERSTAND THIS CODE
@@ -1628,7 +1629,9 @@ class Stats(object):
 def main():
     '''
     Command line functionality.  These commands are meant to simplify the
-    syntax for making a dataset.
+    syntax for making a dataset, so that you do not need to write commands
+    like:
+        python -c 'import roundup.dataset; roundup.dataset.prepareDataset("/groups/cbi/roundup/datasets/4")'
     '''
 
     # wrappers to transform arguments from subparsers into the
