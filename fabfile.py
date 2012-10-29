@@ -3,11 +3,11 @@ Usage examples
 
 Deploy code to development environment on orchestra:
 
-    fab dev deploy
+    fab -R dev deploy
 
 Deploy code to a specific roundup dataset (e.g. 3)
 
-    fab dsid:3 deploy
+    fab -R dataset --set dsdir=/groups/cbi/roundup/dataset/3 deploy
    
 Deploy code to a dataset directory 
 e.g. /groups/cbi/roundup/quest_for_orthologs/2012_04
@@ -16,7 +16,7 @@ e.g. /groups/cbi/roundup/quest_for_orthologs/2012_04
 
 Do a clean deployment of code to production
 
-    fab prod all
+    fab -R prod all
 
 Initialize the project directories (e.g. In /groups/cbi/dev.roundup) for local environment
 
@@ -39,158 +39,122 @@ import subprocess
 import sys
 
 import fabric
-from fabric.api import env, task, run, cd, lcd, execute
-from fabric.api import local as lrun
+from fabric.api import env, task, run, cd, lcd, execute, put
 
-import fabutil
+import diabric.venv
+import diabric.pyapp
+import diabric.config
+import diabric.files
 
-# set env.run, cd, rsync, and exists
-fabutil.setremote()
-# the defaults are to deploy remotely to orchestra.
-env.hosts = ['orchestra.med.harvard.edu']
 
-BASE_DIR = os.path.abspath(os.path.dirname(__file__))
+HERE = os.path.abspath(os.path.dirname(__file__))
+
+# location of a pip requirements.txt file.
+# used to persist package volumes or recreate a virtual environment.
+REQUIREMENTS_PATH = os.path.join(HERE, 'requirements.txt')
+
+
+####################
+# ROLE CONFUGURATION
+
+env.roledefs = {
+    'prod': ['orchestra.med.harvard.edu'],
+    'local': ['localhost'],
+    'dev': ['orchestra.med.harvard.edu'],
+    'dataset': ['orchestra.med.harvard.edu'],
+}
+
+# default role
+if not env.roles and not env.hosts:
+    env.roles = ['local']
 
 
 ######################################
 # DEPLOYMENT ENVIRONMENT CONFIGURATION
-######################################
 
-# true if one of the deployment environment tasks has been run.
-env.is_deploy_set = False
-env.is_local = False
+# role configuration.
+config = diabric.config.ContextConfig(diabric.config.role_context)
+# config = collections.defaultdict(AttrDict)
 
-# deploy_kw is used to fill in templates for .htaccess and config.py
-# and set up other values used for deployment
-deploy_kw = {
-    'deploy_env': '',
-    'current_release': '',
-    'proj_dir': '',
-    'deploy_dir': '',
-    'python_exe': '/groups/cbi/virtualenvs/roundup-1.0/bin/python', # works on debian squeeze
-    }
+config['local']['system_python'] = '/usr/local/bin/python'
+config['local']['deploy_dir'] = os.path.expanduser('~/www/local.roundup.hms.harvard.edu')
+config['local']['deploy_env'] = 'local'
+config['local']['current_release'] = 'test_dataset'
+config['local']['proj_dir'] = os.path.expanduser('~/local.roundup')
 
+config['dev']['system_python'] = '/groups/cbi/bin/python2.7'
+config['dev']['deploy_dir'] = '/www/dev.roundup.hms.harvard.edu'
+config['dev']['deploy_env'] = 'dev'
+config['dev']['current_release'] = 'test_dataset'
+config['dev']['proj_dir'] = '/groups/cbi/dev.roundup'
 
-def setup_deploy_env(func):
-    '''
-    decorator used to make sure that at least one deployment enviroment setup task has been called.
-    If none has been called, the local() environment will be called.
-    '''
-    @functools.wraps(func)
-    def wrapper(*args, **kws):
-        if not env.is_deploy_set:
-            execute(local)
-        return func(*args, **kws)
-    return wrapper
+config['prod']['system_python'] = '/groups/cbi/bin/python2.7'
+config['prod']['deploy_dir'] = '/www/roundup.hms.harvard.edu'
+config['prod']['deploy_env'] = 'prod'
+config['prod']['current_release'] = '3'
+config['prod']['proj_dir'] = '/groups/cbi/roundup'
 
+if 'dataset' in env.roles:
+    # dataset role must have a deployment dir.
+    if not env.get('dsdir'):
+        raise Exception('if role=dataset, env.dsdir must be set, e.g. by --set dsdir=PATH_TO_DS')
 
-@task
-def local():
-    '''
-    execute this task first to do stuff on the local deployment environment
-    '''
-    deploy_kw.update({
-        'deploy_env': 'local',
-        'current_release': 'test_dataset',
-        'proj_dir': os.path.expanduser('~/local.roundup'),
-        'deploy_dir': os.path.expanduser('~/www/local.roundup.hms.harvard.edu'),
-        'python_exe': '/Library/Frameworks/Python.framework/Versions/2.7/bin/python2.7',
-        })
-    env.is_deploy_set = True
-    env.is_local = True
-    
-    fabutil.setlocal()
-    env.hosts = ['localhost']
+    config['dataset']['system_python'] = '/groups/cbi/bin/python2.7'
+    config['dataset']['deploy_dir'] = env.dsdir
+    config['dataset']['deploy_env'] = 'dataset'
+    config['dataset']['current_release'] = os.path.basename(env.dsdir)
+    config['dataset']['proj_dir'] = '/groups/cbi/roundup'
 
-    
-@task
-def dsdir(ds_dir):
-    '''
-    ds_dir: the directory of the dataset.
-    e.g. /groups/cbi/roundup/datasets/3
-    Setup code for deployment to an arbitrary dataset directory.
-    '''
-    ds_id = os.path.basename(ds_dir)
-    deploy_kw.update({
-        'deploy_env': 'dataset',
-        'current_release': ds_id,
-        'proj_dir': '/groups/cbi/roundup',
-        'deploy_dir': ds_dir,
-        'python_exe': '/groups/cbi/virtualenvs/roundup-1.0/bin/python', # works on debian squeeze
-        })
-    env.is_deploy_set = True
+for c in config.values():
+    app = diabric.pyapp.App(c['deploy_dir'])
+    c['venv'] = app.venvdir()
+    c['log'] = app.logdir()
+    c['conf'] = app.confdir()
+    c['bin'] = app.bindir()
+    c['app'] = app.appdir()
+    c['python_exe'] = os.path.join(c['venv'], 'bin', 'python')
 
-    
-@task
-def dsid(ds_id):
-    '''
-    ds_id: id of the dataset, e.g. '3'
-    Setup code for deployement to a production roundup dataset.
-    '''
-    ds_dir = '/groups/cbi/roundup/datasets/{0}/code'.format(ds_id)
-    deploy_kw.update({
-        'deploy_env': 'dataset',
-        'current_release': ds_id,
-        'proj_dir': '/groups/cbi/roundup',
-        'deploy_dir': ds_dir,
-        'python_exe': '/groups/cbi/virtualenvs/roundup-1.0/bin/python', # works on debian squeeze
-        })
-    env.is_deploy_set = True
-
-    
-@task
-def dev():
-    '''
-    execute this task first to do stuff on dev
-    '''
-    deploy_kw.update({
-        'deploy_env': 'dev',
-        'current_release': 'test_dataset',
-        'proj_dir': '/groups/cbi/dev.roundup',
-        'deploy_dir': '/www/dev.roundup.hms.harvard.edu',
-        'python_exe': '/groups/cbi/virtualenvs/roundup-1.0/bin/python', # works on debian squeeze
-        })
-    env.is_deploy_set = True
-
-
-@task
-def prod():
-    '''
-    execute this task first to do stuff on prod
-    '''
-    deploy_kw.update({
-        'deploy_env': 'prod',
-        'current_release': '3',
-        'proj_dir': '/groups/cbi/roundup',
-        'deploy_dir': '/www/roundup.hms.harvard.edu',
-        'python_exe': '/groups/cbi/virtualenvs/roundup-1.0/bin/python', # works on debian squeeze
-        })
-    env.is_deploy_set = True
 
 
 #######
 # TASKS
-#######
 
-    
+
 @task
-@setup_deploy_env
+def create_venv():
+    '''
+    Create a virtual environment in the deployment location using
+    requirements.txt
+    '''
+    diabric.venv.create(config()['venv'], python=config()['system_python'])
+
+
+@task
+def install_venv():
+    diabric.venv.install(config()['venv'], REQUIREMENTS_PATH)
+
+
+@task
+def remove_venv():
+    diabric.venv.remove(config()['venv'])
+
+
+@task
 def init_deploy_env():
     '''
     sets up the directories used to contain code and the project data that persists
     across changes to the codebase, like results and log files.
     this should be called once per deployment environment, not every time code is deployed.
     '''
-    dirs = [os.path.join(deploy_kw['proj_dir'], d) for d in ['datasets', 'log', 'tmp']]
+    dirs = [os.path.join(config()['proj_dir'], d) for d in ['datasets', 'log', 'tmp']]
     print dirs
     cmd1 = 'mkdir -p ' + ' '.join(dirs)
-    cmd2 = 'mkdir -p ' + deploy_kw['deploy_dir']
-    env.run(cmd1)
-    env.run(cmd2)
+    cmd2 = 'mkdir -p ' + config()['deploy_dir']
+    run(cmd1)
+    run(cmd2)
 
 
 @task
-@setup_deploy_env
 def clean():
     '''
     If host is specified, user should also be specified, and vice versa.
@@ -200,55 +164,20 @@ def clean():
             'mkdir -p webapp/public', # make code dir (and dir to link to)
             'ln -s webapp/public docroot' # make link (b/c apache likes docroot and passenger likes webapp/public).
             ]
-    with env.cd(deploy_kw['deploy_dir']):
+    with cd(config()['deploy_dir']):
         for cmd in cmds:
-            env.run(cmd)
+            run(cmd)
 
 
 @task
-@setup_deploy_env
 def deploy():
     '''
     If host is specified, user should also be specified, and vice versa.
     Copy files from src to deployment dir, including renaming one file.
     '''
 
-    deploy_env = deploy_kw['deploy_env']
-    deploy_dir = deploy_kw['deploy_dir']
-
-    # instantiate template files with concrete variable values for this
-    # deployment environment.
-    infile = os.path.join(BASE_DIR, 'deploy/.htaccess.template')
-    outfile = os.path.join(BASE_DIR, 'webapp/public/.htaccess')
-    fabutil.file_format(infile, outfile, keywords={'deploy_dir': deploy_dir})
-    
-    infile = os.path.join(BASE_DIR, 'deploy/passenger_wsgi.py.template')
-    outfile = os.path.join(BASE_DIR, 'webapp/passenger_wsgi.py')
-    fabutil.file_format(infile, outfile, 
-            keywords={'python_exe': deploy_kw['python_exe']})
-
-    infile = os.path.join(BASE_DIR, 'deploy/generated.py.template')
-    outfile = os.path.join(BASE_DIR, 'webapp/config/generated.py')
-    fabutil.file_format(infile, outfile, 
-            keywords={'deploy_env': deploy_env,
-                      'proj_dir': deploy_kw['proj_dir'],
-                      'current_release': deploy_kw['current_release']})
-
-    # copy secrets files
-    srcfile = os.path.join(BASE_DIR, 'deploy/secrets/defaults.py')
-    dest = os.path.join(BASE_DIR, 'webapp/config/secrets')
-    shutil.copy2(srcfile, dest)
-    srcfile = os.path.join(BASE_DIR, 'deploy/secrets/{}.py'.format(deploy_env))
-    dest = os.path.join(BASE_DIR, 'webapp/config/secrets/env.py')
-    shutil.copy2(srcfile, dest)
-
-    # copy configution files
-    srcfile = os.path.join(BASE_DIR, 'deploy/config/defaults.py')
-    dest = os.path.join(BASE_DIR, 'webapp/config')
-    shutil.copy2(srcfile, dest)
-    srcfile = os.path.join(BASE_DIR, 'deploy/config/{}.py'.format(deploy_env))
-    dest = os.path.join(BASE_DIR, 'webapp/config/env.py')
-    shutil.copy2(srcfile, dest)
+    deploy_env = config()['deploy_env']
+    deploy_dir = config()['deploy_dir']
 
     # copy files to remote destintation, excluding backups, .svn dirs, etc.
     # do not deploy these files/dirs.
@@ -258,19 +187,66 @@ def deploy():
     for e in deployExcludes:
         filterArgs += ['-f', '- {}'.format(e)]
     options = ['--delete', '-avz'] + filterArgs
-    env.rsync(options, src='webapp', dest=deploy_dir, cwd=BASE_DIR, user=env.user, host=env.host)
+    diabric.files.rsync(options, src='webapp', dest=deploy_dir, cwd=HERE, user=env.user, host=env.host)
 
-    # touch passenger restart.txt, so passenger will pick up the changes.
-    with env.cd(deploy_dir):
-        env.run ('touch webapp/tmp/restart.txt')
-        env.run('ln -s {} webapp/python'.format(deploy_kw['python_exe']))
+    # instantiate template files with concrete variable values for this
+    # deployment environment.
+    # infile = os.path.join(HERE, 'deploy/.htaccess.template')
+    # outfile = os.path.join(HERE, 'webapp/public/.htaccess')
+    # diabric.files.file_format(infile, outfile, kws={'deploy_dir': deploy_dir})
 
-    
+    infile = os.path.join(HERE, 'deploy/.htaccess.template')
+    outfile = os.path.join(deploy_dir, 'webapp/public/.htaccess')
+    diabric.files.upload_format(infile, outfile,
+                                kws={'deploy_dir': deploy_dir})
+
+    infile = os.path.join(HERE, 'deploy/passenger_wsgi.py.template')
+    outfile = os.path.join(deploy_dir, 'webapp/passenger_wsgi.py')
+    diabric.files.upload_format(infile, outfile, 
+            kws={'python_exe': config()['python_exe']})
+
+    infile = os.path.join(HERE, 'deploy/generated.py.template')
+    outfile = os.path.join(deploy_dir, 'webapp/config/generated.py')
+    diabric.files.upload_format(infile, outfile, 
+            kws={'deploy_env': deploy_env, 'proj_dir': config()['proj_dir'],
+                 'current_release': config()['current_release']})
+
+    # copy secrets files
+    srcfile = os.path.join(HERE, 'deploy/secrets/defaults.py')
+    dest = os.path.join(deploy_dir, 'webapp/config/secrets')
+    put(srcfile, dest)
+    srcfile = os.path.join(HERE, 'deploy/secrets/{}.py'.format(deploy_env))
+    dest = os.path.join(deploy_dir, 'webapp/config/secrets/env.py')
+    put(srcfile, dest)
+
+    # copy configution files
+    srcfile = os.path.join(HERE, 'deploy/config/defaults.py')
+    dest = os.path.join(deploy_dir, 'webapp/config')
+    put(srcfile, dest)
+    srcfile = os.path.join(HERE, 'deploy/config/{}.py'.format(deploy_env))
+    dest = os.path.join(deploy_dir, 'webapp/config/env.py')
+    put(srcfile, dest)
+
+    # upload and fix the shebang for scripts
+    diabric.files.upload_shebang(
+        os.path.join(HERE, 'webapp/roundup/dataset.py'),
+        os.path.join(config()['deploy_dir'], 'webapp/roundup/dataset.py'),
+        config()['python_exe'],
+        mode=0770)
+
+
 @task
-@setup_deploy_env
+def run_app():
+    # touch passenger restart.txt, so passenger will pick up the changes.
+    with cd(config()['deploy_dir']):
+        run ('touch webapp/tmp/restart.txt')
+
+
+@task
 def all():
     execute(clean)
     execute(deploy)
+    execute(run_app)
 
 
 if __name__ == '__main__':
