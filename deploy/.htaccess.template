@@ -13,7 +13,7 @@ AddType video/webm .webm
 SetEnvIfNoCase Request_URI \.(og[gv]|mp4|m4v|webm)$ no-gzip dont-vary
 
 # passenger config only requires this one directive.
-PassengerAppRoot {deploy_dir}/webapp
+PassengerAppRoot %(app_dir)s
 
 
 
