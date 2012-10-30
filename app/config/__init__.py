@@ -113,22 +113,11 @@ logging.config.dictConfig(LOGGING_CONFIG)
 # DATABASE CREDENTIALS AND CONNECTIONS
 ######################################
 
-# host comes from env or config file
-MYSQL_HOST = os.environ.get('ROUNDUP_MYSQL_SERVER') if os.environ.has_key('ROUNDUP_MYSQL_SERVER') \
-             else config.secrets.MYSQL_HOST if config.secrets.MYSQL_HOST \
-             else None
-# db comes from env or config file
-MYSQL_DB = os.environ.get('ROUNDUP_MYSQL_DB') if os.environ.has_key('ROUNDUP_MYSQL_DB') \
-           else config.secrets.MYSQL_DATABASE if config.secrets.MYSQL_DATABASE \
-           else None
-# user comes from env or config file or the current user
-MYSQL_USER = os.environ.get('ROUNDUP_MYSQL_USER') if os.environ.has_key('ROUNDUP_MYSQL_USER') \
-             else config.secrets.MYSQL_USER if config.secrets.MYSQL_USER \
-             else getpass.getuser()
-# password comes vrom env or config file or .my.cnf
-MYSQL_PASSWORD = os.environ.get('ROUNDUP_MYSQL_PASSWORD') if os.environ.has_key('ROUNDUP_MYSQL_PASSWORD') \
-                 else config.secrets.MYSQL_PASSWORD if config.secrets.MYSQL_PASSWORD \
-                 else orchmysql.getCnf()['password']
+# Get credentials from the environment or a configuration file.
+MYSQL_HOST = os.environ.get('ROUNDUP_MYSQL_HOST') or config.secrets.MYSQL_HOST
+MYSQL_DB = os.environ.get('ROUNDUP_MYSQL_DB') or config.secrets.MYSQL_DATABASE
+MYSQL_USER = os.environ.get('ROUNDUP_MYSQL_USER') or config.secrets.MYSQL_USER
+MYSQL_PASSWORD = os.environ.get('ROUNDUP_MYSQL_PASSWORD') or config.secrets.MYSQL_PASSWORD
 
 
 def openDbConn(host=MYSQL_HOST, db=MYSQL_DB, user=MYSQL_USER, password=MYSQL_PASSWORD):

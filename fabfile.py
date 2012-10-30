@@ -188,9 +188,9 @@ def deploy():
 
     # copy secrets files
     put(os.path.join(HERE, 'deploy/secrets/defaults.py'),
-        os.path.join(config.app, 'config/secrets'))
+        os.path.join(config.app, 'config/secrets'), mode=0660)
     put(os.path.join(HERE, 'deploy/secrets/{}.py'.format(config.deploy_env)),
-        os.path.join(config.app, 'config/secrets/env.py'))
+        os.path.join(config.app, 'config/secrets/env.py'), mode=0660)
     # copy configution files
     put(os.path.join(HERE, 'deploy/config/defaults.py'),
         os.path.join(config.app, 'config'))
