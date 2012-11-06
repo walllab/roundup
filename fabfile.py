@@ -73,19 +73,19 @@ def configure():
         config.system_python = '/usr/local/bin/python'
         config.deploy_dir = os.path.expanduser('~/www/local.roundup.hms.harvard.edu')
         config.current_release = 'test_dataset'
-        config.proj_dir = os.path.expanduser('~/local.roundup')
+        config.proj_dir = os.path.expanduser('~/sites/local.roundup')
     elif 'dev' == config.deploy_env:
         env.hosts = ['orchestra.med.harvard.edu']
         config.system_python = '/groups/cbi/bin/python2.7'
         config.deploy_dir = '/www/dev.roundup.hms.harvard.edu'
         config.current_release = 'test_dataset'
-        config.proj_dir = '/groups/cbi/dev.roundup'
+        config.proj_dir = '/groups/cbi/sites/dev.roundup'
     elif 'prod' == config.deploy_env:
         env.hosts = ['orchestra.med.harvard.edu']
         config.system_python = '/groups/cbi/bin/python2.7'
         config.deploy_dir = '/www/roundup.hms.harvard.edu'
         config.current_release = '3'
-        config.proj_dir = '/groups/cbi/roundup'
+        config.proj_dir = '/groups/cbi/sites/roundup'
     elif 'dataset' == config.deploy_env:
         # get the dataset dir (where the dataset will be deployed.
         if not env.get('dsdir'):
