@@ -38,7 +38,6 @@ from fabric.contrib.files import upload_template
 from fabric.contrib.project import rsync_project
 
 import diabric.venv
-import diabric.pyapp
 import diabric.config
 import diabric.files
 
@@ -96,14 +95,9 @@ def configure():
         config.current_release = os.path.basename(env.dsdir)
         config.proj_dir = '/groups/cbi/roundup'
 
-    app = diabric.pyapp.App(config.deploy_dir)
-    config.venv = app.venvdir()
-    config.log = app.logdir()
-    config.conf = app.confdir()
-    config.bin = app.bindir()
-    config.app = app.appdir()
+    config.venv = os.path.join(config.deploy_dir, 'venv')
+    config.app = os.path.join(config.deploy_dir, 'app')
     config.python_exe = os.path.join(config.venv, 'bin', 'python')
-
     return config
 
 config = configure()
