@@ -25,11 +25,6 @@ from config.generated import *
 import config.secrets
 
 
-
-LSF_SHORT_QUEUE = 'shared_15m'
-LSF_MEDIUM_QUEUE = 'shared_2h'
-LSF_LONG_QUEUE = os.environ.get('ROUNDUP_LSF_LONG_QUEUE', 'shared_unlimited')
-
 CURRENT_DATASET = os.path.join(PROJ_DIR, 'datasets', CURRENT_RELEASE)
 LOG_FILE = os.path.join(PROJ_DIR, 'log/app.log')
 TMP_DIR = os.path.join(PROJ_DIR, 'tmp') 

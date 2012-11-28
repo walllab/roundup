@@ -588,7 +588,7 @@ def formatGenomes(ds, onGrid=False, clean=False, jobSize=40):
     jobs = [(funcName, {'ds': ds, 'genomes': gs}) for gs in util.groupsOfN(genomes, jobSize)] # util.splitIntoN(genomes, 20)]
     print jobs
     ns = getDatasetId(ds) + '_format_genomes'
-    lsfOptions = ['-q', config.LSF_SHORT_QUEUE]
+    lsfOptions = ['-q', 'short', '-W', '15']
     if clean:
         workflow.getDones(ns).clean()
     
@@ -842,7 +842,7 @@ def zipDownloadPaths(ds, onGrid=False, clean=False):
         workflow.reset(ns)
     
     if onGrid:
-        lsfOptions = ['-q '+config.LSF_LONG_QUEUE]
+        lsfOptions = ['-q', 'short', '-W', '12:0']
         workflow.runJobsAsyncGrid(ns, jobs, lsfOptions=lsfOptions, devnull=True)
     else:
         workflow.runJobsSyncLocal(ns, jobs)
@@ -888,7 +888,7 @@ def convertToOrthoXML(ds, origin, originVersion, databaseName, databaseVersion, 
         workflow.reset(ns)
     
     if onGrid:
-        lsfOptions = ['-q '+config.LSF_LONG_QUEUE]
+        lsfOptions = ['-q', 'short', '-W', '12:0']
         workflow.runJobsAsyncGrid(ns, jobs, lsfOptions=lsfOptions, devnull=True)
     else:
         workflow.runJobsSyncLocal(ns, jobs)
@@ -1132,7 +1132,7 @@ def computeJobs(ds):
     func = 'roundup.dataset.computeJob'
     ns = getDatasetId(ds) + '_compute_jobs'
     workflowJobs = [(func, {'ds': ds, 'job': job}) for job in jobs]
-    lsfOptions = ['-R', 'rusage[tmp=500]', '-q', config.LSF_LONG_QUEUE]
+    lsfOptions = ['-R', 'rusage[tmp=500]', '-q', 'long', '-W', '720:0']
     return workflow.runJobsAsyncGrid(ns, workflowJobs, names=jobs, lsfOptions=lsfOptions, devnull=True)
 
 

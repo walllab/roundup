@@ -109,7 +109,7 @@ def testRunJobsSync(useNames=False):
 
 def testRunJobsAsync(useNames=False):
     jobs, names = testJobsAndNames(useNames)
-    return runJobsAsyncGrid(TEST_NS, jobs, names, lsfOptions=['-q', 'shared_15m'])
+    return runJobsAsyncGrid(TEST_NS, jobs, names, lsfOptions=['-q', 'short', '-W', '15'])
 
 
 def testJobsAllDone(useNames=False):

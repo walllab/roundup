@@ -161,7 +161,7 @@ def lsfDispatch(fullyQualifiedFuncName=None, keywords=None, jobName=None):
     jobName: optional.  submit the job to lsf with this name.
     returns: jobId of lsf job.
     '''
-    lsfOptions = ['-N', '-q', config.LSF_MEDIUM_QUEUE]
+    lsfOptions = ['-N', '-q', 'short', '-W', '2:0']
     if jobName:
         lsfOptions += ['-J', jobName]
     return lsfdispatch.dispatch(fullyQualifiedFuncName, keywords=keywords, lsfOptions=lsfOptions)
