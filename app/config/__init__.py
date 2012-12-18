@@ -7,9 +7,11 @@ import platform
 
 
 import logging.config
+import lsf
 import mailutil
 import orchmysql
-import lsf
+import util
+
 
 
 ###############################################
@@ -25,7 +27,7 @@ from config.generated import *
 import config.secrets
 
 
-CURRENT_DATASET = os.path.join(PROJ_DIR, 'datasets', CURRENT_RELEASE)
+CURRENT_RELEASE = os.path.basename(CURRENT_DATASET)
 LOG_FILE = os.path.join(PROJ_DIR, 'log/app.log')
 TMP_DIR = os.path.join(PROJ_DIR, 'tmp') 
 
@@ -113,6 +115,9 @@ MYSQL_HOST = os.environ.get('ROUNDUP_MYSQL_HOST') or config.secrets.MYSQL_HOST
 MYSQL_DB = os.environ.get('ROUNDUP_MYSQL_DB') or config.secrets.MYSQL_DATABASE
 MYSQL_USER = os.environ.get('ROUNDUP_MYSQL_USER') or config.secrets.MYSQL_USER
 MYSQL_PASSWORD = os.environ.get('ROUNDUP_MYSQL_PASSWORD') or config.secrets.MYSQL_PASSWORD
+if util.getBoolFromEnv('ROUNDUP_MYSQL_CREDS_FROM_CNF', False):
+    MYSQL_USER = getpass.getuser()
+    MYSQL_PASSWORD = orchmysql.getCnf()['password']
 
 
 def openDbConn(host=MYSQL_HOST, db=MYSQL_DB, user=MYSQL_USER, password=MYSQL_PASSWORD):

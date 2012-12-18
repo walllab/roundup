@@ -9,9 +9,9 @@ import traceback
 sys.path.append(os.path.dirname(__file__))
 
 # passenger: replace python interpreter from apache with python2.7
-PYTHON_EXE = '%(python_exe)s'
-if sys.executable != PYTHON_EXE:
-    os.execl(PYTHON_EXE, PYTHON_EXE, *sys.argv)
+PYTHON = '%(python)s'
+if sys.executable != PYTHON:
+    os.execl(PYTHON, PYTHON, *sys.argv)
 
 
 def exceptionLoggingMiddleware(application, logfile):

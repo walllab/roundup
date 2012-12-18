@@ -5,7 +5,7 @@
 
 DEPLOY_ENV = '%(deploy_env)s'
 PROJ_DIR = '%(proj_dir)s'
-CURRENT_RELEASE = '%(current_release)s'
+CURRENT_DATASET = '%(current_dataset)s'
 
 
 

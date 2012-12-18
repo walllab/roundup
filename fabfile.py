@@ -33,7 +33,7 @@ are good.
 import os
 import sys
 
-from fabric.api import env, task, run, cd, lcd, execute, put
+from fabric.api import cd, env, execute, put, require, run, task
 from fabric.contrib.files import upload_template
 from fabric.contrib.project import rsync_project
 
@@ -47,70 +47,143 @@ HERE = os.path.abspath(os.path.dirname(__file__))
 DEPLOY_OPTS = ['local', 'dev', 'prod', 'dataset']
 
 
-def configure():
-    '''
-    There are a lot of configuration values that the tasks in this fabfile use.
-    This function sets those values according to the deployment environment 
-    specified on the `fab` command line.
+###############
+# CONFIGURATION
 
-    The configuration is placed in a diabric.config.Namespace object, which is
-    also the return value.
+def pre_config(config):
     '''
-    config = diabric.config.Namespace()
-
+    Called before the deployment environment configuration tasks.  Sets some
+    values in `config` that do not depend on the deployment env.
+    '''
     # location of a pip requirements.txt file.
     # used to persist package volumes or recreate a virtual environment.
     config.requirements = os.path.join(HERE, 'requirements.txt')
     config.db_prefix = 'ROUNDUP'
-    # get deployment enviroment flag
-    config.deploy_env = env.get('de', 'local')
-    if config.deploy_env not in DEPLOY_OPTS:
-        raise Exception('Unrecognized deployment configuration flag: {}'.format(config.deploy_env))
-
-    if 'local' == config.deploy_env:
-        env.hosts = ['localhost']
-        config.system_python = '/usr/local/bin/python'
-        config.deploy_dir = os.path.expanduser('~/www/local.roundup.hms.harvard.edu')
-        config.current_release = 'test_dataset'
-        config.proj_dir = os.path.expanduser('~/sites/local.roundup')
-    elif 'dev' == config.deploy_env:
-        env.hosts = ['orchestra.med.harvard.edu']
-        config.system_python = '/groups/cbi/bin/python2.7'
-        config.deploy_dir = '/www/dev.roundup.hms.harvard.edu'
-        config.current_release = 'test_dataset'
-        config.proj_dir = '/groups/cbi/sites/dev.roundup'
-    elif 'prod' == config.deploy_env:
-        env.hosts = ['orchestra.med.harvard.edu']
-        config.system_python = '/groups/cbi/bin/python2.7'
-        config.deploy_dir = '/www/roundup.hms.harvard.edu'
-        config.current_release = '3'
-        config.proj_dir = '/groups/cbi/sites/roundup'
-    elif 'dataset' == config.deploy_env:
-        # get the dataset dir (where the dataset will be deployed.
-        if not env.get('dsdir'):
-            raise Exception('For dataset deployment environments, env.dsdir must be set, e.g. by --set dsdir=PATH_TO_DS')
-        env.hosts = ['orchestra.med.harvard.edu']
-        config.system_python = '/groups/cbi/bin/python2.7'
-        config.deploy_dir = env.dsdir
-        config.current_release = os.path.basename(env.dsdir)
-        config.proj_dir = '/groups/cbi/roundup'
-
-    config.venv = os.path.join(config.deploy_dir, 'venv')
-    config.app = os.path.join(config.deploy_dir, 'app')
-    config.python_exe = os.path.join(config.venv, 'bin', 'python')
     return config
 
-config = configure()
 
+def post_config(config):
+    '''
+    Called by one of the deployment environment configuration tasks: dev, prod,
+    etc.  Sets some values in `config`.
+    '''
+    config.venv = os.path.join(config.deploy_dir, 'venv')
+    config.app = os.path.join(config.deploy_dir, 'app')
+    config.python = os.path.join(config.venv, 'bin', 'python')
+    env.configured = True
+    return config
+
+
+def dsdir_config(proj_dir, dsid):
+    return os.path.join(proj_dir, 'datasets', dsid)
+
+
+# a global configuration "dictionary" (actually an attribute namespace).
+# an alternative to fabric.api.env, which IMHO is a bad place to store
+# application configuration, since that can conflict with fabric internals and
+# it is not flexible enough to store per-host configuration.
+config = pre_config(diabric.config.Namespace())
+
+
+
+@task
+def local():
+    '''
+    Configure tasks for local deployment.
+    '''
+    env.hosts = ['localhost']
+    config.deploy_env = 'local'
+    config.system_python = '/usr/local/bin/python'
+    config.deploy_dir = os.path.expanduser('~/www/local.roundup.hms.harvard.edu')
+    config.proj_dir = os.path.expanduser('~/sites/local.roundup')
+    config.dsdir = dsdir_config(config.proj_dir, 'test_dataset')
+    post_config(config)
+
+
+@task
+def dev():
+    '''
+    Configure tasks for development deployment.
+    '''
+    env.hosts = ['orchestra.med.harvard.edu']
+    config.deploy_env = 'dev'
+    config.system_python = '/groups/cbi/bin/python2.7'
+    config.deploy_dir = '/www/dev.roundup.hms.harvard.edu'
+    config.proj_dir = '/groups/cbi/sites/dev.roundup'
+    config.dsdir = dsdir_config(config.proj_dir, 'test_dataset')
+    post_config(config)
+
+
+@task
+def prod():
+    '''
+    Configure tasks for production deployment.
+    '''
+    env.hosts = ['orchestra.med.harvard.edu']
+    config.deploy_env = 'prod'
+    config.system_python = '/groups/cbi/bin/python2.7'
+    config.deploy_dir = '/www/roundup.hms.harvard.edu'
+    config.proj_dir = '/groups/cbi/sites/roundup'
+    config.dsdir = dsdir_config(config.proj_dir, '3')
+    post_config(config)
+
+
+@task
+def ds(dsid):
+    '''
+    Configure tasks for dataset deployment.
+
+    dsid (string): The id of the dataset.  E.g. '3'.  This is used to derive
+    a dataset directory.
+    '''
+    env.hosts = ['orchestra.med.harvard.edu']
+    config.deploy_env = 'dataset'
+    config.system_python = '/groups/cbi/bin/python2.7'
+    config.proj_dir = '/groups/cbi/sites/roundup'
+    config.dsdir = dsdir_config(config.proj_dir, dsid)
+    config.deploy_dir = os.path.join(config.dsdir, 'code')
+    post_config(config)
 
 
 #######
 # TASKS
 
-create_venv = diabric.venv.CreateVenv(config.venv, config.system_python)
-install_venv = diabric.venv.InstallVenv(config.venv, config.requirements)
-remove_venv = diabric.venv.RemoveVenv(config.venv)
-freeze_venv = diabric.venv.FreezeVenv(config.venv, config.requirements)
+@task
+def create_venv():
+    require('configured')
+    diabric.venv.create(config.venv, config.system_python)
+
+
+@task
+def install_venv():
+    require('configured')
+    diabric.venv.install(config.venv, config.requirements)
+
+
+@task
+def freeze_venv():
+    require('configured')
+    diabric.venv.freeze(config.venv, config.requirements)
+
+
+@task
+def remove_venv():
+    require('configured')
+    diabric.venv.remove(config.venv)
+
+
+@task
+def init_dataset():
+    require('configured')
+    run('mkdir -p {dsdir}'.format(dsdir=config.dsdir))
+
+
+@task
+def prepare_dataset():
+    require('configured')
+    with cd(config.app):
+        run('{python} roundup/dataset.py prepare_dataset {dsdir}'.format(
+            python=config.python, dsdir=config.dsdir))
 
 
 @task
@@ -120,6 +193,7 @@ def init_deploy_env():
     across changes to the codebase, like results and log files.
     this should be called once per deployment environment, not every time code is deployed.
     '''
+    require('configured')
     dirs = [os.path.join(config.proj_dir, d) for d in ['datasets', 'log', 'tmp']]
     print dirs
     cmd1 = 'mkdir -p ' + ' '.join(dirs)
@@ -131,9 +205,9 @@ def init_deploy_env():
 @task
 def clean():
     '''
-    If host is specified, user should also be specified, and vice versa.
     Remove deployed code, dirs and link.  Remake dirs and link.
     '''
+    require('configured')
     cmds = ['rm -rf app/* docroot', # clean code dir and link
             'mkdir -p app/public', # make code dir (and dir to link to)
             'ln -s app/public docroot' # make link (b/c apache likes docroot and passenger likes app/public).
@@ -149,6 +223,7 @@ def deploy():
     If host is specified, user should also be specified, and vice versa.
     Copy files from src to deployment dir, including renaming one file.
     '''
+    require('configured')
 
     # copy files to remote destintation, excluding backups, .svn dirs, etc.
     # do not deploy these files/dirs.
@@ -168,7 +243,7 @@ def deploy():
     upload_template(
         os.path.join(HERE, 'deploy/passenger_wsgi.template.py'),
         os.path.join(config.app, 'passenger_wsgi.py'),
-        context={'python_exe': config.python_exe,
+        context={'python': config.python,
                  'db_prefix': config.db_prefix},
         mode=0664)
 
@@ -177,7 +252,7 @@ def deploy():
         os.path.join(config.app, 'config/generated.py'),
         context={'deploy_env': config.deploy_env,
                  'proj_dir': config.proj_dir,
-                 'current_release': config.current_release},
+                 'current_dataset': config.dsdir},
         mode=0664)
 
     # copy secrets files
@@ -194,12 +269,13 @@ def deploy():
     diabric.files.upload_shebang(
         os.path.join(HERE, 'app/roundup/dataset.py'),
         os.path.join(config.app, 'roundup/dataset.py'),
-        config.python_exe,
+        config.python,
         mode=0770)
 
 
 @task
 def restart():
+    require('configured')
     # touch passenger restart.txt, so passenger will pick up the changes.
     with cd(config.app):
         run ('touch tmp/restart.txt')
@@ -207,6 +283,7 @@ def restart():
 
 @task
 def all():
+    require('configured')
     execute(install_venv)
     execute(clean)
     execute(deploy)

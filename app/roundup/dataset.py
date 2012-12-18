@@ -22,7 +22,7 @@
 # ds = '/groups/cbi/td23/test_dataset'
 # orgCodes = 'MYCGE MYCGF MYCGH MYCH1 MYCH2 MYCH7 MYCHH MYCHJ MYCHP'.split()
 # genomes = '243273 708616 710128 907287 295358 262722 872331 262719 347256'.split()
-# roundup.dataset.prepareDataset(ds)
+# roundup.dataset.prepare_dataset(ds)
 # roundup.dataset.setGenomes(ds, genomes)
 # roundup.dataset.prepareJobs(ds, numJobs=10)
 # "
@@ -79,7 +79,7 @@ import uniprot
 import util
 import workflow
 
-
+DEFAULT_NUM_JOBS = 4000 # the default number of jobs used to compute orthologs
 MIN_GENOME_SIZE = 200 # ignore genomes with fewer sequences
 DIR_MODE = 0775 # directories in this dataset are world readable and group writable.
 
@@ -112,7 +112,7 @@ BIG_DATA_KEYS = [GENES, GENE_TO_GENOME, GENE_TO_NAME, GENE_TO_DESC,
 # MAIN DATASET PIPELINE
 #######################
 
-def prepareDataset(ds):
+def prepare_dataset(ds):
     '''
     Make the directory structure, tables, etc., a new dataset needs.
     '''
@@ -122,7 +122,7 @@ def prepareDataset(ds):
             os.makedirs(path, DIR_MODE)
 
 
-def downloadSources(ds):
+def download_sources(ds):
     '''
     Download uniprot files contained in an archive of a uniprot release.
     Download ncbi taxon categories file.
@@ -131,7 +131,7 @@ def downloadSources(ds):
     are not stable.
     '''
     
-    print 'downloadSources: {}'.format(ds)
+    print 'download_sources: {}'.format(ds)
     sourcesDir = getSourcesDir(ds)
 
     currentUrl = 'ftp://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/complete'
@@ -183,7 +183,7 @@ def downloadSource(ds, url, dest):
     time.sleep(pause)
     
 
-def processSources(ds):
+def process_sources(ds):
     '''
     gunzip (and untar) some source files.
     '''
@@ -263,16 +263,20 @@ def extractFromGeneOntology(ds):
 
 def examineDats(ds, dats=None, surprisesFile=None, countsFile=None):
     '''
+    Investigate which genomes we should include in roundup.  Gather data about
+    the sequences and genomes in the dat files, primarily counts per genome of
+    total sequences, complete sequences, reference sequences, seqs in sprot,
+    seqs in trembl.  Check for surprises, like having >1 taxon or genome name
+    or organism code per genome.  This function is used to better understand
+    the dat files, to decide whether or not to just use 'Complete proteome'
+    seqs, and to see which genomes are new (not in last roundup).
+
     ds: a dataset (dir)
     dats: a list of dat file paths.  Defaults to the dat files in the dataset.
-    surprisesFile: where to write all the ways the dat files surprised the parser by being formed in unexpected ways.
-    countsFile: where to write the count of sequences for each genome, including total, complete, and reference counts.
-    Investigate which genomes we should include in roundup.
-    Gather data about the sequences and genomes in the dat files, primarily counts per genome of total sequences, complete sequences,
-    reference sequences, seqs in sprot, seqs in trembl.
-    Check for surprises, like having >1 taxon or genome name or organism code per genome.
-    This function was used to better understand the dat files, to decide whether or not to just use 'Complete proteome' seqs, and to
-    see which genomes are new (not in last roundup).
+    surprisesFile: where to write all the ways the dat files surprised the
+    parser by being formed in unexpected ways.
+    countsFile: where to write the count of sequences for each genome,
+    including total, complete, and reference counts.
     '''
     if not dats:
         dats = getDats(ds)
@@ -369,17 +373,52 @@ def examineDats(ds, dats=None, surprisesFile=None, countsFile=None):
     print 'all done.', datetime.datetime.now()
 
 
+def set_genomes_from_filter(ds):
+    '''
+    Set the genomes to be ones that have >= MIN_GENOME_SIZE sequences marked
+    'Complete proteome' and are archaea, bacteria, or eukayota, and have taxon
+    data.  Report all genomes rejected for missing taxon data if they meet the
+    sequence count criterion.
+    '''
+    countData = getData(ds, 'dat_genome_counts')
+    taxonToData = getTaxonToData(ds)
+    genomes = [g for g in countData]
+    print 'all_genomes', len(genomes)
+    # filter out small genomes
+    genomes1 = [g for g in genomes if countData[g]['complete_count'] >= MIN_GENOME_SIZE]
+    print 'after_size_filter', len(genomes1)
+    # filter out genomes missing taxon data
+    genomes2 = []
+    for genome in genomes1:
+        if genome not in taxonToData:
+            print 'missing_taxon', genome, 'complete_count', countData[genome]['complete_count'], 'name', countData[genome]['name']
+        else:
+            genomes2.append(genome)
+    print 'after_missing_taxon_filter', len(genomes2)
+    # filter out genomes that are viruses or unclassified
+    genomes3 = []
+    for genome in genomes2:
+        catCode = taxonToData[genome].get(CAT_CODE)
+        if catCode in ['A', 'B', 'E']:
+            genomes3.append(genome)
+        else:
+            print 'filtered_taxon_cat_code', genome, 'cat_code', catCode, 'complete_count', countData[genome]['complete_count'], 'name', countData[genome]['name']
+    print 'after_taxon_category_filter', len(genomes3)
+    setGenomes(ds, genomes3)
+
+
 def setGenomesFromCounts(ds):
     '''
     Use to set the genomes from uniprot that we are interested in.  These are genomes who have >= MIN_GENOME_SIZE
     sequences marked 'Complete proteome'.
     '''
+    raise Exception('Deprecated.  See set_genomes_from_filter')
     # we are interested in genomes with complete counts >= MIN_GENOME_SIZE
     countData = getData(ds, 'dat_genome_counts')
     genomes = [g for g in countData if countData[g]['complete_count'] >= MIN_GENOME_SIZE]
     setGenomes(ds, genomes)
-    
-    
+
+
 def findMissingTaxonToData(ds):
     '''
     Report which genomes (of the genomes we are interested in) are missing from taxonToData or do not
@@ -392,6 +431,7 @@ def findMissingTaxonToData(ds):
     Then one should construct by hand a lookup table for the missing taxons and use
     setMissingTaxonToData() to create a lookup to be used when the database is loaded.
     '''
+    raise Exception('Deprecated.  See set_genomes_from_filter')
     genomes = getGenomes(ds)
     taxonToData = getTaxonToData(ds)
     for genome in genomes:
@@ -435,6 +475,7 @@ def setMissingTaxonToData(ds, missingTaxonToData):
     roundup.dataset.setMissingTaxonToData(ds, missingTaxonToData)
     "
     '''
+    raise Exception('Deprecated.  See set_genomes_from_filter')
     taxonToData = getTaxonToData(ds)
     taxonToData.update(missingTaxonToData)
     setData(ds, TAXON_TO_DATA, taxonToData)
@@ -611,7 +652,7 @@ def formatSomeGenomes(ds, genomes):
 #         rsd.formatForBlast(path)
 
 
-def prepareJobs(ds, numJobs=2000, pairs=None):
+def prepareJobs(ds, numJobs=DEFAULT_NUM_JOBS, pairs=None):
     '''
     ds: dataset to ready to compute pairs
     numJobs: split pairs into this many jobs.  More jobs = shorter jobs, better parallelism.
@@ -1167,7 +1208,7 @@ def computeJob(ds, job):
         if os.path.exists(orthologsPath):
             os.remove(orthologsPath)
 
-            
+
 def computePair(ds, pair, workingDir, orthologsPath):
     '''
     ds: the roundup dataset.
@@ -1631,46 +1672,94 @@ def main():
     Command line functionality.  These commands are meant to simplify the
     syntax for making a dataset, so that you do not need to write commands
     like:
-        python -c 'import roundup.dataset; roundup.dataset.prepareDataset("/groups/cbi/roundup/datasets/4")'
+
+        python -c 'import roundup.dataset; roundup.dataset.prepare_dataset("/groups/cbi/roundup/datasets/4")'
+
+    Instead you can write commands like:
+
+        python roundup/dataset.py prepare_dataset /groups/cbi/roundup/datasets/4
+
     '''
 
     # wrappers to transform arguments from subparsers into the
     # appropriate function call.
-    def prepare_dataset(args):
-        return prepareDataset(args.dataset)
+    def format_genomes(args):
+        return formatGenomes(args.dataset, onGrid=not(args.off_grid), clean=args.clean)
 
     def add_fasta(args):
         return addGenomeFasta(args.dataset, args.genome, args.fasta_file,
                 name=args.name, taxon=args.taxon)
 
-    def set_genomes(args):
-        return setGenomes(args.dataset)
-
-    def format_genomes(args):
-        return formatGenomes(args.dataset, clean=True)
-
     def prepare_jobs(args):
         return prepareJobs(args.dataset, numJobs=args.num)
-
-    def compute(args):
-        return computeJobs(args.dataset)
-
-    def collate(args):
-        return collateOrthologs(args.dataset)
 
     def convert_to_orthoxml(args):
         return convertToOrthoXML(args.dataset, args.origin, 
                 args.origin_version, args.database, args.database_version, 
                 onGrid=True, clean=True)
 
-    
     parser = argparse.ArgumentParser(description='')
     subparsers = parser.add_subparsers(dest='action')
 
-    # prepare_dataset 
-    prepare_dataset_parser = subparsers.add_parser('prepare_dataset', help='initialize the dataset directory and tables.')
-    prepare_dataset_parser.add_argument('dataset', help='root directory of the dataset')
-    prepare_dataset_parser.set_defaults(func=prepare_dataset)
+    def make_ds_subparser(action, func, help=None):
+        '''
+        action: the name of the subparser.
+        func: A callable that takes a single argument, a dataset
+        '''
+        def ds_func(args):
+            '''
+            Will dispatch to a module-level function named by args.action, passing
+            it the argument args.dataset.
+            '''
+            return func(args.dataset)
+
+        subparser = subparsers.add_parser(action, help=help)
+        ds_help = 'The root directory of the dataset.'
+        ds_help += '  E.g. /groups/cbi/sites/roundup/datasets/3'
+        subparser.add_argument('dataset', help=ds_help)
+        subparser.set_defaults(func=ds_func)
+
+    make_ds_subparser('prepare_dataset', prepare_dataset,
+                      help='Initialize the dataset directory and tables.')
+    make_ds_subparser('download_sources', download_sources,
+                      help='Download uniprot, taxon data, etc.')
+    make_ds_subparser('process_sources', process_sources,
+                      help='Gunzip (and untar) some source files.')
+    make_ds_subparser('extract_taxon', extractTaxonData,
+                      help='')
+    make_ds_subparser('extract_gene_ontology', extractFromGeneOntology,
+                      help='')
+    make_ds_subparser('examine_dats', examineDats,
+                      help='')
+    make_ds_subparser('set_genomes_from_filter', set_genomes_from_filter,
+                      help='Set the list of genomes to be those genomes' +
+                      ' that have >= MIN_GENOME_SIZE sequences marked' +
+                      ' "Complete proteome", and are a Bacteria, Archaea,' +
+                      ' or Eukaryota.')
+    make_ds_subparser('extract_dats', extractFromDats,
+                      help='')
+
+    # Format Genomes
+    format_genomes_parser = subparsers.add_parser(
+        'format_genomes', help='Format genomes in the dataset for using BLAST')
+    format_genomes_parser.add_argument('dataset', help='root directory of the dataset')
+    format_genomes_parser.add_argument('--off-grid', action='store_true',
+                                       help='Do not use LSF to format the genomes')
+    format_genomes_parser.add_argument(
+        '--clean', action='store_true', default=False,
+        help='Format all genomes, not just the ones that have not yet been formatted.')
+    format_genomes_parser.set_defaults(func=format_genomes)
+
+
+
+    make_ds_subparser('compute', computeJobs,
+                      help='Compute orthologs.')
+    make_ds_subparser('collate', collateOrthologs,
+                      help='Collate orthologs in the dataset.')
+    make_ds_subparser('set_genomes', setGenomes,
+                      help='Cache a list of the genomes in the genomes' +
+                      ' directory in the dataset metadata, b/c the isilon' +
+                      ' is wicked slow at listing dirs.')
 
     # add genome fasta to dataset
     add_fasta_parser = subparsers.add_parser('add_fasta', help='import a genome fasta file into the dataset')
@@ -1681,32 +1770,12 @@ def main():
     add_fasta_parser.add_argument('--taxon', required=True, help='The NCBI taxon id of the genome. e.g. 9606.')
     add_fasta_parser.set_defaults(func=add_fasta)
 
-    # set_genomes metadata
-    set_genomes_parser = subparsers.add_parser('set_genomes', help='set genomes metadata in the dataset')
-    set_genomes_parser.add_argument('dataset', help='root directory of the dataset')
-    set_genomes_parser.set_defaults(func=set_genomes)
-
-    # format genomes
-    format_parser = subparsers.add_parser('format_genomes', help='format genomes in the dataset')
-    format_parser.add_argument('dataset', help='root directory of the dataset')
-    format_parser.set_defaults(func=format_genomes)
-
     # prepare ortholog jobs 
     prepare_jobs_parser = subparsers.add_parser('prepare_jobs', help='prepare_jobs genomes in the dataset')
     prepare_jobs_parser.add_argument('dataset', help='root directory of the dataset')
-    prepare_jobs_parser.add_argument('-n', '--num', type=int, required=True,
+    prepare_jobs_parser.add_argument('-n', '--num', type=int, default=DEFAULT_NUM_JOBS,
             help='number of jobs in which to split the dataset pairs. e.g. 1000')
     prepare_jobs_parser.set_defaults(func=prepare_jobs)
-
-    # compute orthologs
-    compute_parser = subparsers.add_parser('compute', help='compute orthologs')
-    compute_parser.add_argument('dataset', help='root directory of the dataset')
-    compute_parser.set_defaults(func=compute) 
-    
-    # collate orthologs
-    collate_parser = subparsers.add_parser('collate', help='collate orthologs in the dataset')
-    collate_parser.add_argument('dataset', help='root directory of the dataset')
-    collate_parser.set_defaults(func=collate)
 
     # convert_to_orthoxml
     convert_to_orthoxml_parser = subparsers.add_parser('convert_to_orthoxml', 
