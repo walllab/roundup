@@ -3,27 +3,27 @@
 
 Deploy code to development environment on orchestra:
 
-    fab --set de=dev deploy
+    fab dev deploy
 
 Deploy code to a specific roundup dataset (e.g. 3).  This is useful for
 creating an install of roundup for use in computing a large dataset without
 depending on other code that might change/break during the time of the 
 computation:
 
-    fab --set de=dataset,dsdir=/groups/cbi/roundup/dataset/3 deploy
+    fab ds:3 deploy
 
 Do a clean deployment of code to production:
 
-    fab --set de=prod all
+    fab prod all
 
 Initialize the project directories (e.g. In /groups/cbi/dev.roundup) for local
 environment:
 
-    fab --set de=local init_deploy_env
+    fab local init_deploy_env
 
 Get the virtualenv up and running for a deployment environment:
 
-    fab --set de=dev create_venv install_venv
+    fab dev create_venv install_venv
 
 The file allows deployment to remote hosts, assuming key pairs and permissions
 are good.
