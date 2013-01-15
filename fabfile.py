@@ -58,7 +58,6 @@ def pre_config(config):
     # location of a pip requirements.txt file.
     # used to persist package volumes or recreate a virtual environment.
     config.requirements = os.path.join(HERE, 'requirements.txt')
-    config.db_prefix = 'ROUNDUP'
     return config
 
 
@@ -243,8 +242,7 @@ def deploy():
     upload_template(
         os.path.join(HERE, 'deploy/passenger_wsgi.template.py'),
         os.path.join(config.app, 'passenger_wsgi.py'),
-        context={'python': config.python,
-                 'db_prefix': config.db_prefix},
+        context={'python': config.python},
         mode=0664)
 
     upload_template(
