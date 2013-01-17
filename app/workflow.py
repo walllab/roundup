@@ -266,7 +266,9 @@ def _makeJobNames(jobs, names=None):
 DONES_CACHE = {}
 def getDones(ns):
     if ns not in DONES_CACHE:
-        DONES_CACHE[ns] = dones.Dones('workflow_dones_{}'.format(ns), config.openDbConn)
+        kns = 'workflow_dones_{}'.format(ns)
+        k = kvstore.KStore(util.ClosingFactoryCM(config.openDbConn), ns=kns)
+        DONES_CACHE[ns] = dones.Dones(k)
     return DONES_CACHE[ns]
 
 

@@ -46,6 +46,7 @@
 # standard library modules
 import argparse
 import collections
+import contextlib
 import datetime
 import glob
 import itertools
@@ -798,18 +799,19 @@ def extractPerformanceStats(ds, pairs=None):
     def elapsedTime(stats):
         return stats['endTime'] - stats['startTime']
     
-    for qdb, sdb in pairs:
-        forwardTime = elapsedTime(getStats(ds).getBlast(qdb, sdb))
-        reverseTime = elapsedTime(getStats(ds).getBlast(sdb, qdb))
-        rsdTime = elapsedTime(getStats(ds).getRsd(qdb, sdb))
+    with statsCM(ds) as stats:
+        for qdb, sdb in pairs:
+            forwardTime = elapsedTime(stats.getBlast(qdb, sdb))
+            reverseTime = elapsedTime(stats.getBlast(sdb, qdb))
+            rsdTime = elapsedTime(stats.getRsd(qdb, sdb))
 
-        blastStats[json.dumps((qdb, sdb))] = forwardTime
-        blastStats[json.dumps((sdb, qdb))] = reverseTime
-        rsdStats[json.dumps((qdb, sdb))] = rsdTime
+            blastStats[json.dumps((qdb, sdb))] = forwardTime
+            blastStats[json.dumps((sdb, qdb))] = reverseTime
+            rsdStats[json.dumps((qdb, sdb))] = rsdTime
 
-        totalTime += forwardTime + reverseTime + rsdTime
-        totalBlastTime += forwardTime + reverseTime
-        totalRsdTime += rsdTime
+            totalTime += forwardTime + reverseTime + rsdTime
+            totalBlastTime += forwardTime + reverseTime
+            totalRsdTime += rsdTime
 
     print 'total time:', totalTime
     print 'total blast time:', totalBlastTime
@@ -1594,7 +1596,9 @@ def getTaxonToData(ds):
 DONES_CACHE = {}
 def getDones(ds):
     if ds not in DONES_CACHE:
-        DONES_CACHE[ds] = dones.Dones('roundup_dataset_{}_dones'.format(getDatasetId(ds)), config.openDbConn)
+        ns = 'roundup_dataset_{}_dones'.format(getDatasetId(ds))
+        k = kvstore.KStore(util.ClosingFactoryCM(config.openDbConn), ns=ns)
+        DONES_CACHE[ds] = dones.Dones(k)
     return DONES_CACHE[ds]
 
 
@@ -1603,10 +1607,48 @@ def getDones(ds):
 #######
 
 STATS_CACHE = {}
+
+
+def stats_ns(ds):
+    '''
+    DRY function for creating the stats namespace from the dataset name.
+    '''
+    return 'roundup_dataset_{}_stats'.format(getDatasetId(ds))
+
+
 def getStats(ds):
+    '''
+    Return a Stats object with a connection context manager that proactively
+    closes connections to the database.
+    '''
     if ds not in STATS_CACHE:
-        STATS_CACHE[ds] = Stats('roundup_dataset_{}_stats'.format(getDatasetId(ds)), config.openDbConn)
+        manager = util.ClosingFactoryCM(config.openDbConn)
+        kv = kvstore.KVStore(manager=manager, ns=stats_ns(ds))
+        STATS_CACHE[ds] = Stats(kv)
+
     return STATS_CACHE[ds]
+
+
+@contextlib.contextmanager
+def statsCM(ds):
+    '''
+    A context manager that returns a Stats object and closes the database
+    connection used by the stats objecdt when exiting the context.  
+
+    This is useful when rapidly getting or putting stats, which would overwhelm
+    the database if each action opened and closed a database connection.
+    '''
+    reuser = None
+    try:
+        # reuser tries to keep an open connection to the database
+        reuser = dbutil.Reuser(config.openDbConn)
+        manager=util.FactoryCM(reuser)
+        kv = kvstore.KVStore(manager=manager, ns=stats_ns(ds))
+        stats = Stats(kv)
+        yield stats
+    finally:
+        if reuser:
+            reuser.close()
 
 
 class Stats(object):
@@ -1614,15 +1656,17 @@ class Stats(object):
     Thin wrapper around a key-value store that stores performance stats for
     blast and "rsd" jobs.
     '''
-    def __init__(self, ns, open_conn):
-        self.ns = ns
-        self.open_conn = open_conn
-        self.kv = None
+    def __init__(self, kv):
+        '''
+        kv: a KVStore object used to store the stats.
+        '''
+        self.kv = kv
+        self.ready = False
 
     def _get_kv(self):
-        if not self.kv:
-            self.kv = kvstore.KVStore(util.FactoryCM(dbutil.Reuser(self.open_conn)), ns=self.ns)
+        if not self.ready:
             self.kv.create() # will create the table if it does not exist
+            self.ready = True
 
         return self.kv
 
@@ -1632,7 +1676,7 @@ class Stats(object):
         up when done storing them.
         '''
         self._get_kv().drop()
-        self.kv = None # set to None so _get_kv() will create table next time.
+        self.ready = False # _get_kv() will create table next time.
 
     def get(self, key):
         '''
@@ -1655,7 +1699,7 @@ class Stats(object):
     def getBlast(self, qdb, sdb):
         key = ('blast', qdb, sdb)
         return self.get(key)
-        
+
     def putRsd(self, qdb, sdb, divEvalues, startTime, endTime):
         stats = {'type': 'roundup', 'qdb': qdb, 'sdb': sdb, 'divEvalues': divEvalues, 'startTime': startTime, 'endTime': endTime}
         key = ('rsd', qdb, sdb)

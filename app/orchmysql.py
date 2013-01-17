@@ -101,9 +101,15 @@ def connCM(host, db, user, password):
 
 def openConn(host, db, user, password, retries=0, sleep=0.5):
     '''
+    Return an open mysql db connection using the given credentials.  Use
+    `retries` and `sleep` to be robust to the occassional transient connection
+    failure.
+
     retries: if an exception when getting the connection, try again at most this many times.
     sleep: pause between retries for this many seconds.  a float >= 0.
     '''
+    assert retries >= 0
+
     try:
         return MySQLdb.connect(host=host, user=user, passwd=password, db=db)
     except Exception:

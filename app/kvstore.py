@@ -155,7 +155,7 @@ def testKStore():
     except Exception:
         print 'exists fails b/c table is missing'
 
-    
+
 class KStore(object):
     '''
     Uses KVStore to manage a set of keys in a namespace.

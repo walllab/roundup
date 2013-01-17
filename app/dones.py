@@ -1,7 +1,6 @@
 
 
 import kvstore
-import util
 
 
 class Dones(object):
@@ -17,24 +16,24 @@ class Dones(object):
     it should be relatively high performance, scale to millions of keys,
     and handle concurrent access well.
     '''
-    def __init__(self, ns, open_conn):
+    def __init__(self, k):
         '''
-        ns: a namespace used to keep these dones separate from other dones
-        in the database.  Makes it easy to reset or drop the dones without
-        affecting other dones.  Makes it easy to avoid these keys conflicting
-        with another dones keys.
-        open_conn: a function which returns an open dbapi2 connection.  It is 
-        important that open_conn be pickleable if the Dones object will be
-        pickled.
+        k: a kvstore.KStore object with a namespace used to keep these dones
+        separate from other dones in the database.  Makes it easy to reset or
+        drop the dones without affecting other dones.  Makes it easy to avoid
+        these keys conflicting with another dones keys.
         '''
-        self.ns = ns
-        self.open_conn = open_conn
-        self.k = None # delay creation until needed.
+        self.k = k
+        self.ready = False
 
     def _get_k(self):
-        if not self.k:
-            self.k = kvstore.KStore(util.ClosingFactoryCM(self.open_conn), ns=self.ns)
+        '''
+        Accessing self.k indirectly allows for creating the kvstore table
+        if necessary.
+        '''
+        if not self.ready:
             self.k.create() # create table if it does not exist.
+            self.ready = True
 
         return self.k
 
@@ -44,7 +43,7 @@ class Dones(object):
         cleaning up when all done.
         '''
         self._get_k().drop()
-        self.k = None # set to None, so _get_k() will create table next time.
+        self.ready = False # _get_k() will create table next time.
         
     def done(self, key):
         '''

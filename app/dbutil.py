@@ -62,6 +62,14 @@ class Reuser(object):
         else:
             return False
 
+    def close(self):
+        '''
+        Close any open connection to the database.
+        '''
+        if self.conn:
+            self.conn.close()
+            self.conn = None
+
 
 @contextlib.contextmanager
 def doTransaction(conn, start=True, startSQL='START TRANSACTION'):
