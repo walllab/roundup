@@ -1,8 +1,5 @@
 
 
-import kvstore
-
-
 class Dones(object):
     '''
     Semantically, Dones can be used to mark whether a key is "done" and
