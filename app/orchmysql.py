@@ -117,6 +117,8 @@ def openConn(host, db, user, password, retries=0, sleep=0.5):
         if retries > 0:
             time.sleep(sleep)
             return openConn(host, db, user, password, retries - 1, sleep)
+        else:
+            raise
 
 
 # last line
