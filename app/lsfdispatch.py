@@ -24,6 +24,18 @@ _LSF_DISPATCH_CMD = [sys.executable, _FILE_PATH]
 # print _LSF_DISPATCH_CMD
 
 
+def test_exception(msg='test_exception'):
+    raise Exception(msg)
+
+
+def test_print(msg='test_print'):
+    print msg
+
+
+def test_exit(msg='test_exit'):
+    sys.exit(msg)
+
+
 def dispatch(func, args=None, keywords=None, path=None, lsfOptions=None, devnull=True, outfile=None):
     '''
     func: function name including modules, etc., e.g. 'foo_package.gee_package.bar_module.baz_object.wiz_func'
@@ -113,7 +125,7 @@ def main():
 if __name__ == '__main__':
     try:
         main()
-    except:
+    except Exception: # do not log KeyboardInterrupt or SystemExit
         logging.exception('Error.')
         raise
 
