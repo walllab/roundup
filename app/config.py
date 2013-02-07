@@ -17,16 +17,12 @@ import util
 ###############################################
 # DEPLOYMENT ENVIRONMENT SPECIFIC CONFIGURATION
 ###############################################
-# Variables from defaults, env, and generated.
-# BLAST_BIN_DIR, LOG_FROM_ADDR, SITE_URL_ROOT NO_LSF, CURRENT_RELEASE,
-# PROJ_DIR, HTTP_HOST PROJ_BIN_DIR
-# DJANGO_DEBUG
-from config.defaults import *
-from config.env import *
-from config.generated import *
-import config.secrets
+# BLAST_BIN_DIR, LOG_FROM_ADDR, SITE_URL_ROOT NO_LSF, CURRENT_DATASET,
+# PROJ_DIR, HTTP_HOST, PROJ_BIN_DIR, DJANGO_DEBUG
+from deployenv import *
+import secrets
 
-
+CURRENT_DATASET = os.path.expanduser(CURRENT_DATASET)
 CURRENT_RELEASE = os.path.basename(CURRENT_DATASET)
 LOG_FILE = os.path.join(PROJ_DIR, 'log/app.log')
 TMP_DIR = os.path.join(PROJ_DIR, 'tmp') 
@@ -44,7 +40,20 @@ lsf.setEnviron('/opt/lsf/7.0/linux2.6-glibc2.3-x86_64', '/opt/lsf/conf')
 # QUEST FOR ORTHOLOGS
 QFO_VERSIONS = ['2011_04']
 
+
+#########
 # Mailing
+
+# function for sending a single email
+if MAIL_SERVICE_TYPE == 'amazon_ses':
+    sendmail = mailutil.SMTPSSL(
+        'smtp.orchestra', 25, username=secrets.AMAZON_SES_SMTP_USERNAME,
+        password=secrets.AMAZON_SES_SMTP_PASSWORD).sendone
+elif MAIL_SERVICE_TYPE == 'orchestra':
+    sendmail = mailutil.SMTP('smtp.orchestra', 25).sendone
+else:
+    raise Exception('Unrecognized MAIL_SERVICE_TYPE', MAIL_SERVICE_TYPE)
+
 # function for sending a single text email
 sendtextmail = mailutil.make_sendtextmail(sendmail)
 
@@ -92,7 +101,7 @@ LOGGING_CONFIG = {
             'fromaddr': LOG_FROM_ADDR,
             'toaddrs': LOG_TO_ADDRS,
             'subject': LOG_SUBJECT,
-            'sendmail': config.sendmail,
+            'sendmail': sendmail,
             },
         },
     'loggers': {
@@ -111,10 +120,10 @@ logging.config.dictConfig(LOGGING_CONFIG)
 ######################################
 
 # Get credentials from the environment or a configuration file.
-MYSQL_HOST = os.environ.get('ROUNDUP_MYSQL_HOST') or config.secrets.MYSQL_HOST
-MYSQL_DB = os.environ.get('ROUNDUP_MYSQL_DB') or config.secrets.MYSQL_DATABASE
-MYSQL_USER = os.environ.get('ROUNDUP_MYSQL_USER') or config.secrets.MYSQL_USER
-MYSQL_PASSWORD = os.environ.get('ROUNDUP_MYSQL_PASSWORD') or config.secrets.MYSQL_PASSWORD
+MYSQL_HOST = os.environ.get('ROUNDUP_MYSQL_HOST') or secrets.MYSQL_HOST
+MYSQL_DB = os.environ.get('ROUNDUP_MYSQL_DB') or secrets.MYSQL_DATABASE
+MYSQL_USER = os.environ.get('ROUNDUP_MYSQL_USER') or secrets.MYSQL_USER
+MYSQL_PASSWORD = os.environ.get('ROUNDUP_MYSQL_PASSWORD') or secrets.MYSQL_PASSWORD
 if util.getBoolFromEnv('ROUNDUP_MYSQL_CREDS_FROM_CNF', False):
     MYSQL_USER = getpass.getuser()
     MYSQL_PASSWORD = orchmysql.getCnf()['password']

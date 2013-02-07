@@ -3,13 +3,16 @@ import os
 import sys
 import traceback
 
-
-# add to sys.path the location of user-defined modules
-# assume user-defined modules (e.g. index.py) are located with passenger_wsgi.py, this file.
+# Add to sys.path the location of user-defined modules.  Assume user-defined
+# modules (e.g. index.py) are located with passenger_wsgi.py, this file.  This
+# assumption can fail when __file__ refers to the .pyc file, which can
+# sometimes be stored in a different location.
 sys.path.append(os.path.dirname(__file__))
 
+import passengerconf
+
 # passenger: replace python interpreter from apache with python2.7
-PYTHON = '%(python)s'
+PYTHON = passengerconf.python
 if sys.executable != PYTHON:
     os.execl(PYTHON, PYTHON, *sys.argv)
 

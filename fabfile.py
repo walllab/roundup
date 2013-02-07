@@ -5,12 +5,16 @@ Deploy code to development environment on orchestra:
 
     fab dev deploy
 
-Deploy code to a specific roundup dataset (e.g. 3).  This is useful for
+Push new configuration values to a deployment:
+
+    fab dev conf
+
+Deploy code to a specific roundup dataset (e.g. 4).  This is useful for
 creating an install of roundup for use in computing a large dataset without
 depending on other code that might change/break during the time of the 
 computation:
 
-    fab ds:3 deploy
+    fab ds:4 deploy
 
 Do a clean deployment of code to production:
 
@@ -19,17 +23,26 @@ Do a clean deployment of code to production:
 Initialize the project directories (e.g. In /groups/cbi/dev.roundup) for local
 environment:
 
-    fab local init_deploy_env
+    fab local init_proj
 
 Get the virtualenv up and running for a deployment environment:
 
-    fab dev create_venv install_venv
+    fab local venv_create venv_install
+
+Remove and recreate the virtualenv:
+
+    fab dev venv_remove venv_create venv_install
+
+Save the requirements of a virtualenv to requirements.txt:
+
+    fab dev venv_freeze
 
 The file allows deployment to remote hosts, assuming key pairs and permissions
 are good.
 '''
 
 
+import StringIO
 import os
 import sys
 
@@ -73,10 +86,6 @@ def post_config(config):
     return config
 
 
-def dsdir_config(proj_dir, dsid):
-    return os.path.join(proj_dir, 'datasets', dsid)
-
-
 # a global configuration "dictionary" (actually an attribute namespace).
 # an alternative to fabric.api.env, which IMHO is a bad place to store
 # application configuration, since that can conflict with fabric internals and
@@ -95,7 +104,8 @@ def local():
     config.system_python = '/usr/local/bin/python'
     config.deploy_dir = os.path.expanduser('~/www/local.roundup.hms.harvard.edu')
     config.proj_dir = os.path.expanduser('~/sites/local.roundup')
-    config.dsdir = dsdir_config(config.proj_dir, 'test_dataset')
+    config.current_dataset = os.path.join(config.proj_dir, 'datasets',
+                                          'test_dataset')
     post_config(config)
 
 
@@ -109,7 +119,8 @@ def dev():
     config.system_python = '/groups/cbi/bin/python2.7'
     config.deploy_dir = '/www/dev.roundup.hms.harvard.edu'
     config.proj_dir = '/groups/cbi/sites/dev.roundup'
-    config.dsdir = dsdir_config(config.proj_dir, 'test_dataset')
+    config.current_dataset = os.path.join(config.proj_dir, 'datasets',
+                                          'test_dataset')
     post_config(config)
 
 
@@ -123,7 +134,7 @@ def prod():
     config.system_python = '/groups/cbi/bin/python2.7'
     config.deploy_dir = '/www/roundup.hms.harvard.edu'
     config.proj_dir = '/groups/cbi/sites/roundup'
-    config.dsdir = dsdir_config(config.proj_dir, '3')
+    config.current_dataset = os.path.join(config.proj_dir, 'datasets', '3')
     post_config(config)
 
 
@@ -139,54 +150,43 @@ def ds(dsid):
     config.deploy_env = 'dataset'
     config.system_python = '/groups/cbi/bin/python2.7'
     config.proj_dir = '/groups/cbi/sites/roundup'
-    config.dsdir = dsdir_config(config.proj_dir, dsid)
-    config.deploy_dir = os.path.join(config.dsdir, 'code')
+    config.current_dataset = os.path.join(config.proj_dir, 'datasets', '3')
+    config.deploy_dir = os.path.join(config.proj_dir, 'datasets', dsid, 'code')
     post_config(config)
 
 
-#######
-# TASKS
+############
+# VENV TASKS
 
 @task
-def create_venv():
+def venv_create():
     require('configured')
     diabric.venv.create(config.venv, config.system_python)
 
 
 @task
-def install_venv():
+def venv_install():
     require('configured')
     diabric.venv.install(config.venv, config.requirements)
 
 
 @task
-def freeze_venv():
+def venv_freeze():
     require('configured')
     diabric.venv.freeze(config.venv, config.requirements)
 
 
 @task
-def remove_venv():
+def venv_remove():
     require('configured')
     diabric.venv.remove(config.venv)
 
 
-@task
-def init_dataset():
-    require('configured')
-    run('mkdir -p {dsdir}'.format(dsdir=config.dsdir))
-
+############
+# CODE TASKS
 
 @task
-def prepare_dataset():
-    require('configured')
-    with cd(config.app):
-        run('{python} roundup/dataset.py prepare_dataset {dsdir}'.format(
-            python=config.python, dsdir=config.dsdir))
-
-
-@task
-def init_deploy_env():
+def init_proj():
     '''
     sets up the directories used to contain code and the project data that persists
     across changes to the codebase, like results and log files.
@@ -194,26 +194,72 @@ def init_deploy_env():
     '''
     require('configured')
     dirs = [os.path.join(config.proj_dir, d) for d in ['datasets', 'log', 'tmp']]
-    print dirs
-    cmd1 = 'mkdir -p ' + ' '.join(dirs)
-    cmd2 = 'mkdir -p ' + config.deploy_dir
-    run(cmd1)
-    run(cmd2)
+    run('mkdir -p -m 2775 ' + ' '.join(dirs))
 
 
 @task
 def clean():
     '''
-    Remove deployed code, dirs and link.  Remake dirs and link.
+    Remove deployed configuration, code, dirs and link.  Does not remove 
+    project data like log files and datasets.
     '''
     require('configured')
-    cmds = ['rm -rf app/* docroot', # clean code dir and link
-            'mkdir -p app/public', # make code dir (and dir to link to)
-            'ln -s app/public docroot' # make link (b/c apache likes docroot and passenger likes app/public).
-            ]
+    # remove app dir and docroot link
     with cd(config.deploy_dir):
-        for cmd in cmds:
-            run(cmd)
+        run('rm -rf ' + config.app + ' ' + os.path.join(config.deploy_dir,
+                                                        'docroot'))
+
+
+@task
+def init():
+    '''
+    Make directory for deploying code and configuration, and the link required
+    by Phusion Passenger and Apache.
+    '''
+    require('configured')
+    # passenger requires that docroot be a link to the webapp's public dir
+    run('mkdir -p -m 2775 ' + os.path.join(config.deploy_dir, 'app/public'))
+    with cd(config.deploy_dir):
+        # make link (b/c apache likes docroot and passenger likes app/public).
+        run('ln -s app/public docroot')
+
+
+@task
+def conf():
+    '''
+    Deploy configuration files, files that vary by deployment environment.
+    '''
+    require('configured')
+
+    # make sure destination directories exist
+    run('mkdir -p -m 2775 ' + os.path.join(config.app, 'public'))
+
+    # .htaccess specifies where to find passenger_wsgi.py
+    upload_template(
+        os.path.join(HERE, 'deploy/.htaccess.template'),
+        os.path.join(config.app, 'public/.htaccess'),
+        context={'app_dir': config.app}, mode=0664)
+
+    # Tell passenger_wsgi.py what python executable to rerun itself with instead of using the default apache python.
+    out = StringIO.StringIO()
+    out.write("# Autogenerated file.  Do not modify.\n")
+    out.write("python = '{}'\n".format(config.python))
+    put(out, os.path.join(config.app, 'passengerconf.py'), mode=0664)
+
+    # copy secrets files
+    put(os.path.join(HERE, 'secrets/{}.py'.format(config.deploy_env)),
+        os.path.join(config.app, 'secrets.py'), mode=0660)
+    # copy configution files
+    # slurp in the configuration for this deployment environment, append
+    # some values, and copy to the remote location.
+    out = StringIO.StringIO()
+    out.write("# Autogenerated file.  Do not modify.\n")
+    fn = os.path.join(HERE, 'deploy/{}.py'.format(config.deploy_env))
+    with open(fn) as fh:
+        out.write(fh.read())
+    out.write("DEPLOY_ENV = '{}'\n".format(config.deploy_env))
+    out.write("PROJ_DIR = '{}'\n".format(config.proj_dir))
+    put(out, os.path.join(config.app, 'deployenv.py'), mode=0664)
 
 
 @task
@@ -232,37 +278,8 @@ def deploy():
         remote_dir=config.deploy_dir,
         local_dir=os.path.join(HERE, 'app'),
         exclude=deployExcludes,
-        delete=True)
+        delete=False)
 
-    upload_template(
-        os.path.join(HERE, 'deploy/.htaccess.template'),
-        os.path.join(config.app, 'public/.htaccess'),
-        context={'app_dir': config.app}, mode=0664)
-
-    upload_template(
-        os.path.join(HERE, 'deploy/passenger_wsgi.template.py'),
-        os.path.join(config.app, 'passenger_wsgi.py'),
-        context={'python': config.python},
-        mode=0664)
-
-    upload_template(
-        os.path.join(HERE, 'deploy/generated.template.py'),
-        os.path.join(config.app, 'config/generated.py'),
-        context={'deploy_env': config.deploy_env,
-                 'proj_dir': config.proj_dir,
-                 'current_dataset': config.dsdir},
-        mode=0664)
-
-    # copy secrets files
-    put(os.path.join(HERE, 'deploy/secrets/defaults.py'),
-        os.path.join(config.app, 'config/secrets'), mode=0660)
-    put(os.path.join(HERE, 'deploy/secrets/{}.py'.format(config.deploy_env)),
-        os.path.join(config.app, 'config/secrets/env.py'), mode=0660)
-    # copy configution files
-    put(os.path.join(HERE, 'deploy/config/defaults.py'),
-        os.path.join(config.app, 'config'))
-    put(os.path.join(HERE, 'deploy/config/{}.py'.format(config.deploy_env)),
-        os.path.join(config.app, 'config/env.py'))
     # upload and fix the shebang for scripts
     diabric.files.upload_shebang(
         os.path.join(HERE, 'app/roundup/dataset.py'),
@@ -282,8 +299,9 @@ def restart():
 @task
 def all():
     require('configured')
-    execute(install_venv)
     execute(clean)
+    execute(init)
+    execute(conf)
     execute(deploy)
     execute(restart)
 

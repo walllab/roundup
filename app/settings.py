@@ -4,7 +4,7 @@ import os
 
 # roundup project configuration
 import config
-import config.secrets
+import secrets
 
 
 DEBUG = config.DJANGO_DEBUG
@@ -95,7 +95,7 @@ STATICFILES_FINDERS = (
 # Make this unique, and don't share it with anybody.
 # Oops.  Published key on the web.  Time to change it.
 # SECRET_KEY = 'jd=!@1fr9$#obstrxj#!%cfhz-ojck3c5uejvhd4870gi6)y=m'
-SECRET_KEY = config.secrets.DJANGO_SECRET_KEY
+SECRET_KEY = secrets.DJANGO_SECRET_KEY
 
 
 # List of callables that know how to import templates from various sources.

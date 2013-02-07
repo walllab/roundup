@@ -1,5 +1,9 @@
 #!/usr/bin/env python
 
+'''
+Functions, etc., for rendering orthology query results as html, xml, text, etc.
+'''
+
 import collections
 import io
 import itertools
