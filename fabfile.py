@@ -273,7 +273,7 @@ def deploy():
     # copy files to remote destintation, excluding backups, .svn dirs, etc.
     # do not deploy these files/dirs.
     deployExcludes = ['**/old', '**/old/**', '**/semantic.cache', '**/.svn', '**/.svn/**', '**/*.pyc',
-                      '**/*.pyo', '**/.DS_Store', '**/*~', 'html_video_test/']
+                      '**/*.pyo', '**/.DS_Store', '**/*~']
     rsync_project(
         remote_dir=config.deploy_dir,
         local_dir=os.path.join(HERE, 'app'),

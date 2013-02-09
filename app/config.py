@@ -18,7 +18,7 @@ import util
 # DEPLOYMENT ENVIRONMENT SPECIFIC CONFIGURATION
 ###############################################
 # BLAST_BIN_DIR, LOG_FROM_ADDR, SITE_URL_ROOT NO_LSF, CURRENT_DATASET,
-# PROJ_DIR, HTTP_HOST, PROJ_BIN_DIR, DJANGO_DEBUG
+# PROJ_DIR, HTTP_HOST, DJANGO_DEBUG
 from deployenv import *
 import secrets
 
@@ -31,7 +31,7 @@ TMP_DIR = os.path.join(PROJ_DIR, 'tmp')
 RT_EMAIL = 'submit-cbi@rt.med.harvard.edu'
 
 # Configure environment to run python and blastp
-pathDirs = [BLAST_BIN_DIR, PROJ_BIN_DIR]
+pathDirs = [BLAST_BIN_DIR, KALIGN_BIN_DIR]
 os.environ['PATH'] = ':'.join(pathDirs + [os.environ.get('PATH', '')]) if os.environ.has_key('PATH') else pathDirs
 
 # Configure environment to run LSF commands
