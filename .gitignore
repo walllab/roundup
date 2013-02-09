@@ -4,3 +4,6 @@
 secrets/
 secrets.*
 
+# ignore compiled source files
+*.pyc
+
