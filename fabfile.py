@@ -256,7 +256,6 @@ def conf():
     fn = os.path.join(HERE, 'deploy/{}.py'.format(config.deploy_env))
     with open(fn) as fh:
         out.write(fh.read())
-    out.write("DEPLOY_ENV = '{}'\n".format(config.deploy_env))
     out.write("PROJ_DIR = '{}'\n".format(config.proj_dir))
     put(out, os.path.join(config.app, 'deployenv.py'), mode=0664)
 
