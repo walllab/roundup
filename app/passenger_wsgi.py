@@ -7,12 +7,11 @@ import traceback
 # modules (e.g. index.py) are located with passenger_wsgi.py, this file.  This
 # assumption can fail when __file__ refers to the .pyc file, which can
 # sometimes be stored in a different location.
-sys.path.append(os.path.dirname(__file__))
+HERE = os.path.abspath(os.path.dirname(__file__))
+sys.path.append(HERE)
 
-import passengerconf
-
-# passenger: replace python interpreter from apache with python2.7
-PYTHON = passengerconf.python
+# Replace python interpreter from apache with the project virtualenv python
+PYTHON = os.path.abspath(os.path.join(HERE, '..', 'venv', 'bin', 'python'))
 if sys.executable != PYTHON:
     os.execl(PYTHON, PYTHON, *sys.argv)
 
