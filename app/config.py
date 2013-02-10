@@ -18,14 +18,15 @@ import util
 # DEPLOYMENT ENVIRONMENT SPECIFIC CONFIGURATION
 ###############################################
 # BLAST_BIN_DIR, LOG_FROM_ADDR, SITE_URL_ROOT NO_LSF, CURRENT_DATASET,
-# PROJ_DIR, HTTP_HOST, DJANGO_DEBUG
+# SITE_DIR, HTTP_HOST, DJANGO_DEBUG
 from deployenv import *
 import secrets
 
 CURRENT_DATASET = os.path.expanduser(CURRENT_DATASET)
 CURRENT_RELEASE = os.path.basename(CURRENT_DATASET)
-LOG_FILE = os.path.join(PROJ_DIR, 'log/app.log')
-TMP_DIR = os.path.join(PROJ_DIR, 'tmp') 
+LOG_FILE = os.path.join(SITE_DIR, 'log/app.log')
+TMP_DIR = os.path.join(SITE_DIR, 'tmp') 
+QUEST_FOR_ORTHOLOGS_DIR = os.path.join(SITE_DIR, 'quest_for_orthologs')
 
 # used for contact page
 RT_EMAIL = 'submit-cbi@rt.med.harvard.edu'

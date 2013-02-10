@@ -1,4 +1,4 @@
-# Create your views here.
+# Creatt your views here.
 
 # stdlib modules
 import hashlib
@@ -224,7 +224,7 @@ def download_quest_for_orthologs(request, version):
 
 
 def get_qfo_path_and_size(version):
-    path = os.path.join(config.PROJ_DIR, 'quest_for_orthologs', version, 'download', 'roundup_qfo_{}_orthologs.xml.gz'.format(version))
+    path = os.path.join(config.QUEST_FOR_ORTHOLOGS_DIR, version, 'download', 'roundup_qfo_{}_orthologs.xml.gz'.format(version))
     size = os.path.getsize(path)
     return path, size
 

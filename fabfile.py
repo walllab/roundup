@@ -103,8 +103,8 @@ def local():
     config.deploy_env = 'local'
     config.system_python = '/usr/local/bin/python'
     config.deploy_dir = os.path.expanduser('~/www/local.roundup.hms.harvard.edu')
-    config.proj_dir = os.path.expanduser('~/sites/local.roundup')
-    config.current_dataset = os.path.join(config.proj_dir, 'datasets',
+    config.site_dir = os.path.expanduser('~/sites/local.roundup')
+    config.current_dataset = os.path.join(config.site_dir, 'datasets',
                                           'test_dataset')
     post_config(config)
 
@@ -118,8 +118,8 @@ def dev():
     config.deploy_env = 'dev'
     config.system_python = '/groups/cbi/bin/python2.7'
     config.deploy_dir = '/www/dev.roundup.hms.harvard.edu'
-    config.proj_dir = '/groups/cbi/sites/dev.roundup'
-    config.current_dataset = os.path.join(config.proj_dir, 'datasets',
+    config.site_dir = '/groups/cbi/sites/dev.roundup'
+    config.current_dataset = os.path.join(config.site_dir, 'datasets',
                                           'test_dataset')
     post_config(config)
 
@@ -133,8 +133,8 @@ def prod():
     config.deploy_env = 'prod'
     config.system_python = '/groups/cbi/bin/python2.7'
     config.deploy_dir = '/www/roundup.hms.harvard.edu'
-    config.proj_dir = '/groups/cbi/sites/roundup'
-    config.current_dataset = os.path.join(config.proj_dir, 'datasets', '3')
+    config.site_dir = '/groups/cbi/sites/roundup'
+    config.current_dataset = os.path.join(config.site_dir, 'datasets', '3')
     post_config(config)
 
 
@@ -149,9 +149,9 @@ def ds(dsid):
     env.hosts = ['orchestra.med.harvard.edu']
     config.deploy_env = 'dataset'
     config.system_python = '/groups/cbi/bin/python2.7'
-    config.proj_dir = '/groups/cbi/sites/roundup'
-    config.current_dataset = os.path.join(config.proj_dir, 'datasets', '3')
-    config.deploy_dir = os.path.join(config.proj_dir, 'datasets', dsid, 'code')
+    config.site_dir = '/groups/cbi/sites/roundup'
+    config.current_dataset = os.path.join(config.site_dir, 'datasets', '3')
+    config.deploy_dir = os.path.join(config.site_dir, 'datasets', dsid, 'code')
     post_config(config)
 
 
@@ -193,7 +193,7 @@ def init_proj():
     this should be called once per deployment environment, not every time code is deployed.
     '''
     require('configured')
-    dirs = [os.path.join(config.proj_dir, d) for d in ['datasets', 'log', 'tmp']]
+    dirs = [os.path.join(config.site_dir, d) for d in ['datasets', 'log', 'tmp']]
     run('mkdir -p -m 2775 ' + ' '.join(dirs))
 
 
@@ -256,7 +256,7 @@ def conf():
     fn = os.path.join(HERE, 'deploy/{}.py'.format(config.deploy_env))
     with open(fn) as fh:
         out.write(fh.read())
-    out.write("PROJ_DIR = '{}'\n".format(config.proj_dir))
+    out.write("SITE_DIR = '{}'\n".format(config.site_dir))
     put(out, os.path.join(config.app, 'deployenv.py'), mode=0664)
 
 
