@@ -186,18 +186,6 @@ def venv_remove():
 # CODE TASKS
 
 @task
-def init_proj():
-    '''
-    sets up the directories used to contain code and the project data that persists
-    across changes to the codebase, like results and log files.
-    this should be called once per deployment environment, not every time code is deployed.
-    '''
-    require('configured')
-    dirs = [os.path.join(config.site_dir, d) for d in ['datasets', 'log', 'tmp']]
-    run('mkdir -p -m 2775 ' + ' '.join(dirs))
-
-
-@task
 def clean():
     '''
     Remove deployed configuration, code, dirs and link.  Does not remove 
@@ -215,10 +203,14 @@ def init():
     '''
     Make directory for deploying code and configuration, and the link required
     by Phusion Passenger and Apache.
+    Make directories for data that persists across deployments like results and
+    log files.
     '''
     require('configured')
     # passenger requires that docroot be a link to the webapp's public dir
-    run('mkdir -p -m 2775 ' + os.path.join(config.deploy_dir, 'app/public'))
+    site_dirs = [os.path.join(config.site_dir, d) for d in ['datasets', 'log', 'tmp']]
+    deploy_dirs = [os.path.join(config.deploy_dir, 'app', 'public')]
+    run('mkdir -p -m 2775 ' + ' '.join(site_dirs + deploy_dirs))
     with cd(config.deploy_dir):
         # make link (b/c apache likes docroot and passenger likes app/public).
         run('ln -s app/public docroot')
