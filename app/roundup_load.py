@@ -18,7 +18,7 @@ import itertools
 import roundup_common
 import roundup.dataset
 import roundup_db
-import workflow
+import dones
 import nested
 import orthutil
 
@@ -189,28 +189,32 @@ def writeLookupTable(items, itemToId, itemsFile):
     with open(itemsFile, 'w') as fh:
         for item in items:
             fh.write('{}\t{}\n'.format(itemToId[item], item))
-    
+
 
 ########################
 # LOAD ORTHDATAS FUNCTIONS
 ########################
 
-def workflowDonesNamespace(release):
-    return 'roundup_{}'.format(release)
 
-    
+def getDones(ds):
+    '''
+    Track which orthdatas files have already been loaded.
+    '''
+    filename = os.path.join(ds, 'load_dataset_dones.json')
+    return dones.FileDones(filename)
+
+
 def cleanOrthDatasDones(ds):
-    release = roundup.dataset.getDatasetId(ds)
-    workflow.dropDones(workflowDonesNamespace(release))
+    getDones(ds).clear()
 
-    
+
 def initLoadOrthDatas(ds):
     release = roundup.dataset.getDatasetId(ds)
     print 'dropping and creating results table'
     roundup_db.dropReleaseResults(release)
     roundup_db.createReleaseResults(release)
     print 'resetting dones'
-    workflow.resetDones(workflowDonesNamespace(release))
+    getDones(ds).clear()
 
 
 def loadOrthDatas(ds):
@@ -227,12 +231,12 @@ def loadOrthDatas(ds):
 
     print 'loading orthDatas'
     for path in roundup.dataset.getOrthologsFiles(ds):
-        if workflow.isDone(workflowDonesNamespace(release), path):
+        if getDones(ds).done(path):
             print 'already loaded:', path
         else:
             print 'loading', path
             orthDatasGen = orthutil.orthDatasFromFileGen(path)
             roundup_db.loadReleaseResults(release, genomeToId, divToId, evalueToId, geneToId, orthDatasGen)
-            workflow.markDone(workflowDonesNamespace(release), path)
+            getDones(ds).mark(path)
     print 'done loading all orthDatas'
 

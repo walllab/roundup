@@ -1,5 +1,4 @@
 
-
 '''
 Functions for distributing jobs on lsf, keeping track of which jobs are complete, and which are running.
 This allows one to restart a failed workflow and pick up where one left off.
@@ -7,11 +6,12 @@ This allows one to restart a failed workflow and pick up where one left off.
 Functions for storing what is done.  Useful even when not distributing jobs on lsf, for example, when running a long job that has many serial steps.
 '''
 
+import argparse
+import cliutil
 import config
 import dones
 import kvstore
 import lsf
-import lsfdispatch
 import util
 
 
@@ -109,7 +109,7 @@ def testRunJobsSync(useNames=False):
 
 def testRunJobsAsync(useNames=False):
     jobs, names = testJobsAndNames(useNames)
-    return runJobsAsyncGrid(TEST_NS, jobs, names, lsfOptions=['-q', 'short', '-W', '15'])
+    return runJobsAsyncGrid(TEST_NS, jobs, names, lsf_options=['-q', 'short', '-W', '15'])
 
 
 def testJobsAllDone(useNames=False):
@@ -164,14 +164,14 @@ def runJobsSyncLocal(ns, jobs, names=None):
     return jobsAllDone(ns, jobs, names)
 
 
-def runJobsAsyncGrid(ns, jobs, names=None, lsfOptions=None, devnull=False):
+def runJobsAsyncGrid(ns, jobs, names=None, lsf_options=None, devnull=False):
     '''
     ns: a namespace to keep jobs organized.
     jobs: a list of tuples of func and keyword arguments
     names: a optional list of names for the jobs.  There should be one name per job.  Names should be unique
       within the namespace.  Names are submitted as part of an lsf job name (-J option), so avoid funny characters.
       Names are useful if you want descriptive names in the dones table or on lsf.
-    lsfOptions: a list of lsf options.  '-J <job_name>' and '-o /dev/null' are appended to the list by default.
+    lsf_options: a list of lsf options.  '-J <job_name>' and '-o /dev/null' are appended to the list by default.
     devnull: if False, '-o /dev/null' is not appended to the lsf options.
 
     Run jobs asynchronously on lsf.  I.e. Submit them to LSF and then return.
@@ -182,23 +182,22 @@ def runJobsAsyncGrid(ns, jobs, names=None, lsfOptions=None, devnull=False):
     Returns: True iff all jobs are done.
     '''
     names = _makeJobNames(jobs, names)
-    lsfOptions = lsfOptions if lsfOptions else []
+    lsf_options = lsf_options if lsf_options else []
     if len(jobs) != len(set(names)):
         raise Exception('if names parameter is given, it must have a unique name for each job.')
-    lsfJobNames = ['{}_{}'.format(ns, name) for name in names]
+    lsf_job_names = ['{}_{}'.format(ns, name) for name in names]
     onJobNames = set(lsf.getOnJobNames())
     
-    for job, name, lsfJobName in zip(jobs, names, lsfJobNames):
+    for job, name, lsf_job_name in zip(jobs, names, lsf_job_names):
         if getDones(ns).done(name):
             print 'job already done. ns={}, name={}'.format(ns, name)
-        elif lsfJobName in onJobNames: 
+        elif lsf_job_name in onJobNames: 
                 print 'job already running. ns={}, name={}'.format(ns, name)
         else:
             print 'starting job. ns={}, name={}'.format(ns, name)
-            func = 'workflow._runJob'
-            kw = {'ns': ns, 'job': job, 'name': name}
-            options = list(lsfOptions)+['-J', lsfJobName]
-            print 'lsf job id:', lsfdispatch.dispatch(func, keywords=kw, lsfOptions=options, devnull=devnull)
+            jobid = bsub_runjob(ns, job, name, lsf_options, lsf_job_name,
+                                devnull=devnull)
+            print 'lsf job id:', jobid
 
     return jobsAllDone(ns, jobs, names)
 
@@ -270,5 +269,45 @@ def getDones(ns):
         k = kvstore.KStore(util.ClosingFactoryCM(config.openDbConn), ns=kns)
         DONES_CACHE[ns] = dones.Dones(k)
     return DONES_CACHE[ns]
+
+
+########################
+# COMMAND LINE INTERFACE
+
+
+def cli_runjob(args):
+    # function args and kws
+    fargs, fkws = cliutil.params_from_file(args.params)
+    _runJob(*fargs, **fkws)
+
+
+def bsub_runjob(ns, job, name, lsf_options, lsf_job_name, devnull=True):
+    lsf_options = list(lsf_options) + ['-J', lsf_job_name]
+    if devnull:
+        lsf_options = ['-o', '/dev/null'] + lsf_options
+    filename = cliutil.params_to_file(kws={'ns': ns, 'job': job, 'name': name})
+    cmd = cliutil.script_argv(__file__) + ['runjob', '--params', filename]
+    jobid = lsf.bsub(cmd, lsf_options)
+    return jobid
+
+
+def main():
+    parser = argparse.ArgumentParser(description='')
+    subparsers = parser.add_subparsers(dest='action')
+
+    # do_orthology_query
+    subparser = subparsers.add_parser('runjob')
+    subparser.add_argument('--params', required=True, help='A file of '
+                           'serialized parameters.')
+    subparser.set_defaults(func=cli_runjob)
+
+    # parse command line arguments and invoke the appropriate handler.
+    args = parser.parse_args()
+    args.func(args)
+
+
+if __name__ == '__main__':
+    main()
+
 
 

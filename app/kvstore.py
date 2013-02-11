@@ -14,10 +14,6 @@ Wrap a connection or a factory function in a context manager like cmutil.Noop or
 
 The following code illustrates creating a queue which gets a new connection for each operation by using the ClosingFactoryCM context manager.
 It demonstrates putting, getting, removing, and checking for the existence of keys and values.
-Here config.openDbConn is a function that returns a python db api v2 connection.
-python -c'
-import kvstore, util, config;
-kv = kvstore.KVStore(util.ClosingFactoryCM(config.openDbConn), drop=True, create=True)
 kv.put("hi", "test")
 print kv.get("bye")
 print kv.get("hi")
@@ -27,27 +23,11 @@ print kv.remove("hi")
 print kv.exists("hi")
 print kv.get("hi", "missing")
 print kv.remove("bye")
-'
 '''
 
 import json
 import dbutil
 
-
-def testKVStore():
-    import kvstore, util, config;
-    kv = kvstore.KVStore(util.ClosingFactoryCM(config.openDbConn)).drop().create()
-    kv.put("hi", "test")
-    print kv.get("bye")
-    print kv.get("hi")
-    print kv.exists("hi")
-    print kv.exists("bye")
-    print kv.remove("hi")
-    print kv.exists("hi")
-    print kv.get("hi", "missing")
-    print kv.remove("bye")
-    kv.drop()
-    
 
 class KVStore(object):
     '''
@@ -125,35 +105,6 @@ class KVStore(object):
         with self.manager as conn:
             with dbutil.doTransaction(conn):
                 return dbutil.executeSQL(conn, sql, args=[encodedKey])
-            
-
-def testKStore():
-    import util
-    import config
-    completes = KStore(manager=util.ClosingFactoryCM(config.openDbConn), ns='kstore_test')
-    try:
-        print completes.exists('test')
-    except Exception:
-        print 'exists fails b/c table is missing'
-    completes.create()
-    completes.create()
-    print completes.exists('test')
-    print completes.add('test')
-    print completes.add('test')
-    print completes.exists('test')
-    print completes.exists('test')
-    print completes.remove('test')
-    print completes.remove('test')
-    print completes.exists('test')
-    print completes.add('test')
-    print completes.exists('test')
-    print completes.reset()
-    print completes.exists('test')
-    print completes.drop()
-    try:
-        print completes.exists('test')
-    except Exception:
-        print 'exists fails b/c table is missing'
 
 
 class KStore(object):

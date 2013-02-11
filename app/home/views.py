@@ -6,7 +6,6 @@ import io
 import json
 import logging
 import os
-import re
 import sys
 import uuid
 
@@ -23,8 +22,6 @@ sys.path.append('..')
 import BioUtilities
 import config
 import lsf
-import models
-import orthquery
 import orthresult
 import orthutil
 import roundup_common
@@ -785,14 +782,22 @@ def orth_query(request, queryId):
     elif config.NO_LSF or querySize <= SYNC_QUERY_LIMIT:
         logging.debug('cache miss. run job sync.')
         # wait for query to run and store query
-        roundup_util.cacheDispatch(fullyQualifiedFuncName='orthquery.doOrthologyQuery', keywords=orthQuery, cacheKey=resultId, outputPath=resultPath)
-        return django.shortcuts.redirect(django.core.urlresolvers.reverse(orth_result, kwargs={'resultId': resultId}))
+        roundup_util.do_orthology_query(cache_key=resultId,
+                                        cache_file=resultPath,
+                                        query_kws=orthQuery)
+        return django.shortcuts.redirect(
+            django.core.urlresolvers.reverse(orth_result,
+                                             kwargs={'resultId': resultId}))
     else:
         logging.debug('cache miss. run job async.')
         # run on lsf and have result page poll job id.
-        jobId = roundup_util.lsfAndCacheDispatch(fullyQualifiedFuncName='orthquery.doOrthologyQuery', keywords=orthQuery,
-                                                 cacheKey=resultId, outputPath=resultPath, jobName=resultId)
-        return django.shortcuts.redirect(django.core.urlresolvers.reverse(orth_wait, kwargs={'resultId': resultId}))
+        jobId = roundup_util.bsub_orthology_query(cache_key=resultId,
+                                                  cache_file=resultPath,
+                                                  query_kws=orthQuery,
+                                                  job_name=resultId)
+        return django.shortcuts.redirect(
+            django.core.urlresolvers.reverse(orth_wait,
+                                             kwargs={'resultId': resultId}))
 
 
 def orth_wait(request, resultId):

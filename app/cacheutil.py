@@ -4,16 +4,15 @@
 The module is a key value store with timestamps to trace creation, modification, and access of key-value pairs.
 
 usage examples:
-python -c 'import sys; sys.path.append("/groups/rodeo/dev.roundup/python"); import cacheutil, config, util;
-print cacheutil.Cache(util.ClosingFactoryCM(config.openDbConn), table="roundup_cache", create=True).set("Todd Francis DeLuca", "A swell fellow")
-print cacheutil.Cache(util.ClosingFactoryCM(config.openDbConn), table="roundup_cache", create=True).get("Todd Francis DeLuca")
-print cacheutil.Cache(util.ClosingFactoryCM(config.openDbConn), table="roundup_cache", create=True).get("Chana")
-print cacheutil.Cache(util.ClosingFactoryCM(config.openDbConn), table="roundup_cache", create=True).has_key("Chana")
-print cacheutil.Cache(util.ClosingFactoryCM(config.openDbConn), table="roundup_cache", create=True).has_key("Todd Francis DeLuca")
-print cacheutil.Cache(util.ClosingFactoryCM(config.openDbConn), table="roundup_cache", create=True).set("Todd Francis DeLuca", "Damn hot")
-print cacheutil.Cache(util.ClosingFactoryCM(config.openDbConn), table="roundup_cache", create=True).get("Todd Francis DeLuca")
-print cacheutil.Cache(util.ClosingFactoryCM(config.openDbConn), table="roundup_cache", create=True).remove("Todd Francis DeLuca")
-print cacheutil.Cache(util.ClosingFactoryCM(config.openDbConn), table="roundup_cache", create=True).has_key("Todd Francis DeLuca")'
+print cu.set("Todd Francis DeLuca", "A swell fellow")
+print cu.get("Todd Francis DeLuca")
+print cu.get("Chana")
+print cu.has_key("Chana")
+print cu.has_key("Todd Francis DeLuca")
+print cu.set("Todd Francis DeLuca", "Damn hot")
+print cu.get("Todd Francis DeLuca")
+print cu.remove("Todd Francis DeLuca")
+print cu.has_key("Todd Francis DeLuca")'
 '''
 
 import sha

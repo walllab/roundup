@@ -3,7 +3,6 @@
 
 import logging
 
-import config
 import util
 
 
