@@ -23,11 +23,18 @@ import dbutil
 import mysqlutil
 
 
-######################
-# GLOBAL CONFIGURATION
+###################################
+# ENVIRONMENT VARIABLE DEPENDENCIES
 
 DB_URL = os.environ['ROUNDUP_MYSQL_URL']
 ROUNDUP_DB = mysqlutil.parse_url(DB_URL)['db']
+
+
+# SEARCH TYPES FOR findGeneNamesLike()
+CONTAINS_TYPE = 'contains'
+STARTS_WITH_TYPE = 'starts_with'
+ENDS_WITH_TYPE = 'ends_with'
+EQUALS_TYPE = 'equals'
 
 
 ###############################
@@ -367,7 +374,7 @@ def deleteGenomeByName(release, genome, conn=None):
     '''
     # logging.debug('deleteGenomeByName(): genome=%s'%genome)
     with connCM(conn=conn) as conn:
-        dbId = getIdForGenome(genome, conn)
+        dbId = getIdForGenome(release, genome, conn)
         if not dbId:
             return
         print 'dbId=%s'%dbId
@@ -454,10 +461,10 @@ def getOrthologs(release, qdb, sdb, divergence='0.2', evalue='1e-20', conn=None)
     evalue: ortholog must have this evalue.  defaults to 1e-20.
     '''
     with connCM(conn=conn) as conn:
-        qdbId = getIdForGenome(qdb, conn)
-        sdbId = getIdForGenome(sdb, conn)
-        divId = getIdForDivergence(divergence, conn)
-        evalueId = getIdForEvalue(evalue, conn)
+        qdbId = getIdForGenome(release, qdb, conn)
+        sdbId = getIdForGenome(release, sdb, conn)
+        divId = getIdForDivergence(release, divergence, conn)
+        evalueId = getIdForEvalue(release, evalue, conn)
         sql = 'SELECT rr.orthologs '
         sql += ' FROM {} rr'.format(releaseTable(release, 'results'))
         sql += ' WHERE rr.query_db = %s AND rr.subject_db = %s AND rr.divergence = %s AND rr.evalue = %s '
@@ -504,13 +511,6 @@ def numOrthologs(release, conn=None):
     return num
 
     
-# SEARCH TYPES FOR findGeneNamesLike()
-CONTAINS_TYPE = 'contains'
-STARTS_WITH_TYPE = 'starts_with'
-ENDS_WITH_TYPE = 'ends_with'
-EQUALS_TYPE = 'equals'
-
-
 def findGeneNamesLike(release, substring, searchType=CONTAINS_TYPE, conn=None):
     '''
     substring: search for gene names containing this string somehow.
@@ -577,7 +577,7 @@ def getSeqIdsForGeneName(release, geneName, genome=None, conn=None):
         sql += ' WHERE rs.gene_name = %s '
         params = [geneName]
         if genome:
-            dbId = getIdForGenome(genome, conn)
+            dbId = getIdForGenome(release, genome, conn)
             sql += ' AND rs.genome_id = %s '
             params.append(dbId)
 

@@ -167,8 +167,11 @@ def cli_orthology_query(args):
 
 
 def bsub_orthology_query(cache_key, cache_file, query_kws, job_name):
-    lsf_options = ['-o', '/dev/null', '-N', '-q', 'short', '-W', '2:0',
-                  '-J', job_name]
+    lsf_options = ['-o', '/dev/null', '-N',
+                   # '-q', 'short', # short is a big queue but often busy
+                   '-q', 'cbi_12h', # cbi_12h has few nodes but is rarely busy
+                   '-W', '2:0',
+                   '-J', job_name]
     filename = cliutil.params_to_file(kws={'cache_key': cache_key,
                                    'cache_file': cache_file,
                                    'query_kws': query_kws})
