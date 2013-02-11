@@ -7,7 +7,6 @@ It implements functions for normalizing pairs and getting RSD parameters.
 
 
 import os
-import io
 
 import config
 import util

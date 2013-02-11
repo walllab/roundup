@@ -7,7 +7,8 @@ import email.mime.text
 import email.utils
 import logging
 import os
-import smtplib
+
+import sendmail
 
 
 class MailHandler(logging.Handler):
@@ -104,7 +105,6 @@ class ClusterMailHandler(logging.Handler):
     '''
 
     def __init__(self, fromAddr, toAddrs, subject, method):
-        import sendmail
         logging.Handler.__init__(self)
         self.fromAddr = fromAddr
         self.toAddrs = toAddrs

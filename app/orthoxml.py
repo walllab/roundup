@@ -28,8 +28,8 @@ def test():
     database2 = Database("Uniprot", "2011_06", genes=[gene2, gene3], geneLink="http://www.uniprot.org/uniprot/",
                                   protLink="http://www.uniprot.org/uniprot/", transcriptLink="http://www.uniprot.org/uniprot/")
     species2 = Species("Homo sapiens", "9606", [database2], notes=Notes("uniprot human rocks!"))
-    notes2 = Notes("ortho notes")
-    notes3 = Notes("group notes")
+    # notes2 = Notes("ortho notes")
+    # notes3 = Notes("group notes")
     scoredef = ScoreDef("dist", "maximum-likelihood evolutionary distance, from 0.0 to 19.0")
     score =Score("dist", "1.039")
     geneRef1 = GeneRef("3", notes=Notes("generef 3 is cool"))

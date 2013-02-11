@@ -10,14 +10,10 @@ go
                                            
 '''
 
-import MySQLdb.cursors
-import os
-import re
 import zlib
 import cPickle
 import logging
 import contextlib
-import json
 import itertools
 
 import config
@@ -234,7 +230,7 @@ def loadReleaseResults(release, genomeToId, divToId, evalueToId, geneToId, resul
         argsLists = [convertForDb(result) for result in group]
         args = list(itertools.chain.from_iterable(argsLists)) # flatten args into one long list for the sql
         with connCM() as conn:
-            fileLoadId = dbutil.insertSQL(conn, sql, args=args)
+            dbutil.insertSQL(conn, sql, args=args)
 
 
 #############################

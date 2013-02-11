@@ -153,13 +153,13 @@ def getJobInfosSub(args):
         m = re.search(bjobsRegex, job)
         if m:
             jobId = m.group(1)
-            userId = m.group(2)
+            # userId = m.group(2)
             status = m.group(3)
-            queue = m.group(4)
-            submissionHost = m.group(5)
-            executionHost = m.group(6)
+            # queue = m.group(4)
+            # submissionHost = m.group(5)
+            # executionHost = m.group(6)
             jobName = m.group(7)
-            submitTime = m.group(8)
+            # submitTime = m.group(8)
 
             info = {JOBID: jobId, STATUS: status, JOB_NAME: jobName}
             infos.append(info)
@@ -228,7 +228,7 @@ def setEnviron(lsfDir, confDir):
     binDir = os.path.join(lsfDir, 'bin')
     os.environ['LSF_BINDIR'] = binDir
     os.environ['LSF_ENVDIR'] = confDir
-    os.environ['LSF_LIBDIR'] = libDir = os.path.join(lsfDir, 'lib')
+    os.environ['LSF_LIBDIR'] = os.path.join(lsfDir, 'lib')
     os.environ['LSF_SERVERDIR'] = os.path.join(lsfDir, 'etc')
     os.environ['XLSF_UIDDIR'] = os.path.join(lsfDir, 'lib', 'uid')
     if not os.environ.has_key('PATH'):
@@ -249,80 +249,6 @@ if __name__ == '__main__':
 #################
 # DEPRECATED CODE
 #################
-
-
-def bsubOld(cmds=None, queue=None, interactive=False, outputFile=None):
-    '''
-    executes the list of cmds on the queue, possibly interactively,
-    and possibly redirects the output to a file (any "%J" in the filename
-    will be replaced with the lsf job id.
-    # The lsf job exits with the exit code of the last command run.  So if all the commands have non-zero exit codes except the last,
-    # the job status will be DONE.  Try cmds = [cmd+' || exit' for cmd in cmds] to make the job end with EXIT after the first non-zero exit code.
-    '''
-    # logging.debug('in lsf.bsub()')
-    if cmds==None: cmds = []
-    
-    if interactive: interactiveOption = '-I'
-    else: interactiveOption = ''
-
-    if outputFile: outputOption = '-o '+outputFile
-    else: outputOption = ''
-
-    if queue: queueOption = ' -q '+queue
-    else: queueOption = ''
-    
-    bsubcmd = 'bsub '+interactiveOption+' '+queueOption+' '+outputOption
-
-    pin, pout = os.popen2(bsubcmd)
-    for cmd in cmds:
-        pin.write(cmd+'\n')
-    pin.close()
-    cmdout = pout.read()
-    exitcode = pout.close()
-    return exitcode
-
-
-def waitForJobsOption(jobIds):
-    '''
-    jobIds: sequence of lsf job ids
-    returns: dependency expression that runs if all of the jobs become done or any of the jobs exit.
-    '''
-    # e.g. -w '(done(1) && ... && done(n)) || exit(1) || ... || exit(n)'
-    doneList = ['done('+id+')' for id in jobIds]
-    exitList = ['exit('+id+')' for id in jobIds]
-    doneExpr = '('+' && '.join(doneList)+')'
-    exitExpr = ' || '.join(exitList)
-    dependencyExpr = "-w '"+doneExpr+" || "+exitExpr+"'"
-    return dependencyExpr
-
-
-def submitCheckJobs(jobids, cmds, dependentJobIds=None):
-    '''
-    for each main job in jobids:
-       submits a error checking job lsf which checks if the main job exited
-       with an error and if so logs an error message and kills any dependent Jobs.
-       Also submits a job which, when the main job exits cleanly kills the error checking job.
-    '''
-    
-    #iterate over ids and cmds in parallel by using map
-    for jobid, cmd in map(None, jobids, cmds):
-        queueOption = '-q shared_15m'
-        jobName = 'exit'+jobid
-        jobNameOption = '-J '+jobName
-        emailOption = '-N'
-        exitOption = "-w 'exit("+jobid+")'"
-        echoErrorMsgCmd = "echo '[error] job "+jobid+" failed. command was "+str(cmd)+"'"
-        exitCmds = [echoErrorMsgCmd]
-        if dependentJobIds:
-            killDependentJobsCmd = 'bkill '+(' '.join(dependentJobIds))
-            exitCmds.append(killDependentJobsCmd)
-        exitid = submitToLSF(exitCmds, [queueOption, emailOption, jobNameOption, exitOption, '-o %J.out'])
-
-        endedOption = "-w 'done("+jobid+") || ended("+exitid+")'"
-        killJobNameCmd = 'bkill '+jobNameOption
-        submitToLSF([killJobNameCmd], [queueOption, endedOption, '-o %J.out'])
-    return
-
 
 def makeDependencyExpression(condition, jobids, booleanOperator):
     '''

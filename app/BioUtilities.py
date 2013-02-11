@@ -1,12 +1,7 @@
 #useful program wrappers that are employed in the implementation of the RSD algorithm
 import os
-import sys
-import string
-import re
-import shutil
 
 import nested
-import roundup_common
 import util
 import fasta
 

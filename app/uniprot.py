@@ -41,7 +41,7 @@ def genDatEntries(path):
     # Gene Name is optional.  There can only be one.
     # ORFNames is optional.  There can be one or more.
     nameRE = re.compile('Name=([^;]+)')
-    orfNamesRE = re.compile('ORFNames=([^;,]+)') # match only the first ORF name.
+    # orfNamesRE = re.compile('ORFNames=([^;,]+)') # match only the first ORF name.
     # python -c "import re; nameRE = re.compile('Name=([^;]+)'); print nameRE.search('GN   Name=GRF7; OrderedLocusNames=At3g02520; ORFNames=F16B3.15;\n').groups()"
     # python -c "import re; orfNamesRE = re.compile('ORFNames=([^;,]+)'); print orfNamesRE.search('GN   Name=BMH1; Synonyms=BMH; ORFNames=CaO19.3014, CaO19.10532;\n').groups()"
 
@@ -251,7 +251,6 @@ def upToAndIncludingFirstBlock2(string, start='(', end=')'):
     # need different characters to start and end a block
     assert start != end
     lenStart = len(start)
-    lenEnd = len(end)
     part = string[:]
 
     # if no start of a block or no end of a block return whole string
@@ -264,7 +263,6 @@ def upToAndIncludingFirstBlock2(string, start='(', end=')'):
     assert i >= j
 
     # find the matching end
-    count = 1
     while True:
         # the remaining part after the start of the block
         part = part[i+lenStart:]

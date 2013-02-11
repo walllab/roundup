@@ -7,7 +7,6 @@ used by roundup web site to retrieve orthologs, cluster them into genes, and ret
 import itertools
 import logging
 
-import config
 import util
 import clustering
 import roundup_db
@@ -60,7 +59,7 @@ def doOrthologyQuery(query_desc=None, tc_only=False, db_cursor_read_buffer_size=
                      go_term=False, gene_name=False, outputPath=None, sortGenomes=True, distance_lower_limit=None, distance_upper_limit=None, **keywords):
     '''
     query_desc: string describing the query being run.  used by the web to let the user know what query was run to generate these results.
-    tc_only: if true and cluster_orthologs is true, only transitively closed clusters are returned.
+    tc_only: if true only transitively closed clusters are returned.
     seq_ids: a list of external_sequence_ids/accession numbers/GIs.  if not empty, it is used to restrict orthologs to only those that have either query_id or subject_id in seq_ids.
     genome: get orthologs with a sequence from this genome
     limit_genomes: get orthologs with a sequence in a genome from limit_genomes.
@@ -75,10 +74,7 @@ def doOrthologyQuery(query_desc=None, tc_only=False, db_cursor_read_buffer_size=
     The orthologs are grouped into clusters (connected subgraphs).
     returns: a dict containing clusters, column headers, and possibly containing dicts for gene names, go terms, genome names, etc.
     '''
-    
-    if tc_only:
-        cluster_orthologs = True
-        
+
     tableDesc = {'query_desc': query_desc}
 
     distanceLowerLimitFilter, distanceUpperLimitFilter = makeLowerAndUpperLimitFilterFuncs(distance_lower_limit, distance_upper_limit)

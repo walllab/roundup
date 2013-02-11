@@ -196,7 +196,6 @@ def retryErrorExecute(operation, args=[], keywords={}, pred=truePred, numTries=1
     predicate returns true, retry the operation if there are any tries left.  Otherwise, raise the exception.  
     '''
     # could make backoff a function, so delay = backoff(delay), for more flexibility than just an exponential relationship.
-    error = None
     for i in xrange(numTries):
         try:
             return operation(*args, **keywords)

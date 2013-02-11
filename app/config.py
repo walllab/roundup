@@ -1,8 +1,6 @@
 import contextlib
 import os
-import sys
 import getpass
-import ConfigParser
 import platform
 
 

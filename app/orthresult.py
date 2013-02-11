@@ -11,17 +11,13 @@ import logging
 import math
 import os
 import re
-import sys
 import urllib
-import uuid
 
 import config
 import util
 import nested
-import logging
 import roundup_common
 import roundup.dataset
-import fasta
 import BioUtilities
 
 
@@ -164,7 +160,6 @@ def clusterResultToNexus(resultId, urlFunc, otherParams={}):
 
 def clusterResultToOrthoxml(resultId, urlFunc, otherParams={}):
     result = getResult(resultId)
-    rows = result['rows']
     seqIdToDataMap = result['seq_id_to_data_map']
     genomeIdToGenomeMap = result['genome_id_to_genome_map']
 
@@ -261,7 +256,6 @@ def clusterResultToHammingProfile(resultId, urlFunc, otherParams={}):
         # row has an element for each genome that contains 0 or more seq ids, and row has the distance of the cluster as its final element.
         for row in result['rows']:
             # transform presence or absence of seqIds into 1 or 0.
-            phyleticPattern = [int(bool(seqIds)) for seqIds in row[:-1]]
             arr = []
             for seqIds in row[:-1]:
                 if seqIds:
@@ -296,7 +290,6 @@ def clusterResultToHammingProfile(resultId, urlFunc, otherParams={}):
     testString+= "<p>here they are you lovely evolutionary biologist</p>"
     for k in hammingResult.keys():
         testString += "<p>%s\t%s</p>"%(k,hammingResult[k][0]) 
-    hamming = str(hammingResult)
     return testString
 
 
@@ -418,7 +411,6 @@ def resultToGenesSummaryView(resultId, urlFunc, otherParams={}):
     '''
     result = getResult(resultId)
     seqIdToDataMap = result.get('seq_id_to_data_map', {})
-    termMap = result.get('term_map', {})
     headers = result['headers']
     rows = result['rows']
 
@@ -458,9 +450,6 @@ def resultToText(resultId, urlFunc, otherParams={}):
     result = getResult(resultId)
     seqIdToDataMap = result.get('seq_id_to_data_map', {})
     termMap = result.get('term_map', {})
-    clusterIndexToProfileMap = {}
-    clusterIndexToBestGeneNameMap = {}
-    termToClusterIndicesMap = {}
     headers = result['headers']
     numRows = len(result['rows'])
     numCols = len(result['headers'])
@@ -475,7 +464,6 @@ def resultToText(resultId, urlFunc, otherParams={}):
         content += "{} results found for your search.\n".format(numRows)
     content += "\n"
     for rowIndex, row in enumerate(result['rows']):
-        avgDist = row[numCols - 1]
         content += "Gene Cluster #{} | Average Evolutionary Distance: avgDist\n".format(rowIndex + 1)
         content += "Id\tGenome\tGene Name\tGO Terms\n"
         for colIndex in range(numCols - 1):
@@ -495,15 +483,8 @@ def resultToText(resultId, urlFunc, otherParams={}):
 
 def resultToAllGenesView(resultId, urlFunc, otherParams={}):
     result = getResult(resultId)
-    seqIdToDataMap = result.get('seq_id_to_data_map', {})
-    termMap = result.get('term_map', {})
-    clusterIndexToProfileMap = {}
-    clusterIndexToBestGeneNameMap = {}
-    termToClusterIndicesMap = {}
-    headers = result['headers']
 
     numRows = len(result['rows'])
-    numCols = len(result['headers'])
 
     # PAGING
     # get the number of items per page.  see below for default

@@ -41,24 +41,5 @@ def sendmail(fromAddr, toAddrs, subject, message, method=None):
     p.communicate(str(message)+'\n')
     if p.returncode != 0:
         raise Exception('Non-zero return code when sending mail', p.returncode, fromAddr, toAddrs, subject, message, method)
-    
 
-def old():
-    # can set who the mail comes from in the environment
-    env = {}
-    env.update(os.environ)
-    env['MAILUSER'] = str(mailUser)
-    env['MAILHOST'] = str(mailHost)
-    env['QMAILINJECT'] = 'f'
 
-    # command contains subject and who the mail goes to
-    args = ['mail', '-s', subject] + toAddrs
-    p = subprocess.Popen(args, env=env, stdin=subprocess.PIPE)
-
-    # stdin contains the body of the mail.
-    p.communicate(str(message)+'\n')
-    if p.returncode != 0:
-        raise Exception('Non-zero return code when sending mail', p.returncode)
-    
-
-# last line emacs python mode bug fix

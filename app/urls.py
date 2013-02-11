@@ -1,8 +1,4 @@
-from django.conf.urls.defaults import patterns, include, url
-
-# Uncomment the next two lines to enable the admin:
-# from django.contrib import admin
-# admin.autodiscover()
+from django.conf.urls.defaults import patterns, url
 
 urlpatterns = patterns('',
                        # Examples:
@@ -40,11 +36,4 @@ urlpatterns = patterns('',
                        url(r'^search_gene_names/$', 'home.views.search_gene_names', name='search_gene_names'),
                        url(r'^search_gene_names/(?P<key>[^/]+)/$', 'home.views.search_gene_names', name='search_gene_names'),
                        url(r'^search_gene_names/result/(?P<key>[^/]+)/$', 'home.views.search_gene_names_result', name='search_gene_names_result'),
-                       # url(r'^webapp/', include('webapp.foo.urls')),
-                       
-                       # Uncomment the admin/doc line below to enable admin documentation:
-                       # url(r'^admin/doc/', include('django.contrib.admindocs.urls')),
-                       
-                       # Uncomment the next line to enable the admin:
-                       # url(r'^admin/', include(admin.site.urls)),
                        )

@@ -6,7 +6,6 @@ This module follows the NCBI conventions: http://blast.ncbi.nlm.nih.gov/blastcgi
 '''
 
 import cStringIO
-import re
 import math
 
 
@@ -331,71 +330,6 @@ if __name__ == '__main__':
 ##################
 # DECPRECATED CODE
 ##################
-
-
-def fastaSeqIterOld(filehandle, strict=True):
-    '''
-    filehandle: file object containing fasta-formatted sequences.
-    ignoreParseError: if True, parsing ignores namelines that do not have sequence character lines.  For example, '>foo\n>bar\nABCD\n'
-    would yield the 'bar' sequence, ignoring the 'foo' sequence that has no sequence characters associated with it.
-    In all cases blank lines are ignored, no matter where they occur.
-    Generator function yielding a string representing a single fasta sequence (name line including '>' and sequence lines)
-    for each fasta sequence in filehandle.
-    returns: a generator.
-    notes:
-    This function was modified from fastaSeqIterStrict to handle bogus fasta input like this:
-    >ORFP:20136 YOL048C, Contig c378 4079-4399 reverse complement
-    MLFKVSNFTSLTLLSLIPIVGPILANQLMAPKRTFTYLQRYFLLKGFSKKQAKDFQYEHYASFICFGMSAGLLELIPFFTIVTISSNTVGAAKWCSSLLKGERKKD*
-    >ORFP:18671 , Contig c238 100299-100300 reverse complement
-
-    >ORFP:20137 , Contig c378 4878-5189 reverse complement
-    MKVGIELISHSQTSHGTHVNSTVLAEKTPQPLEKPSKEHSISKESNINRWLKI
-
-    LRRQFDIWFPETIPTMKVRYELLKKNFIKEIFNSRAFIYPFLVSILYYLY*
-    The old function, even with error handling turned on, would not concatenate all the sequence characters of the 3rd sequence
-    since they are separated by a blank line.
-    '''
-    # states: seeking_nameline, seeking_seqline, in_seq.  
-    state = 'seeking_nameline'
-    fasta = ''
-    for line in filehandle:
-        # ignore all blank lines
-        if not line.strip():
-            continue
-        elif state == 'seeking_nameline' and line.startswith('>'):
-            state = 'seeking_seqline'
-            fasta = line
-        elif state == 'seeking_nameline' and not ignoreParseError:
-            raise Exception('FASTA parse error.  Looking for name line and found line which is neither blank nor nameline.  line=%s'%line)
-        elif state == 'seeking_seqline' and line.startswith('>'):
-            if ignoreParseError:
-                # skip nameline without sequence and restart with this nameline.
-                state = 'seeking_seqline'
-                fasta = line
-            else:
-                raise Exception('FASTA parse error.  Looking for sequence line and found name line.  line=%s'%line)
-        elif state == 'seeking_seqline':
-            state = 'in_seq'
-            fasta += line
-        elif state == 'in_seq' and line.startswith('>'):
-            yield fasta
-            state = 'seeking_seqline'
-            fasta = line
-        elif state == 'in_seq':
-            fasta += line
-        else:
-            raise Exception('FASTA parse error.  Unrecognized state.  state=%s, line=%s'%(state, line))
-
-    if state == 'in_seq':
-        yield fasta
-    elif state == 'seeking_seqline' and not ignoreParseError:
-        raise Exception('FASTA parse error.  Looking for sequence line and found end of file.')
-    elif state == 'seeking_nameline':
-        pass
-    else:
-        raise Exception('FASTA parse error.  Unrecognized state found at end of file.  state=%s'%state)
-
-
 
 
 

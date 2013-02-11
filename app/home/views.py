@@ -683,9 +683,7 @@ def makeOrthQueryFromBrowseForm(form):
     orthQuery['evalue'] = form.cleaned_data.get('evalue')
     orthQuery['distance_lower_limit'] = form.cleaned_data.get('distance_lower_limit')
     orthQuery['distance_upper_limit'] = form.cleaned_data.get('distance_upper_limit')
-    
-    browseId = form.cleaned_data.get('identifier')
-    browseIdType = form.cleaned_data.get('identifier_type')
+
     queryDesc = 'Browse Query:\n'
     queryDesc += '\t{} = {}\n'.format(displayName('genome'), GENOME_TO_NAME[orthQuery['genome']])
     queryDesc += '\t{} = {}\n'.format(displayName('identifier_type'), displayName(form.cleaned_data.get('identifier_type')))
@@ -790,11 +788,11 @@ def orth_query(request, queryId):
                                              kwargs={'resultId': resultId}))
     else:
         logging.debug('cache miss. run job async.')
-        # run on lsf and have result page poll job id.
-        jobId = roundup_util.bsub_orthology_query(cache_key=resultId,
-                                                  cache_file=resultPath,
-                                                  query_kws=orthQuery,
-                                                  job_name=resultId)
+        # run on lsf and have result page poll for job completion
+        roundup_util.bsub_orthology_query(cache_key=resultId,
+                                          cache_file=resultPath,
+                                          query_kws=orthQuery,
+                                          job_name=resultId)
         return django.shortcuts.redirect(
             django.core.urlresolvers.reverse(orth_wait,
                                              kwargs={'resultId': resultId}))
