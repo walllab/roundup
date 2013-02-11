@@ -263,13 +263,6 @@ def deploy():
         exclude=deployExcludes,
         delete=False)
 
-    # upload and fix the shebang for scripts
-    diabric.files.upload_shebang(
-        os.path.join(HERE, 'app/roundup/dataset.py'),
-        os.path.join(config.app, 'roundup/dataset.py'),
-        config.python,
-        mode=0770)
-
 
 @task
 def restart():
