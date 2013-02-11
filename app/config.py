@@ -14,17 +14,20 @@ import util
 
 ###############################################
 # DEPLOYMENT ENVIRONMENT SPECIFIC CONFIGURATION
-###############################################
-# BLAST_BIN_DIR, LOG_FROM_ADDR, SITE_URL_ROOT NO_LSF, CURRENT_DATASET,
-# SITE_DIR, HTTP_HOST, DJANGO_DEBUG
-from deployenv import *
+
+from deployenv import (BLAST_BIN_DIR, CURRENT_DATASET, DJANGO_DEBUG, HTTP_HOST,
+                       KALIGN_BIN_DIR, LOG_FROM_ADDR, MAIL_SERVICE_TYPE,
+                       NO_LSF, SITE_DIR, SITE_URL_ROOT)
 import secrets
 
+# Silence pyflakes complaints about imports not being used. :-(
+DJANGO_DEBUG, HTTP_HOST, NO_LSF, SITE_URL_ROOT
+
+# Roundup Datasets and Releases
 CURRENT_DATASET = os.path.expanduser(CURRENT_DATASET)
 CURRENT_RELEASE = os.path.basename(CURRENT_DATASET)
-LOG_FILE = os.path.join(SITE_DIR, 'log/app.log')
-TMP_DIR = os.path.join(SITE_DIR, 'tmp') 
 QUEST_FOR_ORTHOLOGS_DIR = os.path.join(SITE_DIR, 'quest_for_orthologs')
+QFO_VERSIONS = ['2011_04']
 
 # used for contact page
 RT_EMAIL = 'submit-cbi@rt.med.harvard.edu'
@@ -36,8 +39,6 @@ os.environ['PATH'] = ':'.join(pathDirs + [os.environ.get('PATH', '')]) if os.env
 # Configure environment to run LSF commands
 lsf.setEnviron('/opt/lsf/7.0/linux2.6-glibc2.3-x86_64', '/opt/lsf/conf')
 
-# QUEST FOR ORTHOLOGS
-QFO_VERSIONS = ['2011_04']
 
 
 #########
@@ -59,21 +60,22 @@ sendtextmail = mailutil.make_sendtextmail(sendmail)
 
 #######################################
 # TMP DIRS, WORKING DIRS, SCRATCH SPACE
-#######################################
 
+TMP_DIR = os.path.join(SITE_DIR, 'tmp') 
 os.environ['NESTED_TMP_DIR'] = TMP_DIR
 
 
 #####################
 # CACHE CONFIGURATION
-#####################
 # warning: www/support/roundup/common.php implements identical caching functions as cacheutil.py that also use roundup_cache table.
 #   common.php caching must be kept in sync with the python caching code.
 CACHE_TABLE = 'roundup_cache'
 
 
 #########
-#########
+# LOGGING
+
+LOG_FILE = os.path.join(SITE_DIR, 'log/app.log')
 LOG_TO_ADDRS = ['todddeluca@gmail.com']
 LOG_SUBJECT = 'Roundup Logging Message'
 

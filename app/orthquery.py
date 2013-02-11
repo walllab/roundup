@@ -15,21 +15,15 @@ import roundup_common
 
 DEFAULT_DB_CURSOR_READ_BUFFER_SIZE = 100
 
-def makeLowerAndUpperLimitFilterFuncs(distance_lower_limit, distance_upper_limit):
-    if distance_lower_limit is not None:
-        float_distance_lower_limit = float(distance_lower_limit)
-        def lowerFunc(ortholog):
-            return ortholog[2] >= float_distance_lower_limit
-    else:
-        def lowerFunc(ortholog):
-            return True
-    if distance_upper_limit is not None:
-        float_distance_upper_limit = float(distance_upper_limit)
-        def upperFunc(ortholog):
-            return ortholog[2] <= float_distance_upper_limit
-    else:
-        def upperFunc(ortholog):
-            return True
+def makeLowerAndUpperLimitFilterFuncs(lower, upper):
+    lower_limit = float(lower) if lower is not None else None
+    upper_limit = float(upper) if upper is not None else None
+    def lowerFunc(ortholog):
+        return lower_limit is None or ortholog[2] >= lower_limit
+
+    def upperFunc(ortholog):
+        return upper_limit is None or ortholog[2] <= upper_limit
+
     return (lowerFunc, upperFunc)
 
 
