@@ -108,6 +108,9 @@ BIG_DATA_KEYS = [GENES, GENE_TO_GENOME, GENE_TO_NAME, GENE_TO_DESC,
         GENE_TO_GO_TERMS, GENE_TO_GENE_IDS, TERM_TO_DATA, GENOME_TO_GENES,
         TAXON_TO_DATA, BLAST_STATS, RSD_STATS, CHANGE_LOG]
 
+# For performance, use local disk during computation.
+LOCAL_DIR = '/tmp'
+
 
 #######################
 # MAIN DATASET PIPELINE
@@ -1229,19 +1232,19 @@ def computePair(ds, pair, workingDir, orthologsPath):
     reverseHitsPath = os.path.join(workingDir, '{}_{}.reverse_hits.pickle'.format(*pair))
     maxEvalue = max([float(evalue) for evalue in roundup_common.EVALUES]) # evalues are strings like '1e-5'
     divEvalues = list(roundup_common.genDivEvalueParams())    
-    with nested.NestedTempDir(dir=roundup_common.LOCAL_DIR) as tmpDir:
+    with nested.NestedTempDir(dir=LOCAL_DIR) as tmpDir:
         logging.debug('computePair. tmpDir={}'.format(tmpDir))
         if not getDones(ds).done(('blast', queryGenome, subjectGenome)):
             startTime = time.time()
             rsd.computeBlastHits(queryFastaPath, subjectIndexPath, forwardHitsPath, maxEvalue,
-                                 workingDir=tmpDir, copyToWorking=roundup_common.ROUNDUP_LOCAL)
+                                 workingDir=tmpDir, copyToWorking=True)
             getStats(ds).putBlast(queryGenome, subjectGenome, startTime=startTime, endTime=time.time())
             getDones(ds).mark(('blast', queryGenome, subjectGenome))
 
         if not getDones(ds).done(('blast', subjectGenome, queryGenome)):
             startTime = time.time()
             rsd.computeBlastHits(subjectFastaPath, queryIndexPath, reverseHitsPath, maxEvalue,
-                                 workingDir=tmpDir, copyToWorking=roundup_common.ROUNDUP_LOCAL)
+                                 workingDir=tmpDir, copyToWorking=True)
             getStats(ds).putBlast(subjectGenome, queryGenome, startTime=startTime, endTime=time.time())
             getDones(ds).mark(('blast', subjectGenome, queryGenome))
 

@@ -7,17 +7,26 @@ Functions for storing what is done.  Useful even when not distributing jobs on l
 '''
 
 import argparse
+import functools
+import os
+
 import cliutil
-import config
 import dones
 import kvstore
 import lsf
+import mysqlutil
 import util
+
+
+###################################
+# ENVIRONMENT VARIABLE DEPENDENCIES
+
+DB_URL = os.environ['WORKFLOW_MYSQL_URL']
 
 
 #########
 # TESTING
-#########
+
 import time
 
 # cd /www/dev.roundup.hms.harvard.edu/webapp && python -c 'import workflow; workflow.testWorkflowSync()'
@@ -265,8 +274,12 @@ def _makeJobNames(jobs, names=None):
 DONES_CACHE = {}
 def getDones(ns):
     if ns not in DONES_CACHE:
+        # create a contextmanager that yields an open db connection and
+        # closes it when exiting the context.
+        conn_cm = functools.partial(mysqlutil.dburl, DB_URL, retries=1,
+                                    sleep=1.0)
         kns = 'workflow_dones_{}'.format(ns)
-        k = kvstore.KStore(util.ClosingFactoryCM(config.openDbConn), ns=kns)
+        k = kvstore.KStore(conn_cm, ns=kns)
         DONES_CACHE[ns] = dones.Dones(k)
     return DONES_CACHE[ns]
 

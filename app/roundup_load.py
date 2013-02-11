@@ -1,14 +1,22 @@
 '''
 Module for loading a dataset into the database.
 
-loadDatabase():  Drops and creates and loads the genomes, divergences, evalues, sequence, and sequence_to_go_terms tables by writing temp files that are loaded with LOAD DATA INFILE.
-initLoadOrthDatas(): Drops and creates the results table.  Also drops and creates the dones table, which tracks what orthologs files have been loaded.
-loadOrthDatas():  Loads orthologs into the results table.  uses INSERT INTO.  LOAD DATA INFILE not used for a few reasons:
- - because compressed results (how they are stored in the db) do not fit on a single line, so they do not fit into the LOAD DATA INFILE schema easily (one row per line).
-  I want them compressed to save space in the db and network transfer time (though that might not be an issue).
- - it takes a long time to load results and if the job is suspended on lsf, the db connection will be load, causing the load job to fail.
+loadDatabase():  Drops and creates and loads the genomes, divergences, evalues,
+sequence, and sequence_to_go_terms tables by writing temp files that are loaded
+with LOAD DATA INFILE.  initLoadOrthDatas(): Drops and creates the results
+table.  Also drops and creates the dones table, which tracks what orthologs
+files have been loaded.  loadOrthDatas():  Loads orthologs into the results
+table.  uses INSERT INTO.  LOAD DATA INFILE not used for a few reasons:
+ - because compressed results (how they are stored in the db) do not fit on a
+ single line, so they do not fit into the LOAD DATA INFILE schema easily (one
+ row per line).  I want them compressed to save space in the db and network
+ transfer time (though that might not be an issue).
+ - it takes a long time to load results and if the job is suspended on lsf, the
+ db connection will be load, causing the load job to fail.
 
-bad?: Currently knows implementation details of roundup_db.  Most of this code could be in roundup_db, but I do not want roundup_db to depend on roundup.dataset.
+bad?: Currently knows implementation details of roundup_db.  Most of this code
+could be in roundup_db, but I do not want roundup_db to depend on
+roundup.dataset.
 '''
 
 

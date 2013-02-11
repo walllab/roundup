@@ -8,28 +8,13 @@ It implements functions for normalizing pairs and getting RSD parameters.
 
 import os
 
-import config
-import util
 
-
-####################################################
-# CONFIGURE CONSTANTS AND ENVIRONMENT VARIABLES
-####################################################
+#####################################
+# CONSTANTS AND ENVIRONMENT VARIABLES
 
 # logging verbosity
 # DEBUG=10, WARNING=30, ERROR=40, IMPORTANT=ERROR+5
 ROUNDUP_LOG_LEVEL = int(os.environ.get('ROUNDUP_LOG_LEVEL', 0))
-
-# use local disk or networked storage
-# because the cluster can put such a heavy load on the NAS, using local disk during computation is generally preferred.
-ROUNDUP_LOCAL = util.getBoolFromEnv('ROUNDUP_LOCAL', True)
-# LOCAL_DIR = '/scratch' # always use local disk for local dir.
-# only use local disk for local dir if ROUNDUP_LOCAL == true.
-if ROUNDUP_LOCAL:
-    # LOCAL_DIR = '/scratch'
-    LOCAL_DIR = '/tmp'
-else:
-    LOCAL_DIR = config.TMP_DIR
 
 # RSD PARAMETERS.  These are the parameter for which each pair is rounded up.
 EVALUES = ['1e-5', '1e-10', '1e-15', '1e-20']

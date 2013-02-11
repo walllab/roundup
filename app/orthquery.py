@@ -48,28 +48,38 @@ def makePairsForGenomeParams(genome=None, limit_genomes=None, genomes=None):
         return pairs
     
 
-def doOrthologyQuery(query_desc=None, tc_only=False, db_cursor_read_buffer_size=DEFAULT_DB_CURSOR_READ_BUFFER_SIZE,
-                     genome=None, limit_genomes=None, genomes=None, seq_ids=None, divergence=None, evalue=None,
-                     go_term=False, gene_name=False, outputPath=None, sortGenomes=True, distance_lower_limit=None, distance_upper_limit=None, **keywords):
+def doOrthologyQuery(query_desc=None, tc_only=False,
+                     db_cursor_read_buffer_size=DEFAULT_DB_CURSOR_READ_BUFFER_SIZE,
+                     genome=None, limit_genomes=None, genomes=None,
+                     seq_ids=None, divergence=None, evalue=None, go_term=False,
+                     gene_name=False, outputPath=None, sortGenomes=True,
+                     distance_lower_limit=None, distance_upper_limit=None,
+                     release=None, dataset=None, **keywords):
     '''
-    query_desc: string describing the query being run.  used by the web to let the user know what query was run to generate these results.
-    tc_only: if true only transitively closed clusters are returned.
-    seq_ids: a list of external_sequence_ids/accession numbers/GIs.  if not empty, it is used to restrict orthologs to only those that have either query_id or subject_id in seq_ids.
-    genome: get orthologs with a sequence from this genome
-    limit_genomes: get orthologs with a sequence in a genome from limit_genomes.
-    genomes: get orthologs where both sequences are from genomes.
-    divergence: get orthologs calculated with this divergence threshold.
-    evalue: get orthologs calculated with this evalue threshold.
-    go_term: if true, a mapping of seq ids to go terms is returned for the seq ids in the orthology results.
-    gene_name: if true, a mapping of seq ids to gene names is returned for the seq ids in the orthology results.
-    outputPath: if not None, the return value is pickled to this path, not returned, and None is returned.
-    keywords: ignored.  here for historical compatibility reasons.
-    This function queries the database to get a list of orthologs and possibly gene names and go terms associated with those orthologs.
-    The orthologs are grouped into clusters (connected subgraphs).
-    returns: a dict containing clusters, column headers, and possibly containing dicts for gene names, go terms, genome names, etc.
+    query_desc: string describing the query being run.  used by the web to let
+    the user know what query was run to generate these results.  tc_only: if
+    true only transitively closed clusters are returned.  seq_ids: a list of
+    external_sequence_ids/accession numbers/GIs.  if not empty, it is used to
+    restrict orthologs to only those that have either query_id or subject_id in
+    seq_ids.  genome: get orthologs with a sequence from this genome
+    limit_genomes: get orthologs with a sequence in a genome from
+    limit_genomes.  genomes: get orthologs where both sequences are from
+    genomes.  divergence: get orthologs calculated with this divergence
+    threshold.  evalue: get orthologs calculated with this evalue threshold.
+    go_term: if true, a mapping of seq ids to go terms is returned for the seq
+    ids in the orthology results.  gene_name: if true, a mapping of seq ids to
+    gene names is returned for the seq ids in the orthology results.
+    outputPath: if not None, the return value is pickled to this path, not
+    returned, and None is returned.  keywords: ignored.  here for historical
+    compatibility reasons.  This function queries the database to get a list of
+    orthologs and possibly gene names and go terms associated with those
+    orthologs.  The orthologs are grouped into clusters (connected subgraphs).
+    returns: a dict containing clusters, column headers, and possibly
+    containing dicts for gene names, go terms, genome names, etc.
     '''
 
-    tableDesc = {'query_desc': query_desc}
+    tableDesc = {'query_desc': query_desc, 'release': release,
+                 'dataset': dataset}
 
     distanceLowerLimitFilter, distanceUpperLimitFilter = makeLowerAndUpperLimitFilterFuncs(distance_lower_limit, distance_upper_limit)
 
@@ -77,7 +87,10 @@ def doOrthologyQuery(query_desc=None, tc_only=False, db_cursor_read_buffer_size=
         pairs = makePairsForGenomeParams(genome, limit_genomes, genomes)
         orthologsLists = []
         for pair in pairs:
-            orthologs = roundup_db.getOrthologs(qdb=pair[0], sdb=pair[1], divergence=divergence, evalue=evalue, conn=conn)
+            orthologs = roundup_db.getOrthologs(release, qdb=pair[0],
+                                                sdb=pair[1],
+                                                divergence=divergence,
+                                                evalue=evalue, conn=conn)
             orthologsLists.append(orthologs)
         # orthologsLists is a list of lists of (query_sequence_id, subject_sequence_id, distance) tuples
         sequenceIds = set()
@@ -88,7 +101,8 @@ def doOrthologyQuery(query_desc=None, tc_only=False, db_cursor_read_buffer_size=
         
         # get sequence data map from sequenceId to external_id, genome_id, gene_name.
         sequenceIds = list(sequenceIds)
-        sequenceIdToSequenceDataMap = roundup_db.getSequenceIdToSequenceDataMap(sequenceIds, conn=conn)
+        sequenceIdToSequenceDataMap = roundup_db.getSequenceIdToSequenceDataMap(
+            release, sequenceIds, conn=conn)
 
         # cluster orthologs, limiting by seq_ids
         clusterer = clustering.EdgeClusterer(storeEdges=True)
@@ -105,7 +119,8 @@ def doOrthologyQuery(query_desc=None, tc_only=False, db_cursor_read_buffer_size=
         # get genome database ids
         genomeIds = set([sequenceIdToSequenceDataMap[id][roundup_common.GENOME_ID_KEY] for id in sequenceIds])
         genomeIds = list(genomeIds)
-        genomes = [roundup_db.getGenomeForId(id=id, conn=conn) for id in genomeIds]
+        genomes = [roundup_db.getGenomeForId(release, id=id, conn=conn) for id
+                   in genomeIds]
         # map genome to genomeId
         genomeToGenomeId = dict(zip(genomes, genomeIds))
         genomeIdToGenome = dict(zip(genomeIds, genomes))
@@ -168,7 +183,8 @@ def doOrthologyQuery(query_desc=None, tc_only=False, db_cursor_read_buffer_size=
                 seqIdDataMap[id][roundup_common.GENE_NAME_KEY] = sequenceIdToSequenceDataMap[id][roundup_common.GENE_NAME_KEY]
         if go_term:
             tableDesc['has_go_terms'] = True
-            (sequenceIdToTermsMap, termMap) = roundup_db.getSequenceIdToTermsMap(sequenceIds, conn=conn)
+            (sequenceIdToTermsMap, termMap) = roundup_db.getSequenceIdToTermsMap(
+                release, sequenceIds, conn=conn)
             for id in sequenceIdToSequenceDataMap:
                 seqIdDataMap[id][roundup_common.TERMS_KEY] = sequenceIdToTermsMap.get(id, [])
             tableDesc['term_map'] = termMap

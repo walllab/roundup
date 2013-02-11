@@ -13,7 +13,6 @@ import os
 import re
 import urllib
 
-import config
 import util
 import nested
 import roundup_common
@@ -45,15 +44,18 @@ RESULT_TYPES = (ORTH_RESULT, GENE_RESULT, TERM_RESULT, TEST_RESULT, GENE_SUMMARY
                 
 TERM_PROMISCUITY_LIMIT = 100
 BEST_GENOMES_FOR_GENE_NAMES = ['Homo_sapiens.aa', 'Mus_musculus.aa', 'Drosophila_melanogaster.aa', 'Caenorhabditis_elegans.aa', 'Saccharomyces_cerevisiae.aa']
-GENOME_TO_NAME = roundup.dataset.getGenomeToName(config.CURRENT_DATASET)
+GENOME_TO_NAME_CACHE = {}
 
 
-def genomeDisplayName(genome):
+def genomeDisplayName(ds, genome):
     '''
     Turn a genome id into something more human-readable.  E.g. Homo_sapiens.aa -> Homo sapiens
     '''
-    if genome in GENOME_TO_NAME:
-        return GENOME_TO_NAME[genome]
+    if ds not in GENOME_TO_NAME_CACHE:
+        GENOME_TO_NAME_CACHE[ds] = roundup.dataset.getGenomeToName(ds)
+
+    if genome in GENOME_TO_NAME_CACHE[ds]:
+        return GENOME_TO_NAME_CACHE[ds][genome]
     elif genome.endswith('.aa'):
         return genome[:-3].replace('_', ' ')
     else:
@@ -110,7 +112,7 @@ def renderResult(resultId, urlFunc, resultType=ORTH_RESULT, otherParams={}):
                   ORTHOXML_RESULT: clusterResultToOrthoxml,
                   }
     return renderFunc[resultType](resultId, urlFunc, otherParams=otherParams)
-    
+
 
 def _clustersToPhyleticPattern(clusters):
     '''
@@ -162,6 +164,7 @@ def clusterResultToOrthoxml(resultId, urlFunc, otherParams={}):
     result = getResult(resultId)
     seqIdToDataMap = result['seq_id_to_data_map']
     genomeIdToGenomeMap = result['genome_id_to_genome_map']
+    ds = result['dataset']
 
     groups = []
     genomeToGenes = collections.defaultdict(set)
@@ -176,7 +179,6 @@ def clusterResultToOrthoxml(resultId, urlFunc, otherParams={}):
             genomeToGenes[genome].add(gene)
         groups.append((genes, avgDist))
     
-    ds = config.CURRENT_DATASET
     div = result['divergence']
     evalue = result['evalue']
     with io.BytesIO() as handle:
@@ -410,6 +412,7 @@ def resultToGenesSummaryView(resultId, urlFunc, otherParams={}):
     make a sortable table summarizing each cluster/gene/row.
     '''
     result = getResult(resultId)
+    ds = result['dataset']
     seqIdToDataMap = result.get('seq_id_to_data_map', {})
     headers = result['headers']
     rows = result['rows']
@@ -422,7 +425,7 @@ def resultToGenesSummaryView(resultId, urlFunc, otherParams={}):
     content += '<a><p>Below is a sortable table displaying a summary of each gene cluster containing:</p></a>'
     content += '   (1) The id of the gene cluster in the result, '
     content += '   (2) A selected gene name, chosen from the gene names of the orthologous sequences of the gene cluster. '
-    content += '(3) Gene names from '+', '.join([genomeDisplayName(g) for g in BEST_GENOMES_FOR_GENE_NAMES])+' are prioritized, if available.\n'
+    content += '(3) Gene names from '+', '.join([genomeDisplayName(ds, g) for g in BEST_GENOMES_FOR_GENE_NAMES])+' are prioritized, if available.\n'
     content += '\t(4) The number of GO terms associated with the gene.\n'
     content += '\t(5) The phyletic pattern, the pattern of absence and presence of sequences from each genome.\n'
     content += '(6) And for each genome, the sequence identifiers for the orthologous sequences of the gene cluster. \n<p></p>'
@@ -431,7 +434,7 @@ def resultToGenesSummaryView(resultId, urlFunc, otherParams={}):
     content += '<h3>Result</h3>'
     content += '<table class="sortable" id="term_summary_table">'
     content += '<tr><th>Gene Cluster #</th><th>Selected Gene Name</th><th>'+headers[-1]+'</th><th>Number of GO Terms</th><th>Phyletic Profile</th>'
-    content += ''.join(['<th>'+genomeDisplayName(g)+'</th>' for g in headers[:-1]]) + '</tr>\n'
+    content += ''.join(['<th>'+genomeDisplayName(ds, g)+'</th>' for g in headers[:-1]]) + '</tr>\n'
     geneResultUrl = makeResultUrl(resultId, urlFunc, resultType=GENE_RESULT, templateType=WIDE_TEMPLATE)
     for i in range(len(rows)):
         row = rows[i]
@@ -448,6 +451,7 @@ def resultToGenesSummaryView(resultId, urlFunc, otherParams={}):
 
 def resultToText(resultId, urlFunc, otherParams={}):
     result = getResult(resultId)
+    ds = result['dataset']
     seqIdToDataMap = result.get('seq_id_to_data_map', {})
     termMap = result.get('term_map', {})
     headers = result['headers']
@@ -469,14 +473,14 @@ def resultToText(resultId, urlFunc, otherParams={}):
         for colIndex in range(numCols - 1):
             ids = row[colIndex]
             if not ids:
-                content += "-\t{}\t-\t-\n".format(genomeDisplayName(headers[colIndex]))
+                content += "-\t{}\t-\t-\n".format(genomeDisplayName(ds, headers[colIndex]))
             else:
                 for id in ids:
                     geneName = seqIdToDataMap[id].get(roundup_common.GENE_NAME_KEY, '-')
                     termNames = [termMap[term] for term in seqIdToDataMap[id].get(roundup_common.TERMS_KEY, [])]
                     goTermsStr = ', '.join(termNames) if termNames else '-'
                     content += '{}\t{}\t{}\t{}\n'.format(seqIdToDataMap[id][roundup_common.EXTERNAL_SEQUENCE_ID_KEY],
-                                                        genomeDisplayName(headers[colIndex]), geneName, goTermsStr)
+                                                        genomeDisplayName(ds, headers[colIndex]), geneName, goTermsStr)
         content += "\n"
     return content
 
@@ -610,6 +614,7 @@ def resultToGeneView(resultId, urlFunc, otherParams={}):
     report each term in the cluster, the mean pairwise hamming distance and the mean distance between cluster and every other cluster of the term.
     '''
     result = getResult(resultId)
+    ds = result['dataset']
     geneIndex = otherParams.get('gene')
     if not util.isInteger(geneIndex):
         raise Exception('resultToGeneView(): geneIndex is not an integer. geneIndex=%s'%geneIndex)
@@ -624,7 +629,7 @@ def resultToGeneView(resultId, urlFunc, otherParams={}):
     genomes = headers[:-1]
     genomeIdToGenomeMap = result.get('genome_id_to_genome_map', {})
     orthologs = result['orthologs'][geneIndex] # orthologs is a list of lists of orthologs for each row.
-    
+
     # get terms to clusters map, etc.
     for index in range(len(result['rows'])):
         # row has an element for each genome that contains 0 or more seq ids, and row has the distance of the cluster as its final element.
@@ -688,11 +693,10 @@ def resultToGeneView(resultId, urlFunc, otherParams={}):
     content += '<ul>'
     for i in range(len(genomes)):
         genome = genomes[i]
-        content += '<li>'+genomeDisplayName(genome)+'<br/><pre>'
+        content += '<li>'+genomeDisplayName(ds, genome)+'<br/><pre>'
         for seqId in selectedRow[i]:
             try:
-                fastaPath = roundup.dataset.getGenomeIndexPath(config.CURRENT_DATASET, genome)
-                # fastaPath = roundup_common.fastaFileForDbPath(roundup_common.makeDbPath(genome))
+                fastaPath = roundup.dataset.getGenomeIndexPath(ds, genome)
                 logging.debug('fastaPath: {}'.format(fastaPath))
                 content += BioUtilities.getFastaForId(seqIdToDataMap.get(seqId, {}).get(roundup_common.EXTERNAL_SEQUENCE_ID_KEY), fastaPath)
             except:
@@ -708,8 +712,8 @@ def resultToGeneView(resultId, urlFunc, otherParams={}):
         genome1 = genomeIdToGenomeMap.get(seqIdToDataMap.get(seqId1, {}).get(roundup_common.GENOME_ID_KEY))
         acc2 = seqIdToDataMap.get(seqId2, {}).get(roundup_common.EXTERNAL_SEQUENCE_ID_KEY)
         genome2 = genomeIdToGenomeMap.get(seqIdToDataMap.get(seqId2, {}).get(roundup_common.GENOME_ID_KEY))
-        content += '<tr><td>%s</td><td>%s</td>'%(acc1, genomeDisplayName(genome1))
-        content += '<td>%s</td><td>%s</td>'%(acc2, genomeDisplayName(genome2))
+        content += '<tr><td>%s</td><td>%s</td>'%(acc1, genomeDisplayName(ds, genome1))
+        content += '<td>%s</td><td>%s</td>'%(acc2, genomeDisplayName(ds, genome2))
         content += '<td>%.3f</td></tr>'%distance
     content += '</table>'
     return content
@@ -776,6 +780,7 @@ def makeSequenceClustersTable(result, resultId, urlFunc, clusterIndices=None, st
     clusterIndices: list of indices of result rows to put into table
     returns: html table for result gene clusters/rows.
     '''
+    ds = result['dataset']
     seqIdToDataMap = result.get('seq_id_to_data_map', {})
     termMap = result.get('term_map', {})
     headers = result['headers']
@@ -790,7 +795,7 @@ def makeSequenceClustersTable(result, resultId, urlFunc, clusterIndices=None, st
         
     content = ''
     content += "<table class=\"roundup_cluster\">\n";
-    displayGenomes = [genomeDisplayName(genome) for genome in headers[:-1]]
+    displayGenomes = [genomeDisplayName(ds, genome) for genome in headers[:-1]]
     geneResultUrl = makeResultUrl(resultId, urlFunc, resultType=GENE_RESULT, templateType=WIDE_TEMPLATE)
     for index in clusterIndices:
         row = result['rows'][index]

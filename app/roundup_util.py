@@ -26,14 +26,17 @@ def getOrthData(params):
     qdb, sdb, div, evalue = params
     pair = roundup_common.makePair(qdb, sdb)
     # get orthologs from db
-    dbOrthologs = roundup_db.getOrthologs(qdb=pair[0], sdb=pair[1], divergence=div, evalue=evalue)
+    dbOrthologs = roundup_db.getOrthologs(release=config.CURRENT_RELEASE,
+                                          qdb=pair[0], sdb=pair[1],
+                                          divergence=div, evalue=evalue)
     # get a map to external sequence ids
     sequenceIds = set()
     for ortholog in dbOrthologs:
         sequenceIds.add(ortholog[0])
         sequenceIds.add(ortholog[1])
     sequenceIds = list(sequenceIds)
-    sequenceIdToSequenceDataMap = roundup_db.getSequenceIdToSequenceDataMap(sequenceIds)
+    sequenceIdToSequenceDataMap = roundup_db.getSequenceIdToSequenceDataMap(
+        release=config.CURRENT_RELEASE, sequenceIds=sequenceIds)
     # 
     orthologs = [(sequenceIdToSequenceDataMap[qid][roundup_common.EXTERNAL_SEQUENCE_ID_KEY],
                   sequenceIdToSequenceDataMap[sid][roundup_common.EXTERNAL_SEQUENCE_ID_KEY],
@@ -50,14 +53,17 @@ def getRawResults(params):
     qdb, sdb, div, evalue = params
     pair = roundup_common.makePair(qdb, sdb)
     # get orthologs from db
-    orthologs = roundup_db.getOrthologs(qdb=pair[0], sdb=pair[1], divergence=div, evalue=evalue)
+    orthologs = roundup_db.getOrthologs(release=config.CURRENT_RELEASE,
+                                        qdb=pair[0], sdb=pair[1],
+                                        divergence=div, evalue=evalue)
     # get a map to external sequence ids
     sequenceIds = set()
     for ortholog in orthologs:
         sequenceIds.add(ortholog[0])
         sequenceIds.add(ortholog[1])
     sequenceIds = list(sequenceIds)
-    sequenceIdToSequenceDataMap = roundup_db.getSequenceIdToSequenceDataMap(sequenceIds)
+    sequenceIdToSequenceDataMap = roundup_db.getSequenceIdToSequenceDataMap(
+        release=config.CURRENT_RELEASE, sequenceIds=sequenceIds)
 
     # format orthologs for download by mapping to external sequence ids.
     results = None
@@ -92,14 +98,14 @@ def getGenomesAndNames():
     '''
     return: list of pairs of genome and name.  used by website for dropdowns.  
     '''
-    return roundup_db.getGenomesAndNames()
+    return roundup_db.getGenomesAndNames(release=config.CURRENT_RELEASE)
 
 
 def getGenomeDescriptions():
     '''
     returns: a list of tuples with data describing each genome in roundup.
     '''
-    genomesData = roundup_db.getGenomesData()
+    genomesData = roundup_db.getGenomesData(release=config.CURRENT_RELEASE)
     return genomesData
 
 

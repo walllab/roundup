@@ -10,20 +10,24 @@ go
                                            
 '''
 
-import zlib
 import cPickle
-import logging
 import contextlib
 import itertools
+import logging
+import os
+import zlib
 
-import config
 import util
 import roundup_common
 import dbutil
+import mysqlutil
 
 
-# get mysql server/host and database from deployment location, defaulting to dev.  override if defined in environment.
-ROUNDUP_MYSQL_DB = config.MYSQL_DB
+######################
+# GLOBAL CONFIGURATION
+
+DB_URL = os.environ['ROUNDUP_MYSQL_URL']
+ROUNDUP_DB = mysqlutil.parse_url(DB_URL)['db']
 
 
 ###############################
@@ -33,7 +37,7 @@ ROUNDUP_MYSQL_DB = config.MYSQL_DB
 @contextlib.contextmanager
 def connCM(conn=None, commit=True):
     if conn == None:
-        with config.dbConnCM() as conn:
+        with mysqlutil.dburl(DB_URL) as conn:
             if commit:
                 with dbutil.doTransaction(conn) as conn:
                     yield conn
@@ -58,7 +62,7 @@ def releaseTable(release, table):
     basically, it fills in this template: 'roundup.roundup_<release>_<table>'.
     returns: the full table name e.g. 'roundup.roundup_201106_dataset_genomes'
     '''
-    return '{}.roundup_{}_{}'.format(ROUNDUP_MYSQL_DB, release, table)
+    return '{}.roundup_{}_{}'.format(ROUNDUP_DB, release, table)
 
 
 def dropGenomes(release):
@@ -248,8 +252,8 @@ def selectOne(conn, sql, args=None):
     with connCM(conn=conn) as conn:
         return dbutil.selectSQL(sql=sql, conn=conn, args=args)[0][0]
 
-    
-def getGenomeForId(id, conn=None, release=config.CURRENT_RELEASE):
+
+def getGenomeForId(release, id, conn=None):
     '''
     returns: genome accession of genome whose id is id.
     '''
@@ -257,7 +261,7 @@ def getGenomeForId(id, conn=None, release=config.CURRENT_RELEASE):
     return selectOne(conn, sql, args=[id])
 
 
-def getIdForGenome(genome, conn=None, release=config.CURRENT_RELEASE):
+def getIdForGenome(release, genome, conn=None):
     '''
     genome: acc of roundup genome registered in the mysql db lookup table.  e.g. 9606
     returns: id used to refer to that genome in the roundup results table or None if genome was not found.
@@ -266,14 +270,14 @@ def getIdForGenome(genome, conn=None, release=config.CURRENT_RELEASE):
     return selectOne(conn, sql, args=[genome])
 
 
-def getDivergenceForId(id, conn=None, release=config.CURRENT_RELEASE):
+def getDivergenceForId(release, id, conn=None):
     '''
     returns: divergence value whose id is id.
     '''
     return getNameForId(id=id, table=releaseTable(release, 'divergences'), conn=conn)
 
 
-def getIdForDivergence(divergence, conn=None, release=config.CURRENT_RELEASE):
+def getIdForDivergence(release, divergence, conn=None):
     '''
     divergence: value of roundup divergence, e.g. 0.2
     returns: id used to refer to divergence in the roundup results table or None if divergence was not found.
@@ -281,14 +285,14 @@ def getIdForDivergence(divergence, conn=None, release=config.CURRENT_RELEASE):
     return getIdForName(name=divergence, table=releaseTable(release, 'divergences'), conn=conn)
 
 
-def getEvalueForId(id, conn=None, release=config.CURRENT_RELEASE):
+def getEvalueForId(release, id, conn=None):
     '''
     returns: evalue whose id is id.
     '''
     return getNameForId(id=id, table=releaseTable(release, 'evalues'), conn=conn)
 
 
-def getIdForEvalue(evalue, conn=None, release=config.CURRENT_RELEASE):
+def getIdForEvalue(release, evalue, conn=None):
     '''
     evalue: value of roundup evalue, e.g. 1e-5
     returns: id used to refer to evalue in the roundup results table or None if evalue was not found.
@@ -310,25 +314,25 @@ def getNameForId(id, table, conn=None):
         return rowset[0][0]
     
 
-def getGenomeToId(release=config.CURRENT_RELEASE):
+def getGenomeToId(release):
     sql = 'select acc, id from {}'.format(releaseTable(release, 'genomes'))
     with connCM() as conn:
         return dict(dbutil.selectSQL(sql=sql, conn=conn))
 
 
-def getDivergenceToId(release=config.CURRENT_RELEASE):
+def getDivergenceToId(release):
     sql = 'select name, id from {}'.format(releaseTable(release, 'divergences'))
     with connCM() as conn:
         return dict(dbutil.selectSQL(sql=sql, conn=conn))
 
 
-def getEvalueToId(release=config.CURRENT_RELEASE):
+def getEvalueToId(release):
     sql = 'select name, id from {}'.format(releaseTable(release, 'evalues'))
     with connCM() as conn:
         return dict(dbutil.selectSQL(sql=sql, conn=conn))
 
 
-def getSequenceToId(release=config.CURRENT_RELEASE):
+def getSequenceToId(release):
     sql = 'select external_sequence_id, id from {}'.format(releaseTable(release, 'sequence'))
     with connCM() as conn:
         return dict(dbutil.selectSQL(sql=sql, conn=conn))
@@ -355,7 +359,7 @@ def decodeOrthologs(encodedOrthologs):
 ####################
 
 
-def deleteGenomeByName(genome, conn=None, release=config.CURRENT_RELEASE):
+def deleteGenomeByName(release, genome, conn=None):
     '''
     genome: name of genome, like 'Takifugu_rubripes.aa'. 
     deletes all roundup results in mysql containing this genome.
@@ -394,15 +398,14 @@ def deleteGenomeByName(genome, conn=None, release=config.CURRENT_RELEASE):
 # ORTHOLOG QUERY FUNCTIONS
 ##########################
 
-def getSequenceIdToSequenceDataMap(sequenceIds, conn=None, release=config.CURRENT_RELEASE):
+def getSequenceIdToSequenceDataMap(release, sequenceIds, conn=None):
     '''
     returns: dict mapping sequence id to dict {'external_sequence_id':external_sequence_id, 'genome_id':genome_id, 'gene_name':gene_name} 
     '''
     map = {}
     
-    with connCM(conn=conn) as conn:        
+    with connCM(conn=conn) as conn:
         for group in util.groupsOfN(sequenceIds, 1000):
-            # sql = 'SELECT id, external_sequence_id, genome_id, gene_name FROM '+ROUNDUP_MYSQL_DB+'.roundup_sequence WHERE id=%s'
             sql = 'SELECT id, external_sequence_id, genome_id, gene_name FROM {} '.format(releaseTable(release, 'sequence'))
             sql += ' WHERE id IN ('+', '.join([str(id) for id in group])+')'
             # logging.debug('sql='+sql)
@@ -418,7 +421,7 @@ def getSequenceIdToSequenceDataMap(sequenceIds, conn=None, release=config.CURREN
     return map
 
 
-def getSequenceIdToTermsMap(sequenceIds, conn=None, release=config.CURRENT_RELEASE):
+def getSequenceIdToTermsMap(release, sequenceIds, conn=None):
     '''
     constructs a map from sequence id to a list of go term info dicts.
     note: if sequence id not in the database, it is not added to the map.
@@ -445,7 +448,7 @@ def getSequenceIdToTermsMap(sequenceIds, conn=None, release=config.CURRENT_RELEA
     return (seqIdToTermsMap, termMap)
 
 
-def getOrthologs(qdb, sdb, divergence='0.2', evalue='1e-20', conn=None, release=config.CURRENT_RELEASE):
+def getOrthologs(release, qdb, sdb, divergence='0.2', evalue='1e-20', conn=None):
     '''
     divergence: ortholog must have this divergence.  defaults to 0.2
     evalue: ortholog must have this evalue.  defaults to 1e-20.
@@ -470,7 +473,7 @@ def getOrthologs(qdb, sdb, divergence='0.2', evalue='1e-20', conn=None, release=
 ############################################
 
 
-def getGenomesData(release=config.CURRENT_RELEASE):
+def getGenomesData(release):
     '''
     returns a list of tuples, one for each genome, of acc, name, ncbi_taxon, taxon_category_code,
     taxon_category_name, and num_seqs.
@@ -482,7 +485,7 @@ def getGenomesData(release=config.CURRENT_RELEASE):
         return dbutil.selectSQL(sql=sql, conn=conn)
 
 
-def getGenomesAndNames(release=config.CURRENT_RELEASE):
+def getGenomesAndNames(release):
     '''
     returns a list of pairs of genome (e.g. MYCGE) and name (e.g. Mycoplasma genitalium)
     '''
@@ -492,7 +495,7 @@ def getGenomesAndNames(release=config.CURRENT_RELEASE):
         return dbutil.selectSQL(sql=sql, conn=conn)
 
     
-def numOrthologs(conn=None, release=config.CURRENT_RELEASE):
+def numOrthologs(release, conn=None):
     num = 0
     with connCM(conn=conn) as conn:
         sql = 'SELECT num_orthologs FROM {}'.format(releaseTable(release, 'results'))
@@ -508,7 +511,7 @@ ENDS_WITH_TYPE = 'ends_with'
 EQUALS_TYPE = 'equals'
 
 
-def findGeneNamesLike(substring, searchType=CONTAINS_TYPE, conn=None, release=config.CURRENT_RELEASE):
+def findGeneNamesLike(release, substring, searchType=CONTAINS_TYPE, conn=None):
     '''
     substring: search for gene names containing this string somehow.
     searchType: specify how the gene name should contain substring
@@ -532,7 +535,7 @@ def findGeneNamesLike(substring, searchType=CONTAINS_TYPE, conn=None, release=co
         return [row[0] for row in dbutil.selectSQL(sql=sql, args=args, conn=conn)]
 
     
-def findGeneNameGenomePairsLike(substring, searchType=CONTAINS_TYPE, conn=None, release=config.CURRENT_RELEASE):
+def findGeneNameGenomePairsLike(release, substring, searchType=CONTAINS_TYPE, conn=None):
     '''
     substring: search for gene names containing this string somehow.
     searchType: specify how the gene name should contain substring
@@ -561,7 +564,7 @@ def findGeneNameGenomePairsLike(substring, searchType=CONTAINS_TYPE, conn=None, 
         return [tuple(row) for row in dbutil.selectSQL(sql=sql, args=args, conn=conn)]
 
 
-def getSeqIdsForGeneName(geneName, genome=None, conn=None, release=config.CURRENT_RELEASE):
+def getSeqIdsForGeneName(release, geneName, genome=None, conn=None):
     '''
     geneName: gene name or symbol, e.g. 'acsC'
     genome: genome id, e.g. 'Homo_sapiens.aa'.  If None, all seq ids with the gene name are returned.

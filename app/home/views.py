@@ -417,7 +417,9 @@ def search_gene_names(request, key=None):
         if form.is_valid(): # All validation rules pass
             logging.debug(form.cleaned_data)
             search_type, query_string = form.cleaned_data['search_type'], form.cleaned_data['query_string']
-            pairs = roundup_db.findGeneNameGenomePairsLike(substring=query_string, searchType=search_type)
+            pairs = roundup_db.findGeneNameGenomePairsLike(
+                config.CURRENT_RELEASE, substring=query_string,
+                searchType=search_type)
             # store result in cache, so can do a redirect/get. 
             key = makeUniqueId()
             roundup_util.cacheSet(key, {'search_type': search_type, 'query_string': query_string, 'pairs': pairs})
@@ -540,7 +542,8 @@ def browse(request):
             logging.debug('browseId={}, browseIdType={}'.format(browseId, browseIdType))
             if browseId and browseIdType == 'gene_name_type':
                 genome = form.cleaned_data['primary_genome']
-                seqIds = roundup_db.getSeqIdsForGeneName(geneName=browseId, genome=genome)
+                seqIds = roundup_db.getSeqIdsForGeneName(
+                    config.CURRENT_RELEASE, geneName=browseId, genome=genome)
                 if not seqIds: # no seq ids matching the gene name were found.  oh no!
                     message = 'In your Browse query, Roundup did not find any gene named "{}" in the genome "{}".  Try searching for a gene name.'.format(browseId, GENOME_TO_NAME[genome])
                     # store result in cache, so can do a redirect/get. 
@@ -671,6 +674,8 @@ def makeDefaultOrthQuery():
     orthQuery['go_term'] = True
     orthQuery['distance_lower_limit'] = None
     orthQuery['distance_upper_limit'] = None
+    orthQuery['release'] = config.CURRENT_RELEASE # needed for orthquery
+    orthQuery['dataset'] = config.CURRENT_DATASET # needed for orthresult
     return orthQuery
 
 
@@ -706,7 +711,7 @@ def makeOrthQueryFromClusterForm(form):
     orthQuery['evalue'] = form.cleaned_data.get('evalue')
     orthQuery['distance_lower_limit'] = form.cleaned_data.get('distance_lower_limit')
     orthQuery['distance_upper_limit'] = form.cleaned_data.get('distance_upper_limit')
-    
+
     queryDesc = 'Retrieve Query:\n'
     queryDesc += '\t{} = {}\n'.format(displayName('genomes'), '\n\t\t'.join([GENOME_TO_NAME[g] for g in orthQuery['genomes']]))
     queryDesc += '\t{} = {}\n'.format(displayName('divergence'), orthQuery['divergence'])

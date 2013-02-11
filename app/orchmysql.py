@@ -1,11 +1,19 @@
 '''
-The module contains functionality to get mysql credentials and mysql connection objects on the orchestra system.
-FromAnywhere means first checking in the environment and then looking in a credentials file.
-An application using this module will typically do some of the following to get credentials:
-  set up some credentials in a configuration file (e.g. host) an application specific and deployment environment specific manner;
-  get some creds from the environment, like creds set up by a web server;
-  get some creds from a DEFAULT_CREDS_FILE, especially when the application is not used via the web server.
-Once credentials are obtained, an application will typically use them to get a connection to the mysql database.
+The module contains functionality to get mysql credentials and mysql connection
+objects on the orchestra system.
+FromAnywhere means first checking in the environment and then looking in a
+credentials file.
+An application using this module will typically do some of the following to get
+credentials:
+
+- set up some credentials in a configuration file (e.g. host) an application
+specific and deployment environment specific manner;
+- get some creds from the environment, like creds set up by a web server;
+- get some creds from a DEFAULT_CREDS_FILE, especially when the application is
+not used via the web server.
+
+Once credentials are obtained, an application will typically use them to get a
+connection to the mysql database.
 '''
 
 import contextlib
@@ -70,7 +78,7 @@ def getCnf(credsFile=None):
 
 
 def parseCnfFile(path):
-    # read cnf config file into a dict
+    # read cnf file into a dict
     cnf = {}
     if os.path.isfile(path):
         for line in open(path):
