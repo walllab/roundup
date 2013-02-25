@@ -638,7 +638,7 @@ def formatGenomes(ds, onGrid=False, clean=False, jobSize=40):
         workflow.getDones(ns).clean()
     
     if onGrid:
-        workflow.runJobsAsyncGrid(ns, jobs, lsfOptions=lsfOptions, devnull=True)
+        workflow.runJobsAsyncGrid(ns, jobs, lsf_options=lsfOptions, devnull=True)
     else:
         workflow.runJobsSyncLocal(ns, jobs)
 
@@ -889,7 +889,7 @@ def zipDownloadPaths(ds, onGrid=False, clean=False):
     
     if onGrid:
         lsfOptions = ['-q', 'short', '-W', '12:0']
-        workflow.runJobsAsyncGrid(ns, jobs, lsfOptions=lsfOptions, devnull=True)
+        workflow.runJobsAsyncGrid(ns, jobs, lsf_options=lsfOptions, devnull=True)
     else:
         workflow.runJobsSyncLocal(ns, jobs)
 
@@ -935,7 +935,7 @@ def convertToOrthoXML(ds, origin, originVersion, databaseName, databaseVersion, 
     
     if onGrid:
         lsfOptions = ['-q', 'short', '-W', '12:0']
-        workflow.runJobsAsyncGrid(ns, jobs, lsfOptions=lsfOptions, devnull=True)
+        workflow.runJobsAsyncGrid(ns, jobs, lsf_options=lsfOptions, devnull=True)
     else:
         workflow.runJobsSyncLocal(ns, jobs)
 
@@ -1167,6 +1167,7 @@ def cleanGenomes(ds):
 # RUN JOBS
 ##########
 
+
 def computeJobs(ds):
     '''
     submit all incomplete and non-running jobs to lsf, so they can compute their respective pairs.
@@ -1179,7 +1180,7 @@ def computeJobs(ds):
     ns = getDatasetId(ds) + '_compute_jobs'
     workflowJobs = [(func, {'ds': ds, 'job': job}) for job in jobs]
     lsfOptions = ['-R', 'rusage[tmp=500]', '-q', 'long', '-W', '720:0']
-    return workflow.runJobsAsyncGrid(ns, workflowJobs, names=jobs, lsfOptions=lsfOptions, devnull=True)
+    return workflow.runJobsAsyncGrid(ns, workflowJobs, names=jobs, lsf_options=lsfOptions, devnull=True)
 
 
 def computeJob(ds, job):
@@ -1848,7 +1849,3 @@ if __name__ == '__main__':
 # DEPRECATED / UNUSED
 ########################
 
-
-
-# last line - python emacs bug fix
- 

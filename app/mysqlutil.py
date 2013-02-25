@@ -9,7 +9,7 @@ import MySQLdb
 
 
 @contextlib.contextmanager
-def dbcreds(host, db, user, password, retries=0, sleep=0.5):
+def open_conn_cm(host, db, user, password, retries=0, sleep=0.5):
     '''
     A context manager for opening, yielding, and closing a DB API 2.0
     connection, given database credentials as parameters.
@@ -25,7 +25,7 @@ def dbcreds(host, db, user, password, retries=0, sleep=0.5):
 
 
 @contextlib.contextmanager
-def dburl(url, retries=0, sleep=0.5):
+def open_url_cm(url, retries=0, sleep=0.5):
     '''
     A context manager for opening, yielding, and closing a DB API 2.0
     connection, given database credentials as a url.

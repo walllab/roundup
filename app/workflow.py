@@ -274,10 +274,11 @@ def _makeJobNames(jobs, names=None):
 DONES_CACHE = {}
 def getDones(ns):
     if ns not in DONES_CACHE:
-        # create a contextmanager that yields an open db connection and
+        # create a contextmanager that opens a db connection and
         # closes it when exiting the context.
-        conn_cm = functools.partial(mysqlutil.dburl, DB_URL, retries=1,
-                                    sleep=1.0)
+        conn_cm = util.ClosingFactoryCM(functools.partial(mysqlutil.open_url,
+                                                          DB_URL, retries=1,
+                                                          sleep=1.0))
         kns = 'workflow_dones_{}'.format(ns)
         k = kvstore.KStore(conn_cm, ns=kns)
         DONES_CACHE[ns] = dones.Dones(k)

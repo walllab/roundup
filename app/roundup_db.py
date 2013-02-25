@@ -44,7 +44,7 @@ EQUALS_TYPE = 'equals'
 @contextlib.contextmanager
 def connCM(conn=None, commit=True):
     if conn == None:
-        with mysqlutil.dburl(DB_URL) as conn:
+        with mysqlutil.open_url_cm(DB_URL) as conn:
             if commit:
                 with dbutil.doTransaction(conn) as conn:
                     yield conn
