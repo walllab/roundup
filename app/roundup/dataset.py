@@ -1134,7 +1134,7 @@ def bsub_cmds(ds, cmds, names, options):
                                                                    cmd)
         else:
             jobid = lsf.bsub(cmd, lsf_options)
-            print 'Submitting lsf job {}. ds={}, name={}, cmd={}'.format(
+            print 'Submitted lsf job {}. ds={}, name={}, cmd={}'.format(
                 jobid, ds, name, cmd)
 
     return cmds_all_done(ds, names)
@@ -1168,8 +1168,6 @@ def compute_job_cmd_name_options(ds, job):
     # long time, do not save the script output, and set the job name so it 
     # can be easily tracked.
     options = ['-R', 'rusage[tmp=500]', '-q', 'long', '-W', '720:0', '-J',
-               name, '-o', '/dev/null']
-    options = ['-R', 'rusage[tmp=500]', '-q', 'mini', '-W', '1', '-J',
                name, '-o', '/dev/null']
     return cmd, name, options
 
@@ -1847,7 +1845,6 @@ def main():
 
     # parse command line arguments and invoke the appropriate handler.
     args = parser.parse_args()
-    print args
     args.func(args)
 
 
