@@ -8,12 +8,34 @@ import nested
 import util
 
 
-def script_argv(script):
+def pythonpath():
     '''
-    Return a command arg list suitable for running with the subprocess module
-    that would run script using the current python executable.
+    Transform sys.path into a string for use with the PYTHONPATH environent
+    variable.
+    '''
+    return os.pathsep.join(sys.path)
 
-    script: typically __file__ from a script that wants to be run as a script.
+
+def set_pythonpath():
+    '''
+    Set the PYTHONPATH environment variable to the current value of sys.path.
+    This can be useful for running a script that needs to import modules that
+    would not be on sys.path by default, like a third-party module that is
+    in its own directory.
+    '''
+    os.environ['PYTHONPATH'] = pythonpath()
+
+
+def script_list(script):
+    '''
+    Return a command arg list suitable for running with the
+    subprocess module that would run script using the current python
+    executable.  This might fail in the case where script refers to a '.pyc'
+    file that is not in the same directory as its '.py' file or when using
+    zipped python packages.
+
+    script: The path to the script.  Typically __file__ from a module that
+    wants to be run as a script.
 
     Example return value:
 
@@ -25,20 +47,6 @@ def script_argv(script):
                                       script))
     # use the current python executable to run this script
     return [os.path.abspath(sys.executable), filename]
-
-
-def script_cmd(script):
-    '''
-    Return a command string suitable for running with the subprocess module
-    that would run script using the current python executable.
-
-    script: typically __file__ from a script that wants to be run as a script.
-
-    Example return value:
-
-        '/www/dev.roundup.hms.harvard.edu/venv/bin/python /www/dev.roundup.hms.harvard.edu/app/foo.py'
-    '''
-    return ' '.join(script_argv(script))
 
 
 def params_to_file(args=None, kws=None, filename=None):

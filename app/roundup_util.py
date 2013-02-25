@@ -175,7 +175,7 @@ def bsub_orthology_query(cache_key, cache_file, query_kws, job_name):
     filename = cliutil.params_to_file(kws={'cache_key': cache_key,
                                    'cache_file': cache_file,
                                    'query_kws': query_kws})
-    cmd = cliutil.script_argv(__file__) + ['orthquery', '--params', filename]
+    cmd = cliutil.script_list(__file__) + ['orthquery', '--params', filename]
     return lsf.bsub(cmd, lsf_options)
 
 

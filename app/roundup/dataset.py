@@ -17,16 +17,6 @@
 - Download: a dir containing zipped files of orthologs and genomes, for bulk download.
 '''
 
-# # prepare a computation using only a few small genomes
-# cd /www/dev.roundup.hms.harvard.edu/webapp && time python -c "import roundup.dataset
-# ds = '/groups/cbi/td23/test_dataset'
-# orgCodes = 'MYCGE MYCGF MYCGH MYCH1 MYCH2 MYCH7 MYCHH MYCHJ MYCHP'.split()
-# genomes = '243273 708616 710128 907287 295358 262722 872331 262719 347256'.split()
-# roundup.dataset.prepare_dataset(ds)
-# roundup.dataset.setGenomes(ds, genomes)
-# roundup.dataset.prepareJobs(ds, numJobs=10)
-# "
-
 # taxon used for genome b/c orgCode can be used for multiple organisms (e.g. subspecies).
 # orgName used for genomeName
 
@@ -60,17 +50,21 @@ import subprocess
 import sys
 import time
 
-# /path/to/root/roundup/dataset.py -> /path/to/root
+# Add the root python dir to sys.path, so imports will work when dataset.py
+# is run as a script from the command line.
+# /root/module/dir/roundup/dataset.py -> /root/module/dir
 _root_module_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _root_module_dir not in sys.path:
     sys.path.append(_root_module_dir)
 
 # our modules
+import cliutil
 import config
 import dbutil
 import dones
 import fasta
 import kvstore
+import lsf
 import nested
 import orthoxml
 import orthutil
@@ -78,7 +72,7 @@ import roundup_common
 import rsd
 import uniprot
 import util
-import workflow
+
 
 DEFAULT_NUM_JOBS = 4000 # the default number of jobs used to compute orthologs
 MIN_GENOME_SIZE = 200 # ignore genomes with fewer sequences
@@ -615,45 +609,21 @@ def updateGenomeCounts(ds):
     setData(ds, 'genomeToCount', genomeToCount)
 
 
-def formatGenomes(ds, onGrid=False, clean=False, jobSize=40):
+def formatGenomes(ds):
     '''
+    Format genomes for blast.
     ds: dataset for which to format genomes
-    onGrid: if true, formatting will broken into many jobs that get distributed on lsf grid. 
-    clean: if True, all jobs will be run.  Otherwise only incomplete jobs will run.
-    jobSize: granularity of splits when running onGrid.  Smaller = more jobs = done sooner, ideally.
-    Format genomes for blast.  Formatting is broken into several jobs which are run serially
-    on the local machine or distributed on the lsf grid.
     '''
     print 'formatting genomes. {}'.format(ds)
-    genomes = getGenomes(ds) 
-    random.shuffle(genomes) # shuffle so each job will have roughly the same amount of large and small genomes.
-
-    # To speed formatting, break into jobs and parallelize on LSF.
-    funcName = 'roundup.dataset.formatSomeGenomes'
-    jobs = [(funcName, {'ds': ds, 'genomes': gs}) for gs in util.groupsOfN(genomes, jobSize)] # util.splitIntoN(genomes, 20)]
-    print jobs
-    ns = getDatasetId(ds) + '_format_genomes'
-    lsfOptions = ['-q', 'short', '-W', '15']
-    if clean:
-        workflow.getDones(ns).clean()
-    
-    if onGrid:
-        workflow.runJobsAsyncGrid(ns, jobs, lsf_options=lsfOptions, devnull=True)
-    else:
-        workflow.runJobsSyncLocal(ns, jobs)
-
-
-def formatSomeGenomes(ds, genomes):
+    genomes = getGenomes(ds)
     for genome in genomes:
-        fastaPath = getGenomeFastaPath(ds, genome)
-        print 'format {}'.format(genome)
-        rsd.formatForBlast(fastaPath)
-        
+        format_genome(ds, genome)
 
-# def formatGenomes(fastaPaths):
-#     for path in fastaPaths:
-#         print 'format {}'.format(os.path.basename(path))
-#         rsd.formatForBlast(path)
+
+def format_genome(ds, genome):
+    fastaPath = getGenomeFastaPath(ds, genome)
+    print 'format {}'.format(genome)
+    rsd.formatForBlast(fastaPath)
 
 
 def prepareJobs(ds, numJobs=DEFAULT_NUM_JOBS, pairs=None):
@@ -877,21 +847,13 @@ def collateOrthologs(ds):
             fh.close()
 
 
-def zipDownloadPaths(ds, onGrid=False, clean=False):
+def zipDownloadPaths(ds):
     '''
     after orthologs have been collated and converted to orthoxml, zip the files
     '''
     divEvalues, txtPaths, xmlPaths = getDownloadPaths(ds)
-    ns = getDatasetId(ds) + '_zip_download'
-    jobs = [('roundup.dataset.zipDownloadPath', {'path': path}) for path in txtPaths + xmlPaths if os.path.exists(path)]
-    if clean:
-        workflow.reset(ns)
-    
-    if onGrid:
-        lsfOptions = ['-q', 'short', '-W', '12:0']
-        workflow.runJobsAsyncGrid(ns, jobs, lsf_options=lsfOptions, devnull=True)
-    else:
-        workflow.runJobsSyncLocal(ns, jobs)
+    for path in txtPaths + xmlPaths:
+        zipDownloadPath(path)
 
 
 def zipDownloadPath(path):
@@ -907,7 +869,7 @@ def getDownloadPaths(ds):
     return divEvalues, txtPaths, xmlPaths
 
 
-def convertToOrthoXML(ds, origin, originVersion, databaseName, databaseVersion, protLink=None, onGrid=True, clean=False):
+def convertToOrthoXML(ds, origin, originVersion, databaseName, databaseVersion, protLink=None, clean=False):
     '''
     origin: e.g. 'roundup'
     originVersion: e.g. getReleaseName(ds)
@@ -915,29 +877,18 @@ def convertToOrthoXML(ds, origin, originVersion, databaseName, databaseVersion, 
     databaseVersion: e.g. getUniprotRelease(ds)
     protLink: e.g. 'http://www.uniprot.org/uniprot/'
     convert collated orthologs files to orthoxml format.
-    clean: if True, will delete the xml files if they already exist, and also clean the dones for these jobs
-    onGrid: if True, will convert txt files to xml in parallel on lsf.  Otherwise, will run serially in this process.
+    clean: if True, will delete the xml files if they already exist.
     '''
     divEvalues, txtPaths, xmlPaths = getDownloadPaths(ds)
-    ns = getDatasetId(ds) + '_to_orthoxml'
-    jobs = []
-    for txtPath, xmlPath in zip(txtPaths, xmlPaths):
-        func = 'roundup.dataset.convertTxtToOrthoXML'
-        kws = {'ds': ds, 'txtPath': txtPath, 'xmlPath': xmlPath,
-               'origin': origin, 'originVersion': originVersion, 
-               'databaseName': databaseName, 'databaseVersion': databaseVersion, 'protLink': protLink}
-        jobs.append((func, kws))
+
     if clean:
         for xmlPath in xmlPaths:
             if os.path.exists(xmlPath):
                 os.remove(xmlPath)
-        workflow.reset(ns)
-    
-    if onGrid:
-        lsfOptions = ['-q', 'short', '-W', '12:0']
-        workflow.runJobsAsyncGrid(ns, jobs, lsf_options=lsfOptions, devnull=True)
-    else:
-        workflow.runJobsSyncLocal(ns, jobs)
+
+    for txtPath, xmlPath in zip(txtPaths, xmlPaths):
+        convertTxtToOrthoXML(ds, txtPath, xmlPath, origin, originVersion,
+                             databaseName, databaseVersion, protLink)
 
 
 def convertTxtToOrthoXML(ds, txtPath, xmlPath, origin, originVersion, databaseName, databaseVersion, protLink):
@@ -1157,10 +1108,45 @@ def cleanGenomes(ds):
     print 'resetting genomes cache'
     setGenomes(ds)
 
-    # reset dones for formatting.
-    print 'clearing format genomes dones'
-    ns = getDatasetId(ds) + '_format_genomes'
-    workflow.getDones(ns).clean()
+
+##########
+# WORKFLOW
+##########
+
+def bsub_cmds(ds, cmds, names, options):
+    '''
+    Submit cmds to lsf if they are not already done or submitted.  Use names
+    to see which commands are already done or submitted.
+
+    cmds: a list of command lines to run on lsf.  Each command line is a list
+      of arguments.
+    names: a list of unique names, one for each command
+    options: a list of lists of lsf options, one for each command.
+    '''
+    # The names of every job currently on the lsf queue
+    onJobNames = set(lsf.getOnJobNames())
+
+    for cmd, name, lsf_options in zip(cmds, names, options):
+        if getDones(ds).done(name):
+            print 'Already done. ds={}, name={}, cmd={}'.format(ds, name, cmd)
+        elif name in onJobNames: 
+            print 'Already running. ds={}, name={}, cmd={}'.format(ds, name,
+                                                                   cmd)
+        else:
+            jobid = lsf.bsub(cmd, lsf_options)
+            print 'Submitting lsf job {}. ds={}, name={}, cmd={}'.format(
+                jobid, ds, name, cmd)
+
+    return cmds_all_done(ds, names)
+
+
+def cmds_all_done(ds, names):
+    '''
+    Returns True iff all the commands identified by names are marked done.
+
+    names: a list of unique names, one for each command
+    '''
+    return getDones(ds).all_done(names)
 
 
 ##########
@@ -1168,19 +1154,38 @@ def cleanGenomes(ds):
 ##########
 
 
+def compute_job_cmd_name_options(ds, job):
+    '''
+    Generate the command, name, and lsf options for a dataset ortholog
+    computation job.
+    '''
+    # command to be run on lsf
+    cmd = cliutil.script_list(__file__) + ['compute_job', ds, job]
+    # name used to track if command is done or on lsf
+    name = 'roundup_compute_job_{dsid}_{job}'.format(dsid=getDatasetId(ds),
+                                                     job=job)
+    # lsf options used for cmd: make sure there is enough temp space, run for a
+    # long time, do not save the script output, and set the job name so it 
+    # can be easily tracked.
+    options = ['-R', 'rusage[tmp=500]', '-q', 'long', '-W', '720:0', '-J',
+               name, '-o', '/dev/null']
+    options = ['-R', 'rusage[tmp=500]', '-q', 'mini', '-W', '1', '-J',
+               name, '-o', '/dev/null']
+    return cmd, name, options
+
+
 def computeJobs(ds):
     '''
-    submit all incomplete and non-running jobs to lsf, so they can compute their respective pairs.
-    returns: True if all jobs are done.
+    Submit all incomplete and non-running jobs to lsf, so they can compute
+    their respective pairs.  Return True if all jobs are done.
     '''
-    # awkward: a dataset job is a name of a directory and a set of pairs to compute orthologs for.
-    # and a workflow job is a tuple of function name and keywords
+    # a job is a name of a directory and a set of genome pairs for ortholog computation.
     jobs = sorted(getJobs(ds))
-    func = 'roundup.dataset.computeJob'
-    ns = getDatasetId(ds) + '_compute_jobs'
-    workflowJobs = [(func, {'ds': ds, 'job': job}) for job in jobs]
-    lsfOptions = ['-R', 'rusage[tmp=500]', '-q', 'long', '-W', '720:0']
-    return workflow.runJobsAsyncGrid(ns, workflowJobs, names=jobs, lsf_options=lsfOptions, devnull=True)
+    cmds, names, options = zip(*[compute_job_cmd_name_options(ds, job) for job in jobs])
+    # ensure that dataset.py will be able to import all the modules it needs 
+    # when it is invoked to run computeJob.
+    cliutil.set_pythonpath()
+    return bsub_cmds(ds, cmds, names, options)
 
 
 def computeJob(ds, job):
@@ -1188,6 +1193,11 @@ def computeJob(ds, job):
     job: identifies which job this is so it knows which pairs to compute.
     computes orthologs for every pair in the job.  merges the orthologs into a single file and puts that file in the dataset orthologs dir.
     '''
+    cmd, name, options = compute_job_cmd_name_options(ds, job)
+    # check if the job is done
+    if getDones(ds).done(name):
+        return
+
     pairs = getJobPairs(ds, job)
     jobDir = getJobDir(ds, job)
     print ds, job, pairs, jobDir
@@ -1213,6 +1223,9 @@ def computeJob(ds, job):
         orthologsPath = os.path.join(jobDir, '{}_{}.pair.orthologs.txt'.format(*pair))
         if os.path.exists(orthologsPath):
             os.remove(orthologsPath)
+
+    # mark the job done.
+    getDones(ds).mark(name)
 
 
 def computePair(ds, pair, workingDir, orthologsPath):
@@ -1732,19 +1745,22 @@ def main():
     # wrappers to transform arguments from subparsers into the
     # appropriate function call.
     def format_genomes(args):
-        return formatGenomes(args.dataset, onGrid=not(args.off_grid), clean=args.clean)
+        return formatGenomes(args.dataset)
 
     def add_fasta(args):
         return addGenomeFasta(args.dataset, args.genome, args.fasta_file,
                 name=args.name, taxon=args.taxon)
 
+    def compute_job(args):
+        return computeJob(args.dataset, args.job)
+
     def prepare_jobs(args):
         return prepareJobs(args.dataset, numJobs=args.num)
 
     def convert_to_orthoxml(args):
-        return convertToOrthoXML(args.dataset, args.origin, 
-                args.origin_version, args.database, args.database_version, 
-                onGrid=True, clean=True)
+        return convertToOrthoXML(args.dataset, args.origin,
+                                 args.origin_version, args.database,
+                                 args.database_version, clean=True)
 
     parser = argparse.ArgumentParser(description='')
     subparsers = parser.add_subparsers(dest='action')
@@ -1786,20 +1802,8 @@ def main():
                       ' or Eukaryota.')
     make_ds_subparser('extract_dats', extractFromDats,
                       help='')
-
-    # Format Genomes
-    format_genomes_parser = subparsers.add_parser(
-        'format_genomes', help='Format genomes in the dataset for using BLAST')
-    format_genomes_parser.add_argument('dataset', help='root directory of the dataset')
-    format_genomes_parser.add_argument('--off-grid', action='store_true',
-                                       help='Do not use LSF to format the genomes')
-    format_genomes_parser.add_argument(
-        '--clean', action='store_true', default=False,
-        help='Format all genomes, not just the ones that have not yet been formatted.')
-    format_genomes_parser.set_defaults(func=format_genomes)
-
-
-
+    make_ds_subparser('format_genomes', formatGenomes,
+                      help='Format genomes in the dataset for using BLAST')
     make_ds_subparser('compute', computeJobs,
                       help='Compute orthologs.')
     make_ds_subparser('collate', collateOrthologs,
@@ -1824,6 +1828,12 @@ def main():
     prepare_jobs_parser.add_argument('-n', '--num', type=int, default=DEFAULT_NUM_JOBS,
             help='number of jobs in which to split the dataset pairs. e.g. 1000')
     prepare_jobs_parser.set_defaults(func=prepare_jobs)
+
+    # compute a single ortholgy computation job
+    compute_job_parser = subparsers.add_parser('compute_job', help='Compute orthologs for pairs associated with a dataset job.')
+    compute_job_parser.add_argument('dataset', help='root directory of the dataset')
+    compute_job_parser.add_argument('job', help='id of the computation job, e.g. 27')
+    compute_job_parser.set_defaults(func=compute_job)
 
     # convert_to_orthoxml
     convert_to_orthoxml_parser = subparsers.add_parser('convert_to_orthoxml', 
