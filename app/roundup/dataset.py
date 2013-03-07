@@ -60,7 +60,6 @@ if _root_module_dir not in sys.path:
 # our modules
 import cliutil
 import config
-import dbutil
 import dones
 import fasta
 import kvstore
@@ -1612,7 +1611,8 @@ DONES_CACHE = {}
 def getDones(ds):
     if ds not in DONES_CACHE:
         ns = 'roundup_dataset_{}_dones'.format(getDatasetId(ds))
-        k = kvstore.KStore(util.ClosingFactoryCM(config.openDbConn), ns=ns)
+        connect = kvstore.make_closer(config.openDbConn)
+        k = kvstore.KStore(connect, ns=ns)
         DONES_CACHE[ds] = dones.Dones(k)
     return DONES_CACHE[ds]
 
@@ -1637,8 +1637,8 @@ def getStats(ds):
     closes connections to the database.
     '''
     if ds not in STATS_CACHE:
-        manager = util.ClosingFactoryCM(config.openDbConn)
-        kv = kvstore.KVStore(manager=manager, ns=stats_ns(ds))
+        connect = kvstore.make_closer(config.openDbConn)
+        kv = kvstore.KVStore(connect, ns=stats_ns(ds))
         STATS_CACHE[ds] = Stats(kv)
 
     return STATS_CACHE[ds]
@@ -1655,10 +1655,8 @@ def statsCM(ds):
     '''
     reuser = None
     try:
-        # reuser tries to keep an open connection to the database
-        reuser = dbutil.Reuser(config.openDbConn)
-        manager=util.FactoryCM(reuser)
-        kv = kvstore.KVStore(manager=manager, ns=stats_ns(ds))
+        connect = kvstore.make_reusing_connect(config.openDbConn)
+        kv = kvstore.KVStore(connect, ns=stats_ns(ds))
         stats = Stats(kv)
         yield stats
     finally:

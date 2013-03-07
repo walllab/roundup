@@ -25,8 +25,39 @@ print kv.get("hi", "missing")
 print kv.remove("bye")
 '''
 
+import contextlib
 import json
+
 import dbutil
+
+
+def make_closing_connect(open_conn):
+    '''
+    Return a function which opens a connection and then returns a context
+    manager that returns that connection when entering a context and then
+    closes it when the context is exited.
+
+    open_conn: a function which returns an open DBAPI 2.0 connection.
+    '''
+    def connect():
+        return contextlib.closing(open_conn())
+
+
+def make_reusing_connect(open_conn):
+    '''
+    Return a function which opens a connection the first time it is called (and
+    reuses the connection in subsequent calls) and then returns a context
+    manager that returns the connection when entering a context and then closes
+    it when the context is exited.
+
+    open_conn: a function which returns an open DBAPI 2.0 connection.
+    '''
+
+    conn = []
+    def connect():
+        if not conn:
+            conn.append(open_conn())
+        return conn[0]
 
 
 class KVStore(object):
@@ -35,14 +66,19 @@ class KVStore(object):
     Upon first using a namespace, call create() to initialize the table.
     When done using a namespace, call drop() to drop the table.
     '''
-    def __init__(self, manager, ns=None):
+    def __init__(self, connect, ns='key_value_store'):
         '''
-        manager: context manager yielding a Connection.
-          Typical managers are cmutil.Noop(conn) to reuse a connection or cmutil.ClosingFactory(getConnFunc) to use a new connection each time.
-        ns: the "namespace" of the keys.  should be a valid mysql table name.  defaults to 'key_value_store'.
+        connect: A function which returns a context manager for getting a
+        DBAPI 2.0 connection.  Typically the manager would either open and
+        close a connection (to avoid maintaining a persistent connection to the
+        database) or return the same open connection every time (to avoid
+        opening and closing connections too rapidly) or return a connection
+        from a connection pool (to avoid having too many open connections).
+        ns: The "namespace" of the keys.  Should be a valid mysql table name.
+        Defaults to 'key_value_store'.
         '''
-        self.manager = manager
-        self.table = ns if ns is not None else 'key_value_store'
+        self.connect = connect
+        self.table = ns
 
 
     def create(self):
@@ -53,14 +89,14 @@ class KVStore(object):
                  create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                  INDEX key_index (name) 
                  ) ENGINE = InnoDB '''
-        with self.manager as conn:
+        with self.connect() as conn:
             with dbutil.doTransaction(conn):
                 dbutil.executeSQL(conn, sql)
         return self
     
         
     def drop(self):
-        with self.manager as conn:
+        with self.connect() as conn:
             with dbutil.doTransaction(conn):
                 dbutil.executeSQL(conn, 'DROP TABLE IF EXISTS ' + self.table)
         return self
@@ -72,7 +108,7 @@ class KVStore(object):
 
     def get(self, key, default=None):
         encodedKey = json.dumps(key)
-        with self.manager as conn:
+        with self.connect() as conn:
             sql = 'SELECT value FROM ' + self.table + ' WHERE name = %s'
             results = dbutil.selectSQL(conn, sql, args=[encodedKey])
             if results:
@@ -85,7 +121,7 @@ class KVStore(object):
     def put(self, key, value):
         encodedKey = json.dumps(key)
         encodedValue = json.dumps(value)
-        with self.manager as conn:
+        with self.connect() as conn:
             with dbutil.doTransaction(conn):
                 sql = 'INSERT INTO ' + self.table + ' (name, value) VALUES (%s, %s) ON DUPLICATE KEY UPDATE value=%s'
                 return dbutil.insertSQL(conn, sql, args=[encodedKey, encodedValue, encodedValue])
@@ -93,7 +129,7 @@ class KVStore(object):
 
     def exists(self, key):
         encodedKey = json.dumps(key)
-        with self.manager as conn:
+        with self.connect() as conn:
             sql = 'SELECT id FROM ' + self.table + ' WHERE name = %s'
             results = dbutil.selectSQL(conn, sql, args=[encodedKey])
             return bool(results) # True if there are any results, False otherwise.
@@ -102,7 +138,7 @@ class KVStore(object):
     def remove(self, key):
         encodedKey = json.dumps(key)
         sql = 'DELETE FROM ' + self.table + ' WHERE name = %s'
-        with self.manager as conn:
+        with self.connect() as conn:
             with dbutil.doTransaction(conn):
                 return dbutil.executeSQL(conn, sql, args=[encodedKey])
 
@@ -112,15 +148,18 @@ class KStore(object):
     Uses KVStore to manage a set of keys in a namespace.
     '''
 
-    def __init__(self, manager, ns=None):
+    def __init__(self, connect, ns='key_store'):
         '''
-        manager: context manager yielding a Connection.
-          Typical managers are cmutil.Noop(conn) to reuse a connection or cmutil.ClosingFactory(getConnFunc) to use a new connection each time.
-        ns: the "namespace" of the keys.  should be a valid mysql table name.  defaults to 'key_store'.
+        connect: A function which returns a context manager for getting a
+        DBAPI 2.0 connection.  Typically the manager would either open and
+        close a connection (to avoid maintaining a persistent connection to the
+        database) or return the same open connection every time (to avoid
+        opening and closing connections too rapidly) or return a connection
+        from a connection pool (to avoid having too many open connections).
+        ns: The "namespace" of the keys.  Should be a valid mysql table name.
+        Defaults to 'key_store'.
         '''
-        self.manager = manager
-        self.ns = ns if ns is not None else 'key_store'
-        self.kv = KVStore(self.manager, ns=self.ns)
+        self.kv = KVStore(connect, ns=ns)
 
     def exists(self, key):
         '''
@@ -144,7 +183,6 @@ class KStore(object):
         '''
         readies the namespace for new marks
         '''
-        # self.kv = KVStore(self.manager, ns=self.ns).create()
         self.kv.create()
         return self
 
@@ -152,7 +190,6 @@ class KStore(object):
         '''
         clears all marks from the namespace and readies it for new marks
         '''
-        # self.kv = KVStore(self.manager, ns=self.ns).drop().create()
         self.kv.reset()
         return self
 
@@ -160,7 +197,6 @@ class KStore(object):
         '''
         clears all marks from the namespace and cleans it up.
         '''
-        # self.kv = KVStore(self.manager, ns=self.ns).drop()
         self.kv.drop()
         return self
 
