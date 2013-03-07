@@ -105,7 +105,7 @@ def genomes(request):
     viruses = [desc for desc in GENOME_DESCS if desc[3] == 'V']
     unclassified = [desc for desc in GENOME_DESCS if desc[3] == 'U']
     if unclassified:
-        logging.error('There are unclassified genomes: {}'.format(unclassified))
+        logging.error(u'There are unclassified genomes: {}'.format(unclassified))
     num_eukaryota, num_archaea, num_bacteria, num_viruses = [len(g) for g in (eukaryota, archaea, bacteria, viruses)]
     num_genomes = num_eukaryota + num_archaea + num_bacteria + num_viruses
     kw = {'nav_id': 'genomes', 'descGroups': [eukaryota, archaea, bacteria, viruses], 'num_genomes': num_genomes,
@@ -389,7 +389,7 @@ def lookup_result(request, key):
         kw = roundup_util.cacheGet(key)
         page = '<h2>Lookup a Sequence Id for a FASTA Sequence Result</h2>\n<h3>Query</h3>Genome: <pre>{}</pre>'.format(GENOME_TO_NAME[kw['genome']])
         page += 'FASTA Sequence: <pre>{}</pre>'.format(kw['fasta'])
-        page += '<h3>Result</h3>Sequence Id: {}'.format(kw['seqId'])
+        page += u'<h3>Result</h3>Sequence Id: {}'.format(kw['seqId'])
         return django.shortcuts.render(request, 'regular.html', {'html': page, 'nav_id': 'contact'})
     else:
         raise django.http.Http404
@@ -448,12 +448,12 @@ def search_gene_names_result(request, key):
         kw = roundup_util.cacheGet(key)
         pairs = kw['pairs']
         page = '<h2>Gene Names Search Result</h2>\n'
-        page += '<p>Gene names that &quot;{}&quot; the query string &quot;{}&quot;:</p>\n'.format(displayName(kw['search_type']), django.utils.html.escape(kw['query_string']))
-        page += '<div>{} matching combination{} of gene name and genome found.  Try another <a href="{}">search</a>.</div>'.format(len(pairs), '' if len(pairs) == 1 else 's', django.core.urlresolvers.reverse(search_gene_names))
+        page += u'<p>Gene names that &quot;{}&quot; the query string &quot;{}&quot;:</p>\n'.format(displayName(kw['search_type']), django.utils.html.escape(kw['query_string']))
+        page += u'<div>{} matching combination{} of gene name and genome found.  Try another <a href="{}">search</a>.</div>'.format(len(pairs), '' if len(pairs) == 1 else 's', django.core.urlresolvers.reverse(search_gene_names))
         page += "<table>\n"
         page += "<tr><td>Gene Name</td><td>Genome</td></tr>\n"
         for geneName, genome in pairs:
-            page += "<tr><td>{}</td><td>{}: {}</td></tr>\n".format(geneName, genome, GENOME_TO_NAME[genome])
+            page += u'<tr><td>{}</td><td>{}: {}</td></tr>\n'.format(geneName, genome, GENOME_TO_NAME[genome])
         page += "</table>\n"
         return django.shortcuts.render(request, 'regular.html', {'html': page, 'nav_id': 'search_gene_names'})
     else:
@@ -488,7 +488,7 @@ class BrowseForm(django.forms.Form):
         '''
         data = self.cleaned_data.get('primary_genome')
         if data not in NAME_TO_GENOME:
-            msg = 'Please enter a Primary genome from our choices. {} is not.'.format(data)
+            msg = u'Please enter a Primary genome from our choices. {} is not.'.format(data)
             raise django.forms.ValidationError(msg)
         genome = NAME_TO_GENOME[data]
         return genome
@@ -531,21 +531,21 @@ def browse(request):
     if request.method == 'POST': # If the form has been submitted...
         form = BrowseForm(request.POST) # A form bound to the POST data
         if form.is_valid(): # All validation rules pass
-            logging.debug('form.cleaned_data={}'.format(form.cleaned_data))
-            orthQuery = makeOrthQueryFromBrowseForm(form)            
-            logging.debug('orthQuery={}'.format(orthQuery))
+            logging.debug(u'form.cleaned_data={}'.format(form.cleaned_data))
+            orthQuery = makeOrthQueryFromBrowseForm(form)
+            logging.debug(u'orthQuery={}'.format(orthQuery))
 
             # Process and add Browse Ids to the query
             # I would rather not have this complexity in here at all.  There must be a simpler and more powerful way.
             browseId = form.cleaned_data.get('identifier')
             browseIdType = form.cleaned_data.get('identifier_type')
-            logging.debug('browseId={}, browseIdType={}'.format(browseId, browseIdType))
+            logging.debug(u'browseId={}, browseIdType={}'.format(browseId, browseIdType))
             if browseId and browseIdType == 'gene_name_type':
                 genome = form.cleaned_data['primary_genome']
                 seqIds = roundup_db.getSeqIdsForGeneName(
                     config.CURRENT_RELEASE, geneName=browseId, genome=genome)
                 if not seqIds: # no seq ids matching the gene name were found.  oh no!
-                    message = 'In your Browse query, Roundup did not find any gene named "{}" in the genome "{}".  Try searching for a gene name.'.format(browseId, GENOME_TO_NAME[genome])
+                    message = u'In your Browse query, Roundup did not find any gene named "{}" in the genome "{}".  Try searching for a gene name.'.format(browseId, GENOME_TO_NAME[genome])
                     # store result in cache, so can do a redirect/get. 
                     key = makeUniqueId()
                     roundup_util.cacheSet(key, {'message': message, 'search_type': 'contains', 'query_string': browseId})
@@ -689,15 +689,15 @@ def makeOrthQueryFromBrowseForm(form):
     orthQuery['distance_lower_limit'] = form.cleaned_data.get('distance_lower_limit')
     orthQuery['distance_upper_limit'] = form.cleaned_data.get('distance_upper_limit')
 
-    queryDesc = 'Browse Query:\n'
-    queryDesc += '\t{} = {}\n'.format(displayName('genome'), GENOME_TO_NAME[orthQuery['genome']])
-    queryDesc += '\t{} = {}\n'.format(displayName('identifier_type'), displayName(form.cleaned_data.get('identifier_type')))
-    queryDesc += '\t{} = {}\n'.format(displayName('identifier'), form.cleaned_data.get('identifier'))
-    queryDesc += '\t{} = {}\n'.format(displayName('limit_genomes'), '\n\t\t'.join([GENOME_TO_NAME[g] for g in orthQuery['limit_genomes']]))
-    queryDesc += '\t{} = {}\n'.format(displayName('divergence'), orthQuery['divergence'])
-    queryDesc += '\t{} = {}\n'.format(displayName('evalue'), orthQuery['evalue'])
-    queryDesc += '\t{} = {}\n'.format(displayName('distance_lower_limit'), orthQuery['distance_lower_limit'])
-    queryDesc += '\t{} = {}\n'.format(displayName('distance_upper_limit'), orthQuery['distance_upper_limit'])
+    queryDesc = u'Browse Query:\n'
+    queryDesc += u'\t{} = {}\n'.format(displayName('genome'), GENOME_TO_NAME[orthQuery['genome']])
+    queryDesc += u'\t{} = {}\n'.format(displayName('identifier_type'), displayName(form.cleaned_data.get('identifier_type')))
+    queryDesc += u'\t{} = {}\n'.format(displayName('identifier'), form.cleaned_data.get('identifier'))
+    queryDesc += u'\t{} = {}\n'.format(displayName('limit_genomes'), '\n\t\t'.join([GENOME_TO_NAME[g] for g in orthQuery['limit_genomes']]))
+    queryDesc += u'\t{} = {}\n'.format(displayName('divergence'), orthQuery['divergence'])
+    queryDesc += u'\t{} = {}\n'.format(displayName('evalue'), orthQuery['evalue'])
+    queryDesc += u'\t{} = {}\n'.format(displayName('distance_lower_limit'), orthQuery['distance_lower_limit'])
+    queryDesc += u'\t{} = {}\n'.format(displayName('distance_upper_limit'), orthQuery['distance_upper_limit'])
     orthQuery['query_desc'] = queryDesc
 
     return orthQuery
@@ -712,13 +712,13 @@ def makeOrthQueryFromClusterForm(form):
     orthQuery['distance_lower_limit'] = form.cleaned_data.get('distance_lower_limit')
     orthQuery['distance_upper_limit'] = form.cleaned_data.get('distance_upper_limit')
 
-    queryDesc = 'Retrieve Query:\n'
-    queryDesc += '\t{} = {}\n'.format(displayName('genomes'), '\n\t\t'.join([GENOME_TO_NAME[g] for g in orthQuery['genomes']]))
-    queryDesc += '\t{} = {}\n'.format(displayName('divergence'), orthQuery['divergence'])
-    queryDesc += '\t{} = {}\n'.format(displayName('evalue'), orthQuery['evalue'])
-    queryDesc += '\t{} = {}\n'.format(displayName('distance_lower_limit'), orthQuery['distance_lower_limit'])
-    queryDesc += '\t{} = {}\n'.format(displayName('distance_upper_limit'), orthQuery['distance_upper_limit'])
-    queryDesc += '\t{} = {}\n'.format(displayName('tc_only'), orthQuery['tc_only'])
+    queryDesc = u'Retrieve Query:\n'
+    queryDesc += u'\t{} = {}\n'.format(displayName('genomes'), '\n\t\t'.join([GENOME_TO_NAME[g] for g in orthQuery['genomes']]))
+    queryDesc += u'\t{} = {}\n'.format(displayName('divergence'), orthQuery['divergence'])
+    queryDesc += u'\t{} = {}\n'.format(displayName('evalue'), orthQuery['evalue'])
+    queryDesc += u'\t{} = {}\n'.format(displayName('distance_lower_limit'), orthQuery['distance_lower_limit'])
+    queryDesc += u'\t{} = {}\n'.format(displayName('distance_upper_limit'), orthQuery['distance_upper_limit'])
+    queryDesc += u'\t{} = {}\n'.format(displayName('tc_only'), orthQuery['tc_only'])
     orthQuery['query_desc'] = queryDesc
 
     return orthQuery
@@ -775,7 +775,7 @@ def orth_query(request, queryId):
     querySize = len(orthQuery['limit_genomes']) + len(orthQuery['genomes'])
     resultId = getResultId(queryId)
     resultPath = orthresult.getResultFilename(resultId)
-    logging.debug('orth_query():\northQuery={}\nresultId={}\nqueryId={}\nresultPath={}'.format(orthQuery, resultId, queryId, resultPath))
+    logging.debug(u'orth_query():\northQuery={}\nresultId={}\nqueryId={}\nresultPath={}'.format(orthQuery, resultId, queryId, resultPath))
     if USE_CACHE and roundup_util.cacheHasKey(resultId) and orthresult.resultExists(resultId):
         logging.debug('cache hit.')
         return django.shortcuts.redirect(django.core.urlresolvers.reverse(orth_result, kwargs={'resultId': resultId}))
@@ -822,7 +822,7 @@ def job_ready(request):
     job = request.GET.get('job')
     logging.debug('\tjob={}'.format(job))
     data = json.dumps({'ready': bool(not job or lsf.isJobNameOff(job, retry=True, delay=0.2))})
-    logging.debug('\tdata={}'.format(data))
+    logging.debug(u'\tdata={}'.format(data))
     # data = json.dumps({'ready': True})
     return django.http.HttpResponse(data, content_type='application/json')
 
