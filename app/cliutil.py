@@ -4,7 +4,7 @@ import os
 import re
 import sys
 
-import nested
+import temps
 import util
 
 
@@ -52,7 +52,7 @@ def script_list(script):
 def params_to_file(args=None, kws=None, filename=None):
     '''
     Serialize args, kws, and write them to filename.  If filename
-    is None, use nested to create a temporary file.  Return the filename the
+    is None, use temps to create a temporary file.  Return the filename the
     parameters were stored in.
 
     args: a list of function arguments.  If None (default), an empty list will
@@ -60,13 +60,13 @@ def params_to_file(args=None, kws=None, filename=None):
     kws: a dict of function keyword arguments  If None (default), an empty
     dict will be used.
     filename: where to store the serialized args and kws.  If None (default),
-    the nested module will be used to create a unique filename in which to
+    the temps module will be used to create a unique filename in which to
     store the params.
     '''
     args = [] if args is None else args
     kws = {} if kws is None else kws
     if filename is None:
-        filename = nested.makeTempPath(prefix='params_')
+        filename = temps.tmppath(prefix='params_')
     util.dumpObject((args, kws), filename)
     return filename
 
