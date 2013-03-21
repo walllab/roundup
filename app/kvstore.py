@@ -42,6 +42,8 @@ def make_closing_connect(open_conn):
     def connect():
         return contextlib.closing(open_conn())
 
+    return connect
+
 
 def make_reusing_connect(open_conn):
     '''
@@ -58,6 +60,8 @@ def make_reusing_connect(open_conn):
         if not conn:
             conn.append(open_conn())
         return conn[0]
+
+    return connect
 
 
 class KVStore(object):
