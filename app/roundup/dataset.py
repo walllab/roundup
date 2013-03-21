@@ -1611,10 +1611,21 @@ DONES_CACHE = {}
 def getDones(ds):
     if ds not in DONES_CACHE:
         ns = 'roundup_dataset_{}_dones'.format(getDatasetId(ds))
-        connect = kvstore.make_closer(config.openDbConn)
+        connect = kvstore.make_closing_connect(config.openDbConn)
         k = kvstore.KStore(connect, ns=ns)
         DONES_CACHE[ds] = dones.Dones(k)
     return DONES_CACHE[ds]
+
+
+def reset_blast_dones(ds, query_genome, subject_genome, reverse=False):
+    '''
+    Used from the command line to fix incorrectly marked blast dones.
+    '''
+
+    if reverse:
+        getDones(ds).unmark(('blast', subject_genome, query_genome))
+    else:
+        getDones(ds).unmark(('blast', query_genome, subject_genome))
 
 
 #######
@@ -1637,7 +1648,7 @@ def getStats(ds):
     closes connections to the database.
     '''
     if ds not in STATS_CACHE:
-        connect = kvstore.make_closer(config.openDbConn)
+        connect = kvstore.make_closing_connect(config.openDbConn)
         kv = kvstore.KVStore(connect, ns=stats_ns(ds))
         STATS_CACHE[ds] = Stats(kv)
 
@@ -1722,6 +1733,165 @@ class Stats(object):
     def getRsd(self, qdb, sdb):
         key = ('rsd', qdb, sdb)
         return self.get(key)
+
+
+def do_all(ds):
+    '''
+    This function runs the entire workflow needed to create a new roundup dataset,
+    from preparing the directories, to downloading genomes, to preprocessing,
+    to computing orthologs, and to post-processing.
+    '''
+    prepare_dataset(ds)
+
+    # Download and process sources
+    download_sources(ds)
+    process_sources(ds)
+
+    # Extract some metadata
+    extract_taxon(ds)
+    extract_gene_ontology(ds)
+
+    # Scan dat files, compiling the counts of various genomes, completes, reference, sprot, etc.  This can take an hour or so.
+    examine_dats(ds)
+
+    # Some output from the examine_dats function showing that trembl is much bigger than sprot
+
+    # td23@clarinet002-039:/groups/cbi/sites/roundup/datasets/4/code/app$     cd $DS_APP && time $DS_PYTHON roundup/dataset.py examine_dats(ds)
+    # Namespace(action='examine_dats', dataset='/groups/cbi/sites/roundup/datasets/4', ds_func=<function examineDats at 0x25e5e60>, func=<function dispatch_ds_func at 0x25ecb18>)
+    # dats: ['/groups/cbi/sites/roundup/datasets/4/sources/uniprot/uniprot_sprot.dat', '/groups/cbi/sites/roundup/datasets/4/sources/uniprot/uniprot_trembl.dat']
+    # surprisesFile: /groups/cbi/sites/roundup/datasets/4/dat_surprises.txt
+    # countsFile: /groups/cbi/sites/roundup/datasets/4/dat_genome_counts.txt
+    # gathering ids in /groups/cbi/sites/roundup/datasets/4/sources/uniprot/uniprot_sprot.dat... 2012-12-14 14:26:19.210954
+    # entry count: 100000
+    # entry count: 200000
+    # entry count: 300000
+    # entry count: 400000
+    # entry count: 500000
+    # gathering ids in /groups/cbi/sites/roundup/datasets/4/sources/uniprot/uniprot_trembl.dat... 2012-12-14 14:27:37.548696
+    # entry count: 100000
+    # entry count: 200000
+    # entry count: 300000
+    # ...
+    # entry count: 28200000
+    # entry count: 28300000
+
+    # Check for bad surprises
+    check_dat_surprises(ds)
+
+    # cd $DS_DIR && cat dat_surprises.txt | cut -f1 | sort | uniq
+
+    # The only kind of surprises were reference counts differing from complete counts, which is fairly benign:
+
+    # $ cat dat_surprises.txt 
+    # reference_count_with_different_complete_count		29760			reference count: 29837, complete count: 29839
+    # reference_count_with_different_complete_count		10665			reference count: 273, complete count: 550
+    # reference_count_with_different_complete_count		194966			reference count: 52, complete count: 64
+    # reference_count_with_different_complete_count		246196			reference count: 6601, complete count: 9232
+    # reference_count_with_different_complete_count		10754			reference count: 64, complete count: 148
+    # reference_count_with_different_complete_count		1392			reference count: 5493, complete count: 6614
+    # reference_count_with_different_complete_count		10760			reference count: 84, complete count: 244
+    # reference_count_with_different_complete_count		329852			reference count: 4, complete count: 18
+    # reference_count_with_different_complete_count		83333			reference count: 4303, complete count: 4305
+    # reference_count_with_different_complete_count		12219			reference count: 1, complete count: 2
+    # reference_count_with_different_complete_count		10679			reference count: 43, complete count: 87
+    # reference_count_with_different_complete_count		10678			reference count: 110, complete count: 127
+    # reference_count_with_different_complete_count		632			reference count: 3908, complete count: 5749
+    # reference_count_with_different_complete_count		10710			reference count: 66, complete count: 119
+    # reference_count_with_different_complete_count		5811			reference count: 7841, complete count: 14012
+    # reference_count_with_different_complete_count		10726			reference count: 162, complete count: 255
+    # reference_count_with_different_complete_count		441771			reference count: 3590, complete count: 4237
+    # reference_count_with_different_complete_count		1773			reference count: 3976, complete count: 5223
+    # reference_count_with_different_complete_count		10658			reference count: 30, complete count: 61
+    # reference_count_with_different_complete_count		196627			reference count: 3093, complete count: 3930
+
+
+    # Once everything looks good, set the genomes list to only contain genomes with
+    # enough sequences marked 'Complete proteome' and that are a Eukaryota, Bacteria,
+    # or Archaea, and have taxon data.  Historically some viruses have been missing
+    # taxon data, which means that the NCBI taxon id Uniprot sets for them is not
+    # present in the taxon data we get from NCBI.
+    set_genomes_from_filter(ds)
+
+    # Here is the output showing the taxons with missing taxon data (two big ones!),
+    # and the viruses that got filtered out:
+
+    # td23@clarinet002-039:/groups/cbi/sites/roundup/datasets/4/code/app$     cd $DS_APP && time $DS_PYTHON roundup/dataset.py set_genomes_from_filter(ds)
+    # Namespace(action='set_genomes_from_filter', dataset='/groups/cbi/sites/roundup/datasets/4', ds_func=<function set_genomes_from_filter at 0x2428050>, func=<function dispatch_ds_func at 0x242ac08>)
+    # all_genomes 30540
+    # after_size_filter 2072
+    # missing_taxon 1094619 complete_count 25721 name Phytophthora sojae (strain P6497)
+    # missing_taxon 1054147 complete_count 12152 name Dictyostelium fasciculatum (strain SH3)
+    # missing_taxon 587202 complete_count 202 name Variola virus (isolate Human/Japan/Yamada MS-2(A)/1946)
+    # missing_taxon 587203 complete_count 211 name Variola virus (isolate Human/Brazil/v66-39/1966)
+    # missing_taxon 587201 complete_count 201 name Variola virus (isolate Human/South Africa/102/1965)
+    # after_missing_taxon_filter 2067
+    # filtered_taxon_cat_code 10665 cat_code V complete_count 550 name Enterobacteria phage T4 (Bacteriophage T4)
+    # filtered_taxon_cat_code 654913 cat_code V complete_count 531 name White spot syndrome virus (isolate Shrimp/China/Tongan/1996)
+    # filtered_taxon_cat_code 176652 cat_code V complete_count 468 name Invertebrate iridescent virus 6 (IIV-6)
+    # filtered_taxon_cat_code 654926 cat_code V complete_count 231 name Ectocarpus siliculosus virus 1 (isolate New Zealand/Kaikoura/1988)
+    # filtered_taxon_cat_code 654925 cat_code V complete_count 472 name Emiliania huxleyi virus 86 (isolate United Kingdom/English Channel/1999)
+    # filtered_taxon_cat_code 75320 cat_code V complete_count 381 name Vibrio phage KVP40 (Bacteriophage KVP40)
+    # filtered_taxon_cat_code 10760 cat_code V complete_count 244 name Enterobacteria phage T7 (Bacteriophage T7)
+    # filtered_taxon_cat_code 10685 cat_code V complete_count 204 name Bacillus phage SP01 (Bacteriophage SP01)
+    # filtered_taxon_cat_code 28321 cat_code V complete_count 278 name Amsacta moorei entomopoxvirus (AmEPV)
+    # filtered_taxon_cat_code 10506 cat_code V complete_count 793 name Paramecium bursaria Chlorella virus 1 (PBCV-1)
+    # filtered_taxon_cat_code 928301 cat_code V complete_count 251 name Fowlpox virus (strain NVSL)
+    # filtered_taxon_cat_code 10847 cat_code V complete_count 289 name Enterobacteria phage phiX174 (Bacteriophage phi-X174)
+    # filtered_taxon_cat_code 205877 cat_code V complete_count 225 name Mycobacterium phage Bxz1 (Mycobacteriophage Bxz1)
+    # filtered_taxon_cat_code 45406 cat_code V complete_count 270 name Enterobacteria phage RB32 (Bacteriophage RB32)
+    # filtered_taxon_cat_code 10249 cat_code V complete_count 257 name Vaccinia virus (strain Copenhagen)
+    # filtered_taxon_cat_code 212035 cat_code V complete_count 909 name Acanthamoeba polyphaga mimivirus (APMV)
+    # filtered_taxon_cat_code 10693 cat_code V complete_count 273 name Enterobacteria phage RB51 (Bacteriophage RB51)
+    # filtered_taxon_cat_code 10726 cat_code V complete_count 255 name Enterobacteria phage T5 (Bacteriophage T5)
+    # filtered_taxon_cat_code 442493 cat_code V complete_count 220 name Enterococcus phage phiEF24C (Enterococcus bacteriophage phi-EF24C)
+    # filtered_taxon_cat_code 169683 cat_code V complete_count 306 name Pseudomonas phage phiKZ.
+    # filtered_taxon_cat_code 66711 cat_code V complete_count 281 name Enterobacteria phage AR1 (Bacteriophage AR1)
+    # filtered_taxon_cat_code 12353 cat_code V complete_count 273 name Enterobacteria phage RB69 (Bacteriophage RB69)
+    # filtered_taxon_cat_code 10254 cat_code V complete_count 217 name Vaccinia virus (strain Western Reserve)
+    # after_taxon_category_filter 2044
+
+    # Compile genome fasta files from the dat files.  This can take a while
+    extract_dats(ds)
+
+    # Format the genomes for BLAST.  This also can take a while.  By default it
+    # distributes the jobs onto orchestra, otherwise it takes a really long time.
+    format_genomes(ds)
+
+    # Prepare jobs for computing all orthologs
+    prepare_jobs(ds)
+
+    # Compute the orthologs by running lots of jobs on Orchestra.  This step is often
+    # run several times, depending on how many times orchestra services melt down and
+    # how often my code is messed up.
+
+    # use my mysql creds, since web user does not have alter table perms.
+    # export ROUNDUP_MYSQL_CREDS_FROM_CNF=True
+    # export DS_DIR=/groups/cbi/sites/roundup/datasets/4
+    # export DS_APP="$DS_DIR/code/app"
+    # export DS_PYTHON="$DS_DIR/code/venv/bin/python"
+    # echo $DS_DIR $DS_APP $DS_PYTHON
+    compute(ds)
+
+
+    # Make the Change Log for this dataset / roundup release vs. the previous release (3)
+    make_change_log(ds, '/groups/cbi/sites/roundup/datasets/3')
+
+
+    # When computation is finished, extract stats and prepare files for download:
+    extract_dataset_stats(ds)
+    extract_performance_stats(ds)
+    # making all genomes and orthologs available for download.
+    process_genomes_for_download(ds)
+    collate_orthologs(ds)
+    # compress genomes and ortholog download files once they are ready.  This takes a long time.  Could be parallelized.
+    zip_download_paths(ds)
+    # this is done on the day the dataset is released on the production website.  Or it can be set manually by passing in a datetime.date object.
+    set_release_date(ds)
+
+
+def reset_blast_dones_cli(args):
+    return reset_blast_dones(args.dataset, args.query_genome,
+                             args.subject_genome, args.reverse)
 
 
 def main():
@@ -1840,6 +2010,20 @@ def main():
     convert_to_orthoxml_parser.add_argument('--database', required=True, help='The database name of the source of genomes. e.g. Uniprot')
     convert_to_orthoxml_parser.add_argument('--database-version', required=True, help='The version of the source genomes. e.g. 2012_04')
     convert_to_orthoxml_parser.set_defaults(func=convert_to_orthoxml)
+
+    # reset blast dones
+    subparser = subparsers.add_parser(
+        'reset_blast_dones',
+        help='Unmark that blast hits have been computed for a pair of ' +
+        'genomes in the forward (default) or reverse direction')
+    subparser.add_argument('dataset', help='root directory of the dataset')
+    subparser.add_argument('query_genome',
+                           help='The query genome ncbi taxon id of a pair.')
+    subparser.add_argument('subject_genome',
+                           help='The subject genome ncbi taxon id of a pair.')
+    subparser.add_argument('-r', '--reverse', action='store_true', default=False,
+                          help='Unmark blast dones for the pair in the reverse direction.')
+    subparser.set_defaults(func=reset_blast_dones_cli)
 
     # parse command line arguments and invoke the appropriate handler.
     args = parser.parse_args()
