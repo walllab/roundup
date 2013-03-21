@@ -146,6 +146,9 @@ def ds(dsid):
     dsid (string): The id of the dataset.  E.g. '3'.  This is used to derive
     a dataset directory.
     '''
+    dsid = os.path.basename(dsid)
+    assert dsid
+
     env.hosts = ['orchestra.med.harvard.edu']
     config.deploy_env = 'dataset'
     config.system_python = '/groups/cbi/bin/python2.7'
