@@ -47,19 +47,26 @@ def make_closing_connect(open_conn):
 
 def make_reusing_connect(open_conn):
     '''
-    Return a function which opens a connection the first time it is called (and
-    reuses the connection in subsequent calls) and then returns a context
-    manager that returns the connection when entering a context and then closes
-    it when the context is exited.
+    Return a function which returns a context manager which "yields" an
+    open database connection.  The first time it is called, it opens the
+    connection and subsequent calls return the same connection.  The connection
+    is not closed when the context is exited.
+
+    Issue: How does the connection get closed?  One way would be to enter a 
+    context and explicitly close the connection, like:
+    
+        with connect() as conn:
+            conn.close()
 
     open_conn: a function which returns an open DBAPI 2.0 connection.
     '''
 
-    conn = []
+    conn_pool = []
+    @contextlib.contextmanager
     def connect():
-        if not conn:
-            conn.append(open_conn())
-        return conn[0]
+        if not conn_pool:
+            conn_pool.append(open_conn())
+        yield conn_pool[0]
 
     return connect
 
