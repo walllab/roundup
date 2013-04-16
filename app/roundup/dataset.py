@@ -665,7 +665,7 @@ def makeChangeLog(ds, others):
     others: a list of other datasets to compare this one too.
     '''
     dss = [ds] + others
-    dsids = [d.id for d in dss]
+    dsids = [getDatasetId(d) for d in dss]
     data = collections.defaultdict(dict)
     for d, dsid in zip(dss, dsids):
         print d
@@ -837,10 +837,12 @@ def collateOrthologs(ds):
     divEvalueToFH = dict([(divEvalue, open(path, 'w')) for divEvalue, path in zip(divEvalues, txtPaths)])
     try:
         print 'collating orthologs'
-        for orthData in orthutil.orthDatasFromFilesGen(getOrthologsFiles(ds)):
-            params, orthologs = orthData
-            qdb, sdb, div, evalue = params
-            orthutil.orthDatasToStream([orthData], divEvalueToFH[(div, evalue)])
+        for orthFile in sorted(getOrthologsFiles(ds)):
+            logging.debug('collating {} at {}'.format(orthFile, datetime.datetime.now()))
+            for orthData in orthutil.orthDatasFromFileGen(orthFile):
+                params, orthologs = orthData
+                qdb, sdb, div, evalue = params
+                orthutil.orthDatasToStream([orthData], divEvalueToFH[(div, evalue)])
     finally:
         for fh in divEvalueToFH.values():
             fh.close()
@@ -856,8 +858,13 @@ def zipDownloadPaths(ds):
 
 
 def zipDownloadPath(path):
-        print 'gzipping', path
-        subprocess.check_call(['gzip', path])
+        if os.path.exists(path):
+            print 'gzipping', path
+            subprocess.check_call(['gzip', path])
+        elif os.path.exists(path + '.gz'):
+            print 'Skipping already gzipped path', path
+        else:
+            raise Exception('Missing path for gzip', path)
 
 
 def getDownloadPaths(ds):
@@ -1528,7 +1535,9 @@ def getReleaseDate(ds):
     '''
     returns: a datetime.date object
     '''
+    logging.debug('getReleaseDate: ds={}'.format(ds))
     dateStr = getData(ds, 'releaseDate')
+    logging.debug('getReleaseDate: dateStr={}'.format(dateStr))
     return datetime.datetime.strptime(dateStr, "%Y-%m-%d").date()
 
     
@@ -1735,12 +1744,25 @@ class Stats(object):
         return self.get(key)
 
 
+##########
+# Workflow for constructing a dataset
+
+def getWorkflow(ds):
+    # import workflow
+    # return workflow.Workflow()
+    pass
+
+
 def do_all(ds):
     '''
     This function runs the entire workflow needed to create a new roundup dataset,
     from preparing the directories, to downloading genomes, to preprocessing,
     to computing orthologs, and to post-processing.
     '''
+    raise NotImplementedError()
+
+    wf = getWorkflow(ds)
+    wf.do(prepare_dataset, [ds])
     prepare_dataset(ds)
 
     # Download and process sources
@@ -1889,10 +1911,6 @@ def do_all(ds):
     set_release_date(ds)
 
 
-def reset_blast_dones_cli(args):
-    return reset_blast_dones(args.dataset, args.query_genome,
-                             args.subject_genome, args.reverse)
-
 
 def main():
     '''
@@ -1928,6 +1946,14 @@ def main():
                                  args.origin_version, args.database,
                                  args.database_version, clean=True)
 
+    def reset_blast_dones_cli(args):
+        return reset_blast_dones(args.dataset, args.query_genome,
+                                 args.subject_genome, args.reverse)
+
+    def make_change_log_cli(args):
+        return makeChangeLog(args.dataset, args.previous_datasets)
+
+
     parser = argparse.ArgumentParser(description='')
     subparsers = parser.add_subparsers(dest='action')
 
@@ -1949,6 +1975,7 @@ def main():
         subparser.add_argument('dataset', help=ds_help)
         subparser.set_defaults(func=ds_func)
 
+    # Command Lines that only take a dataset parameter
     make_ds_subparser('prepare_dataset', prepare_dataset,
                       help='Initialize the dataset directory and tables.')
     make_ds_subparser('download_sources', download_sources,
@@ -1978,6 +2005,12 @@ def main():
                       help='Cache a list of the genomes in the genomes' +
                       ' directory in the dataset metadata, b/c the isilon' +
                       ' is wicked slow at listing dirs.')
+    make_ds_subparser('extract_dataset_stats', extractDatasetStats, help='')
+    make_ds_subparser('extract_performance_stats', extractPerformanceStats, help='')
+    make_ds_subparser('process_genomes_for_download', processGenomesForDownload, help='')
+    make_ds_subparser('collate_orthologs', collateOrthologs, help='')
+    make_ds_subparser('zip_download_paths', zipDownloadPaths, help='')
+    make_ds_subparser('set_release_date', setReleaseDate, help='')
 
     # add genome fasta to dataset
     add_fasta_parser = subparsers.add_parser('add_fasta', help='import a genome fasta file into the dataset')
@@ -2024,6 +2057,15 @@ def main():
     subparser.add_argument('-r', '--reverse', action='store_true', default=False,
                           help='Unmark blast dones for the pair in the reverse direction.')
     subparser.set_defaults(func=reset_blast_dones_cli)
+
+    # make changelog
+    subparser = subparsers.add_parser(
+        'make_change_log',
+        help='Create list of differences between two datasets.')
+    subparser.add_argument('dataset', help='root directory of the dataset')
+    subparser.add_argument('previous_datasets', metavar='previous_dataset', 
+        nargs='+', help='previous datasets to compare with dataset.')
+    subparser.set_defaults(func=make_change_log_cli)
 
     # parse command line arguments and invoke the appropriate handler.
     args = parser.parse_args()
