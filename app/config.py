@@ -122,14 +122,26 @@ logging.config.dictConfig(LOGGING_CONFIG)
 # DATABASE CREDENTIALS AND CONNECTIONS
 ######################################
 
-# Get credentials from the environment or a configuration file.
-MYSQL_HOST = os.environ.get('ROUNDUP_MYSQL_HOST') or secrets.MYSQL_HOST
-MYSQL_DB = os.environ.get('ROUNDUP_MYSQL_DB') or secrets.MYSQL_DATABASE
-MYSQL_USER = os.environ.get('ROUNDUP_MYSQL_USER') or secrets.MYSQL_USER
-MYSQL_PASSWORD = os.environ.get('ROUNDUP_MYSQL_PASSWORD') or secrets.MYSQL_PASSWORD
+# Get credentials from the environment
+# MYSQL_HOST = os.environ.get('ROUNDUP_MYSQL_HOST')
+# MYSQL_DB = os.environ.get('ROUNDUP_MYSQL_DB')
+# MYSQL_USER = os.environ.get('ROUNDUP_MYSQL_USER')
+# MYSQL_PASSWORD = os.environ.get('ROUNDUP_MYSQL_PASSWORD')
+# Get credentials from a configuration file
+MYSQL_HOST = secrets.MYSQL_HOST
+MYSQL_DB = secrets.MYSQL_DATABASE
+MYSQL_USER = secrets.MYSQL_USER
+MYSQL_PASSWORD = secrets.MYSQL_PASSWORD
+# Get credentials from a ~/.my.cnf file
 if util.getBoolFromEnv('ROUNDUP_MYSQL_CREDS_FROM_CNF', False):
     MYSQL_USER = getpass.getuser()
     MYSQL_PASSWORD = orchmysql.getCnf()['password']
+logging.debug('{}'.format(os.environ.get('ROUNDUP_MYSQL_HOST')))
+logging.debug('{}'.format(secrets.MYSQL_HOST))
+logging.debug('{}'.format(os.environ.get('ROUNDUP_MYSQL_DB')))
+logging.debug('{}'.format(secrets.MYSQL_DATABASE))
+logging.debug('{}'.format(os.environ.get('ROUNDUP_MYSQL_USER')))
+logging.debug('{}'.format(secrets.MYSQL_USER))
 
 MYSQL_URL = 'mysql://{user}:{password}@{host}/{db}'.format(
     user=MYSQL_USER, password=MYSQL_PASSWORD, host=MYSQL_HOST, db=MYSQL_DB)
