@@ -234,7 +234,7 @@ def loadReleaseResults(release, genomeToId, divToId, evalueToId, geneToId, resul
         numOrthologs = len(orthologs)
         return qdbId, sdbId, divId, evalueId, encodedOrthologs, numOrthologs
 
-    numPerGroup = 400 # not to huge, not to slow.
+    numPerGroup = 400 # not too huge, not too slow.
     sql1 = 'INSERT IGNORE INTO {} (query_db, subject_db, divergence, evalue, mod_time, orthologs, num_orthologs) VALUES '.format(releaseTable(release, 'results'))
     for i, group in enumerate(util.groupsOfN(resultsGen, numPerGroup)):
         sql = sql1 + ', '.join(['(%s, %s, %s, %s, NOW(), %s, %s) ' for j in range(len(group))]) # cannot just use numPerGroup, b/c last group can have fewer results.
