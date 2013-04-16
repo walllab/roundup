@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% load url from future %}
+{% load humanize %}
 
 {% block content %}
 {% comment %}
@@ -35,9 +36,9 @@ Maintenance Alert: Saturday, September 10 2011, from 4:00 - 8:00 AM EDT the webs
 <h2 class="title">Database Statistics for Release {{ release }}</h2>
 <ul>
 <li>Release date: {{ release_date }}.</li>
-<li>Number of genomes: {{ numGenomes }}.</li>
-<li>Number of pairs of genomes searched for orthologs using the RSD algorithm: {{ numPairs }}.</li>
-<li>Number of orthologous pairs of genes inferred (for all parameter combinations): {{ numOrthologs }}.</li>
+<li>Number of genomes: {{ numGenomes|intcomma }}.</li>
+<li>Number of pairs of genomes searched for orthologs using the RSD algorithm: {{ numPairs|intcomma }}.</li>
+<li>Number of orthologous pairs of genes inferred (for all parameter combinations): {{ numOrthologs|intcomma }}.</li>
 </ul>
 <h2 class="title">How to Cite</h2>
 <p>
