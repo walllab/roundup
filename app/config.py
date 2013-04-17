@@ -15,10 +15,11 @@ import util
 ###############################################
 # DEPLOYMENT ENVIRONMENT SPECIFIC CONFIGURATION
 
-from deployenv import (BLAST_BIN_DIR, CURRENT_DATASET, DJANGO_DEBUG, HTTP_HOST,
+from deployenv import (BLAST_BIN_DIR, ARCHIVE_DATASETS, CURRENT_DATASET, DJANGO_DEBUG, HTTP_HOST,
                        KALIGN_BIN_DIR, LOG_FROM_ADDR, MAIL_SERVICE_TYPE,
                        NO_LSF, SITE_DIR, SITE_URL_ROOT)
 import secrets
+
 
 # Silence pyflakes complaints about imports not being used. :-(
 DJANGO_DEBUG, HTTP_HOST, NO_LSF, SITE_URL_ROOT
@@ -26,6 +27,8 @@ DJANGO_DEBUG, HTTP_HOST, NO_LSF, SITE_URL_ROOT
 # Roundup Datasets and Releases
 CURRENT_DATASET = os.path.expanduser(CURRENT_DATASET)
 CURRENT_RELEASE = os.path.basename(CURRENT_DATASET)
+ARCHIVE_RELEASES = [os.path.basename(ds) for ds in ARCHIVE_DATASETS]
+
 QUEST_FOR_ORTHOLOGS_DIR = os.path.join(SITE_DIR, 'quest_for_orthologs')
 QFO_VERSIONS = ['2011_04']
 
@@ -136,12 +139,6 @@ MYSQL_PASSWORD = secrets.MYSQL_PASSWORD
 if util.getBoolFromEnv('ROUNDUP_MYSQL_CREDS_FROM_CNF', False):
     MYSQL_USER = getpass.getuser()
     MYSQL_PASSWORD = orchmysql.getCnf()['password']
-logging.debug('{}'.format(os.environ.get('ROUNDUP_MYSQL_HOST')))
-logging.debug('{}'.format(secrets.MYSQL_HOST))
-logging.debug('{}'.format(os.environ.get('ROUNDUP_MYSQL_DB')))
-logging.debug('{}'.format(secrets.MYSQL_DATABASE))
-logging.debug('{}'.format(os.environ.get('ROUNDUP_MYSQL_USER')))
-logging.debug('{}'.format(secrets.MYSQL_USER))
 
 MYSQL_URL = 'mysql://{user}:{password}@{host}/{db}'.format(
     user=MYSQL_USER, password=MYSQL_PASSWORD, host=MYSQL_HOST, db=MYSQL_DB)

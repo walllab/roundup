@@ -7,22 +7,28 @@
 <div id="mainpage"> 
 <h2>Download Orthologs for a Pair of Genomes</h2> 
 {% include 'main_form.html' %}
-<h2>Download Archived Genomes</h2>
+
+<h2>Download Archived Releases</h2>
 <p>
-Download an compressed archive containing a FASTA file for every genome in Roundup:
-<ul>
-<li><a href="{% url 'home.views.download_genomes' %}">{{ genomes_filename }}</a> ({{ genomes_size }})</li>
-</ul>
+Download the orthologs for the current (and past) Roundup release and the
+genomes used to compute them.
+You can download the orthologs as a compressed
+<a href="{% url 'home.views.documentation' %}#orthtextformat">text-format</a>
+file containing all the orthologs for a given combination of divergence and
+e-value parameters.
+You can download the genomes used in a Roundup release as a compressed archive
+containing a FASTA file for every genome.
 </p>
-<h2>Download Archived Orthologs</h2>
-<p>
-Download a compressed <a href="{% url 'home.views.documentation' %}#orthtextformat">text</a> file containing all the orthologs for a given combination of divergence and e-value parameters:
+{% for rd in release_link_datas %}
+<h3>Release {{ rd.release }}</h3>
 <ul>
-{% for div_evalue, filename, size in orthologs_data %}
-<li><a href="{% url 'home.views.download_orthologs' div_evalue.0 div_evalue.1 %}">{{ filename }}</a> ({{ size }})</li>
+{% for data in rd.links %}
+<li><a href="{{ data.link }}">{{ data.text }}</a> ({{ data.size }})</li>
 {% endfor %}
 </ul>
-</p>
+{% endfor %}
+
+
 <h2>Download Orthologs for the Quest for Orthologs Reference Proteomes</h2>
 <p>
 Download a compressed <a href="http://seqxml.org/">OrthoXML</a> file containing all the orthologs for the 
@@ -34,6 +40,7 @@ divergence of 0.8 and e-value of 1e-5:
 {% endfor %}
 </ul>
 </p>
+
 <h2>Download Software</h2>
 <p>
 Need orthologs for a genome not in Roundup?  Download and run the RSD algorithm on your computer:
