@@ -1,9 +1,16 @@
 from django.conf.urls.defaults import patterns, url
+from django.http import HttpResponse
 
 urlpatterns = patterns(
     '',
-    # Examples:
     url(r'^$', 'home.views.home', name='home'),
+
+    # Disallow robots from downloading huge files.
+    # http://fredericiana.com/2010/06/09/three-ways-to-add-a-robots-txt-to-your-django-project/
+    # https://docs.djangoproject.com/en/dev/topics/http/urls/#passing-callable-objects-instead-of-strings
+    # http://www.robotstxt.org/robotstxt.html
+    url(r'^robots.txt$', lambda r: HttpResponse('User-agent: *\nDisallow: /api/download/', mimetype="text/plain")),
+
     url(r'^documentation/$', 'home.views.documentation', name='documentation'),
     url(r'^contact/$', 'home.views.contact', name='contact'),
     url(r'^contact/thanks/$', 'home.views.contact_thanks', name='contact_thanks'),
