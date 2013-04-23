@@ -118,7 +118,6 @@ class SMTP(object):
             args = [None]
             args += [arg for arg in [self.port, self.local_hostname,
                 self.timeout] if arg]
-            print args
             self.server = smtplib.SMTP(*args)
 
     def connect(self):
@@ -226,8 +225,8 @@ class SMTPTLS(SMTP):
 def main():
     import sys
     import getpass
-    print 'test sending via SMTP[SSL,TLS]. include the following arguments:'
-    print 'method, host, port, from_addr, to_addr, subject, body[, username]'
+    # print 'test sending via SMTP[SSL,TLS]. include the following arguments:'
+    # print 'method, host, port, from_addr, to_addr, subject, body[, username]'
     method, host, port, from_addr, to_addr, subject, body = sys.argv[1:8]
     if method == 'SMTP':
         s = SMTP(host, port)
@@ -241,8 +240,8 @@ def main():
         s = SMTPTLS(host, port, username=username, password=password)
     
     sendmail = make_sendtextmail(s.sendone)
-    print 'Sending mail and printing which recipients were refused by the SMTP server?'
-    print sendmail(from_addr, [to_addr], subject, body)
+    # print 'Sending mail and printing which recipients were refused by the SMTP server?'
+    sendmail(from_addr, [to_addr], subject, body)
 
 
 if __name__ == '__main__':
