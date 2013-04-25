@@ -803,6 +803,7 @@ def processGenomesForDownload(ds):
     '''
     copy genome fasta files into a dir under download dir, then tar.gz the dir.
     '''
+    dsid = getDatasetId(ds)
     downloadDir = getDownloadDir(ds)
     genomes = getGenomes(ds)
     downloadGenomesDir = os.path.join(downloadDir, 'genomes')
@@ -813,18 +814,20 @@ def processGenomesForDownload(ds):
         shutil.copy(getGenomeFastaPath(ds, genome), downloadGenomesDir)
 
     print 'tarring dir'
-    subprocess.check_call(['tar', '-czf', 'genomes.tar.gz', 'genomes'], cwd=downloadDir)
+    subprocess.check_call(['tar', '-czf', 'roundup-{}-genomes.tar.gz'.format(dsid), 'genomes'], cwd=downloadDir)
     print 'deleting dir'
     shutil.rmtree(downloadGenomesDir)
 
 
 def getDownloadGenomesPath(ds):
-    return os.path.join(getDownloadDir(ds), 'genomes.tar.gz')
+    dsid = getDatasetId(ds)
+    return os.path.join(getDownloadDir(ds), 'roundup-{}-genomes.tar.gz'.format(dsid))
 
 
 def getDownloadOrthologsPath(ds, div, evalue):
+    dsid = getDatasetId(ds)
     downloadDir = getDownloadDir(ds)
-    return os.path.join(downloadDir, '{}_{}.orthologs.txt.gz'.format(div, evalue))
+    return os.path.join(downloadDir, 'roundup-{}-orthologs_{}_{}.txt.gz'.format(dsid, div, evalue))
 
     
 def collateOrthologs(ds):
@@ -868,9 +871,10 @@ def zipDownloadPath(path):
 
 
 def getDownloadPaths(ds):
+    dsid = getDatasetId(ds)
     downloadDir = getDownloadDir(ds)
     divEvalues = list(roundup_common.genDivEvalueParams())
-    txtPaths = [os.path.join(downloadDir, '{}_{}.orthologs.txt'.format(div, evalue)) for div, evalue in divEvalues]
+    txtPaths = [os.path.join(downloadDir, 'roundup-{}-orthologs_{}_{}.txt'.format(dsid, div, evalue)) for div, evalue in divEvalues]
     xmlPaths = [re.sub('\.txt$', '.xml', path) for path in txtPaths]
     return divEvalues, txtPaths, xmlPaths
 

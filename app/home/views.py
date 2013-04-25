@@ -187,7 +187,7 @@ def download_quest_for_orthologs(request, version):
 
 
 def get_qfo_path_and_size(version):
-    path = os.path.join(config.QUEST_FOR_ORTHOLOGS_DIR, version, 'download', 'roundup_qfo_{}_orthologs.xml.gz'.format(version))
+    path = os.path.join(config.QUEST_FOR_ORTHOLOGS_DIR, version, 'download', 'roundup-qfo_{}-orthologs_0.8_1e-5.xml.gz'.format(version))
     size = os.path.getsize(path)
     return path, size
 
@@ -196,7 +196,7 @@ def api_download_quest_for_orthologs(request, version):
     # validate params
     if version in config.QFO_VERSIONS:
         path, size = get_qfo_path_and_size(version)
-        # filename should have version in it, e.g. roundup_qfo_2011_04_orthologs.xml.gz
+        # filename should have version in it, e.g. roundup-qfo_2011_04-orthologs.xml.gz
         filename = os.path.basename(path)
         response = django.http.HttpResponse(open(path, 'rb'), content_type='application/x-gzip')
         response['Content-Disposition'] = 'attachment; filename={}'.format(filename)
@@ -241,11 +241,11 @@ def get_dataset_download_datas(ds):
 
         [{'filename': '0.2_1e-10.orthologs.txt.gz',
         'size': '10.7GB',
-        'path': '/groups/cbi/sites/roundup/datasets/4/download/0.2_1e-10.orthologs.txt.gz'},
+        'path': '/groups/cbi/sites/roundup/datasets/4/download/roundup-4-orthologs_0.2_1e-10.txt.gz'},
         ...
         {'filename': 'genomes.tar.gz',
         'size': '2.2GB',
-        'path': '/groups/cbi/sites/roundup/datasets/4/download/genomes.tar.gz'},
+        'path': '/groups/cbi/sites/roundup/datasets/4/download/roundup-4-genomes.tar.gz'},
     '''
     datas = []
     paths = glob.glob(os.path.join(roundup.dataset.getDownloadDir(ds), '*'))
@@ -320,8 +320,7 @@ def api_download_release_file(request, release, filename):
     data = [data for data in get_release_download_datas(release) if data['filename'] == filename][0]
     response = django.http.HttpResponse(open(data['path'], 'rb'), content_type='application/x-gzip')
     # add database name and version to filename.
-    full_filename = 'roundup-{}-{}'.format(release, filename)
-    response['Content-Disposition'] = 'attachment; filename={}'.format(full_filename)
+    response['Content-Disposition'] = 'attachment; filename={}'.format(filename)
     response['Content-Length'] = str(data['size']) # bytes
     return response
 
