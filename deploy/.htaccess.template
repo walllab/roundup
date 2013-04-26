@@ -1,6 +1,9 @@
 # This template file is modified during deployment
 # Therefore the resulting file should not be under source control
 
+# Allow serving of symbolic links to files and dirs not under docroot
+Options +FollowSymLinks
+
 # Allow access to dev.* website from outside harvard.  how does this work?
 Allow from 24.61.46.150
 

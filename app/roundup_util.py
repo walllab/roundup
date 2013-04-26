@@ -6,6 +6,8 @@ contain orchestra and roundup specific code.
 '''
 
 import argparse
+import glob
+import os
 
 import cacheutil
 import cliutil
@@ -16,6 +18,68 @@ import roundup.dataset
 import roundup_common
 import roundup_db
 import util
+import settings # django settings
+
+
+#################################
+# DATASET FILE DOWNLOAD FUNCTIONS
+
+def get_dataset_download_datas(ds):
+    '''
+    Return a list containing the filename, path and size of the download files
+    in dataset ds.
+
+    Example output:
+
+        [{'filename': '0.2_1e-10.orthologs.txt.gz',
+        'size': '10.7GB',
+        'path': '/groups/cbi/sites/roundup/datasets/4/download/roundup-4-orthologs_0.2_1e-10.txt.gz'},
+        ...
+        {'filename': 'genomes.tar.gz',
+        'size': '2.2GB',
+        'path': '/groups/cbi/sites/roundup/datasets/4/download/roundup-4-genomes.tar.gz'},
+    '''
+    datas = []
+    paths = glob.glob(os.path.join(roundup.dataset.getDownloadDir(ds), '*'))
+    files = sorted([p for p in paths if os.path.isfile(p)])
+    for path in files:
+        filename = os.path.basename(path)
+        size = os.path.getsize(path)
+        datas.append({'size': size, 'filename': filename, 'path': path})
+
+    return datas
+
+
+def static_download_path(release, filename):
+    '''
+    A path corresponding to the static url for a dataset download file.
+    e.g. /www/roundup.hms.harvard.edu/app/public/static/download/4/roundup-4-genomes.tar.gz
+    '''
+    return os.path.join(config.STATIC_DIR, 'download', release, filename)
+
+
+def static_download_url(release, filename):
+    '''
+    A static url to a dataset download file.
+    e.g. /static/download/4/roundup-4-genomes.tar.gz
+    '''
+    return os.path.join(settings.STATIC_URL, 'download', release, filename)
+
+
+def link_downloads():
+    '''
+    Create links (and directories as needed) under the static web dir to the
+    download files for various data sets.  This allows dataset files to be
+    served statically (e.g. via apache) instead of through django.
+    '''
+    for ds in config.ARCHIVE_DATASETS:
+        release = roundup.dataset.getDatasetId(ds)
+        for data in get_dataset_download_datas(ds):
+            src = data['path']
+            link = static_download_path(release, data['filename'])
+            if not os.path.isdir(os.path.dirname(link)):
+                os.makedirs(os.path.dirname(link), mode=0775)
+            os.symlink(src, link)
 
 
 ##########################
@@ -160,9 +224,9 @@ def cache(output, key, filename):
 # COMMAND LINE INTERFACE
 
 
-def cli_orthology_query(args):
+def cli_orthology_query(params):
     # function args and kws
-    fargs, fkws = cliutil.params_from_file(args.params)
+    fargs, fkws = cliutil.params_from_file(params)
     do_orthology_query(*fargs, **fkws)
 
 
@@ -181,7 +245,7 @@ def bsub_orthology_query(cache_key, cache_file, query_kws, job_name):
 
 def main():
     parser = argparse.ArgumentParser(description='')
-    subparsers = parser.add_subparsers(dest='action')
+    subparsers = parser.add_subparsers()
 
     # do_orthology_query
     subparser = subparsers.add_parser('orthquery')
@@ -189,10 +253,17 @@ def main():
                            'serialized parameters.')
     subparser.set_defaults(func=cli_orthology_query)
 
-    # parse command line arguments and invoke the appropriate handler.
-    args = parser.parse_args()
-    args.func(args)
+    # do_orthology_query
+    help = ['Make symbolic links from /static/ section of website to',
+            'downloads for datasets (and quest for orthologs datasets).']
+    subparser = subparsers.add_parser('link_downloads', help=' '.join(help))
+    subparser.set_defaults(func=link_downloads)
 
+    # parse command line arguments and run func with the keyword args.
+    args = parser.parse_args()
+    kws = dict(vars(args))
+    del kws['func']
+    return args.func(**kws)
 
 if __name__ == '__main__':
     main()

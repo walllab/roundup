@@ -29,9 +29,6 @@ CURRENT_DATASET = os.path.expanduser(CURRENT_DATASET)
 CURRENT_RELEASE = os.path.basename(CURRENT_DATASET)
 ARCHIVE_RELEASES = [os.path.basename(ds) for ds in ARCHIVE_DATASETS]
 
-QUEST_FOR_ORTHOLOGS_DIR = os.path.join(SITE_DIR, 'quest_for_orthologs')
-QFO_VERSIONS = ['2011_04']
-
 # used for contact page
 RT_EMAIL = 'submit-cbi@rt.med.harvard.edu'
 
@@ -44,6 +41,8 @@ os.environ['PATH'] = ':'.join(pathDirs)
 # Configure environment to run LSF commands
 lsf.setEnviron('/opt/lsf/7.0/linux2.6-glibc2.3-x86_64', '/opt/lsf/conf')
 
+# The physical location of static files served under the '/static/' url.
+STATIC_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), 'public/static'))
 
 
 #########

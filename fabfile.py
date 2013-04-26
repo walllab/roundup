@@ -127,10 +127,11 @@ def dev():
     config.deploy_env = 'dev'
     config.system_python = '/groups/cbi/bin/python2.7'
     config.deploy_dir = '/www/dev.roundup.hms.harvard.edu'
-    config.site_dir = '/groups/cbi/sites/dev.roundup'
-    config.archive_datasets = ['/groups/cbi/sites/roundup/datasets/4',
-                               '/groups/cbi/sites/roundup/datasets/3',
-                               '/groups/cbi/sites/roundup/datasets/2']
+    config.site_dir = '/groups/public+cbi/sites/dev.roundup'
+    config.archive_datasets = ['/groups/public+cbi/sites/roundup/datasets/4',
+                               '/groups/public+cbi/sites/roundup/datasets/3',
+                               '/groups/public+cbi/sites/roundup/datasets/2',
+                               '/groups/public+cbi/sites/roundup/datasets/qfo_2011_04']
     config.current_dataset = config.archive_datasets[0]
     config.mail_service_type = 'orchestra'
     config.blast_bin_dir = '/opt/blast-2.2.24/bin'
@@ -153,10 +154,11 @@ def prod():
     config.deploy_env = 'prod'
     config.system_python = '/groups/cbi/bin/python2.7'
     config.deploy_dir = '/www/roundup.hms.harvard.edu'
-    config.site_dir = '/groups/cbi/sites/roundup'
-    config.archive_datasets = ['/groups/cbi/sites/roundup/datasets/4',
-                               '/groups/cbi/sites/roundup/datasets/3',
-                               '/groups/cbi/sites/roundup/datasets/2']
+    config.site_dir = '/groups/public+cbi/sites/roundup'
+    config.archive_datasets = ['/groups/public+cbi/sites/roundup/datasets/4',
+                               '/groups/public+cbi/sites/roundup/datasets/3',
+                               '/groups/public+cbi/sites/roundup/datasets/2',
+                               '/groups/public+cbi/sites/roundup/datasets/qfo_2011_04']
     config.current_dataset = config.archive_datasets[0]
     config.mail_service_type = 'orchestra'
     config.blast_bin_dir = '/opt/blast-2.2.24/bin'
@@ -184,9 +186,9 @@ def ds(dsid):
     env.hosts = ['orchestra.med.harvard.edu']
     config.deploy_env = 'dataset'
     config.system_python = '/groups/cbi/bin/python2.7'
-    config.site_dir = '/groups/cbi/sites/roundup'
+    config.site_dir = '/groups/public+cbi/sites/roundup'
     # bogus current_dataset, since not used during dataset computation/loading.
-    config.archive_datasets = ['/groups/cbi/sites/roundup/datasets/test']
+    config.archive_datasets = ['/groups/public+cbi/sites/roundup/datasets/test']
     config.current_dataset = config.archive_datasets[0]
     # associate the code used to compute the dataset with the dataset.
     config.deploy_dir = os.path.join(config.site_dir, 'datasets', dsid, 'code')
@@ -321,7 +323,23 @@ def deploy():
 
 
 @task
+def link_downloads():
+    '''
+    Create links (and directories as needed) under the static web dir to the
+    download files for various data sets.  This allows dataset files to be
+    served statically (e.g. via apache) instead of through django.
+    '''
+    require('configured')
+
+    with cd(config.app):
+        run(config.python + ' roundup_util.py link_downloads')
+
+
+@task
 def restart():
+    '''
+    Restart Phusion Passenger webapp, so changes take effect on the website.
+    '''
     require('configured')
     # touch passenger restart.txt, so passenger will pick up the changes.
     with cd(config.app):
@@ -336,6 +354,7 @@ def all():
     execute(init)
     execute(conf)
     execute(deploy)
+    execute(link_downloads)
     execute(restart)
 
 

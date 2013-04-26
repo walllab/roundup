@@ -5,8 +5,11 @@
 
 {% block content %}
 <div id="mainpage"> 
+
+
 <h2>Download Orthologs for a Pair of Genomes</h2> 
 {% include 'main_form.html' %}
+
 
 <h2>Download Archived Releases</h2>
 <p>
@@ -19,6 +22,16 @@ e-value parameters.
 You can download the genomes used in a Roundup release as a compressed archive
 containing a FASTA file for every genome.
 </p>
+<p>
+Releases prefixed with 'qfo_' are special releases of data generated as a part
+of the <a href="http://questfororthologs.org/">Quest for Orthologs</a>, a
+worldwide collaboration of orthology researchers aimed at standardizing, 
+evaluating, and improving ortholog inference.  These releases contain orthologs
+for the <a href="http://www.ebi.ac.uk/reference_proteomes/">Reference
+  Proteomes</a> of the Quest for Orthologs group, computed using a divergence
+of 0.8 and e-value of 1e-5, which can be downloaded as a compressed 
+<a href="http://seqxml.org/">OrthoXML</a> file.
+</p>
 {% for rd in release_link_datas %}
 <h3>Release {{ rd.release }}</h3>
 <ul>
@@ -28,18 +41,6 @@ containing a FASTA file for every genome.
 </ul>
 {% endfor %}
 
-
-<h2>Download Orthologs for the Quest for Orthologs Reference Proteomes</h2>
-<p>
-Download a compressed <a href="http://seqxml.org/">OrthoXML</a> file containing all the orthologs for the 
-<a href="http://www.ebi.ac.uk/reference_proteomes/">Reference Proteomes</a> of the <a href="http://questfororthologs.org/">Quest for Orthologs</a> using a
-divergence of 0.8 and e-value of 1e-5:
-<ul>
-{% for version, filename, size in qfo_data %}
-<li>Reference Proteomes version {{ version }}: <a href="{% url 'home.views.download_quest_for_orthologs' version %}">{{ filename }}</a> ({{ size }})</li>
-{% endfor %}
-</ul>
-</p>
 
 <h2>Download Software</h2>
 <p>

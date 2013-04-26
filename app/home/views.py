@@ -175,37 +175,6 @@ def contact_thanks(request):
 ####################
 
 
-def download_quest_for_orthologs(request, version):
-    # validate params
-    if version in config.QFO_VERSIONS:
-        kw = {'version': version}
-        desc = 'Downloading orthologs for Quest for Orthologs Reference Proteomes version {}'.format(version)
-        data = {'desc': desc, 'download_url': django.core.urlresolvers.reverse(api_download_quest_for_orthologs, kwargs=kw)}
-        return django.shortcuts.render(request, 'download_inform.html', data)        
-    else:
-        raise django.http.Http404
-
-
-def get_qfo_path_and_size(version):
-    path = os.path.join(config.QUEST_FOR_ORTHOLOGS_DIR, version, 'download', 'roundup-qfo_{}-orthologs_0.8_1e-5.xml.gz'.format(version))
-    size = os.path.getsize(path)
-    return path, size
-
-
-def api_download_quest_for_orthologs(request, version):
-    # validate params
-    if version in config.QFO_VERSIONS:
-        path, size = get_qfo_path_and_size(version)
-        # filename should have version in it, e.g. roundup-qfo_2011_04-orthologs.xml.gz
-        filename = os.path.basename(path)
-        response = django.http.HttpResponse(open(path, 'rb'), content_type='application/x-gzip')
-        response['Content-Disposition'] = 'attachment; filename={}'.format(filename)
-        response['Content-Length'] = str(size)
-        return response
-    else:
-        raise django.http.Http404
-    
-
 class RawForm(django.forms.Form):
     first_genome = django.forms.ChoiceField(choices=GENOME_CHOICES)
     second_genome = django.forms.ChoiceField(choices=GENOME_CHOICES)
@@ -232,32 +201,6 @@ class RawForm(django.forms.Form):
         return self.cleaned_data
 
 
-def get_dataset_download_datas(ds):
-    '''
-    Return a list containing the filename, path and size of the download files
-    in dataset ds.
-
-    Example output:
-
-        [{'filename': '0.2_1e-10.orthologs.txt.gz',
-        'size': '10.7GB',
-        'path': '/groups/cbi/sites/roundup/datasets/4/download/roundup-4-orthologs_0.2_1e-10.txt.gz'},
-        ...
-        {'filename': 'genomes.tar.gz',
-        'size': '2.2GB',
-        'path': '/groups/cbi/sites/roundup/datasets/4/download/roundup-4-genomes.tar.gz'},
-    '''
-    datas = []
-    paths = glob.glob(os.path.join(roundup.dataset.getDownloadDir(ds), '*'))
-    files = sorted([p for p in paths if os.path.isfile(p)])
-    for path in files:
-        filename = os.path.basename(path)
-        size = os.path.getsize(path)
-        datas.append({'size': size, 'filename': filename, 'path': path})
-
-    return datas
-
-
 def cache_download_datas():
     '''
     Create lookup tables mapping dataset to a list of download file data of the
@@ -266,7 +209,7 @@ def cache_download_datas():
     '''
     for ds in config.ARCHIVE_DATASETS:
         release = roundup.dataset.getDatasetId(ds)
-        datas = get_dataset_download_datas(ds)
+        datas = roundup_util.get_dataset_download_datas(ds)
         RELEASE_DOWNLOAD_DATAS[release] = datas
         RELEASE_DOWNLOAD_FILES[release] = [d['filename'] for d in datas]
 
@@ -280,49 +223,6 @@ def get_release_download_datas(release):
         cache_download_datas()
 
     return RELEASE_DOWNLOAD_DATAS[release]
-
-
-def get_release_download_files(release):
-    '''
-    Get the download filenames associated with the download directory of
-    `release` dataset.
-    '''
-    if not RELEASE_DOWNLOAD_FILES:
-        cache_download_datas()
-
-    return RELEASE_DOWNLOAD_FILES[release]
-
-
-def download_release_file(request, release, filename):
-    '''
-    Redirect to a download page for a file in the "download" directory of the
-    dataset identified by release.
-    '''
-    # validate params
-    if release not in config.ARCHIVE_RELEASES or filename not in get_release_download_files(release):
-        raise django.http.Http404
-
-    kw = {'release': release, 'filename': filename}
-    desc = 'Downloading archive file {} for Roundup release {}.'.format(filename, release)
-    data = {'desc': desc, 'download_url': django.core.urlresolvers.reverse(api_download_release_file, kwargs=kw)}
-    return django.shortcuts.render(request, 'download_inform.html', data)
-
-
-def api_download_release_file(request, release, filename):
-    '''
-    Download a file in the "download" directory of the dataset identified by
-    release.
-    '''
-    # validate params
-    if release not in config.ARCHIVE_RELEASES or filename not in get_release_download_files(release):
-        raise django.http.Http404
-
-    data = [data for data in get_release_download_datas(release) if data['filename'] == filename][0]
-    response = django.http.HttpResponse(open(data['path'], 'rb'), content_type='application/x-gzip')
-    # add database name and version to filename.
-    response['Content-Disposition'] = 'attachment; filename={}'.format(filename)
-    response['Content-Length'] = str(data['size']) # bytes
-    return response
 
 
 def download(request):
@@ -351,19 +251,14 @@ def download(request):
         release = roundup.dataset.getDatasetId(ds)
         release_link_data = {'release': release, 'links': []}
         for data in get_release_download_datas(release):
-            link =  django.core.urlresolvers.reverse(
-                download_release_file,
-                kwargs={'release': release, 'filename': data['filename']})
+            # link =  django.core.urlresolvers.reverse(
+                # download_release_file,
+                # kwargs={'release': release, 'filename': data['filename']})
+            link = roundup_util.static_download_url(release, data['filename'])
             release_link_data['links'].append(
                 {'text': data['filename'], 'link': link, 
                  'size': util.humanBytes(data['size'])})
         release_link_datas.append(release_link_data)
-
-    # orthologs for the quest for orthologs reference genomes
-    qfoData = []
-    for version in config.QFO_VERSIONS:
-        path, size = get_qfo_path_and_size(version)
-        qfoData.append((version, os.path.basename(path), util.humanBytes(size)))
 
     example = "{'first_genome': '9606', 'second_genome': '10090'}"
     return django.shortcuts.render(request, 'download.html', 
@@ -371,7 +266,6 @@ def download(request):
                                     'form_doc_id': 'download', 'form_action': 
                                     django.core.urlresolvers.reverse(download),
                                     'form_example': example, 
-                                    'qfo_data': qfoData,
                                     'release_link_datas': release_link_datas})
 
 
