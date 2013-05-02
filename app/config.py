@@ -15,22 +15,10 @@ import util
 ###############################################
 # DEPLOYMENT ENVIRONMENT SPECIFIC CONFIGURATION
 
-from deployenv import (BLAST_BIN_DIR, ARCHIVE_DATASETS, CURRENT_DATASET, DJANGO_DEBUG, HTTP_HOST,
-                       KALIGN_BIN_DIR, LOG_FROM_ADDR, MAIL_SERVICE_TYPE,
-                       NO_LSF, SITE_DIR, SITE_URL_ROOT)
+from deployenv import (BLAST_BIN_DIR, KALIGN_BIN_DIR, LOG_FROM_ADDR,
+                       MAIL_SERVICE_TYPE, LOG_DIR, TMP_DIR)
 import secrets
 
-
-# Silence pyflakes complaints about imports not being used. :-(
-DJANGO_DEBUG, HTTP_HOST, NO_LSF, SITE_URL_ROOT
-
-# Roundup Datasets and Releases
-CURRENT_DATASET = os.path.expanduser(CURRENT_DATASET)
-CURRENT_RELEASE = os.path.basename(CURRENT_DATASET)
-ARCHIVE_RELEASES = [os.path.basename(ds) for ds in ARCHIVE_DATASETS]
-
-# used for contact page
-RT_EMAIL = 'submit-cbi@rt.med.harvard.edu'
 
 # Configure environment to run python and blastp
 pathDirs = [BLAST_BIN_DIR, KALIGN_BIN_DIR]
@@ -40,10 +28,6 @@ os.environ['PATH'] = ':'.join(pathDirs)
 
 # Configure environment to run LSF commands
 lsf.setEnviron('/opt/lsf/7.0/linux2.6-glibc2.3-x86_64', '/opt/lsf/conf')
-
-# The physical location of static files served under the '/static/' url.
-STATIC_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), 'public/static'))
-
 
 #########
 # Mailing
@@ -65,21 +49,13 @@ sendtextmail = mailutil.make_sendtextmail(sendmail)
 #######################################
 # TMP DIRS, WORKING DIRS, SCRATCH SPACE
 
-TMP_DIR = os.path.join(SITE_DIR, 'tmp') 
 os.environ['NESTED_TMP_DIR'] = TMP_DIR
-
-
-#####################
-# CACHE CONFIGURATION
-# warning: www/support/roundup/common.php implements identical caching functions as cacheutil.py that also use roundup_cache table.
-#   common.php caching must be kept in sync with the python caching code.
-CACHE_TABLE = 'roundup_cache'
 
 
 #########
 # LOGGING
 
-LOG_FILE = os.path.join(SITE_DIR, 'log/app.log')
+LOG_FILE = os.path.join(LOG_DIR, 'app.log')
 LOG_TO_ADDRS = ['todddeluca@gmail.com']
 LOG_SUBJECT = 'Roundup Logging Message'
 

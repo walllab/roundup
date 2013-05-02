@@ -79,6 +79,8 @@ def post_config(config):
     Called by one of the deployment environment configuration tasks: dev, prod,
     etc.  Sets some values in `config`.
     '''
+    config.log = os.path.join(config.site_dir, 'log')
+    config.tmp = os.path.join(config.site_dir, 'tmp')
     config.venv = os.path.join(config.deploy_dir, 'venv')
     config.app = os.path.join(config.deploy_dir, 'app')
     config.python = os.path.join(config.venv, 'bin', 'python')
@@ -104,15 +106,13 @@ def local():
     config.system_python = '/usr/local/bin/python'
     config.deploy_dir = os.path.expanduser('~/www/local.roundup.hms.harvard.edu')
     config.site_dir = os.path.expanduser('~/sites/local.roundup')
-    config.archive_datasets = [os.path.join(config.site_dir, 'datasets', 'test_dataset')]
+    config.archive_datasets = [os.path.expanduser('~/sites/local.roundup/datasets/test_dataset')]
     config.current_dataset = config.archive_datasets[0]
     config.mail_service_type = 'amazon_ses'
     config.blast_bin_dir = '/usr/local/bin'
     config.kalign_bin_dir = '/usr/local/bin'
     config.no_lsf = True
     config.log_from_addr = 'todddeluca@yahoo.com'
-    config.site_url_root = 'http://localhost:8000'
-    config.http_host = 'localhost'
     config.django_debug = True
 
     post_config(config)
@@ -138,8 +138,6 @@ def dev():
     config.kalign_bin_dir = '/home/td23/bin'
     config.no_lsf = False
     config.log_from_addr = 'roundup-noreply@hms.harvard.edu'
-    config.site_url_root = 'http://dev.roundup.hms.harvard.edu'
-    config.http_host = 'dev.roundup.hms.harvard.edu'
     config.django_debug = False
 
     post_config(config)
@@ -165,8 +163,6 @@ def prod():
     config.kalign_bin_dir = '/home/td23/bin'
     config.no_lsf = False
     config.log_from_addr = 'roundup-noreply@hms.harvard.edu'
-    config.site_url_root = 'http://roundup.hms.harvard.edu'
-    config.http_host = 'roundup.hms.harvard.edu'
     config.django_debug = False
 
     post_config(config)
@@ -175,7 +171,9 @@ def prod():
 @task
 def ds(dsid):
     '''
-    Configure tasks for dataset deployment.
+    Configure tasks for dataset deployment.  Code is deployed to a code
+    directory parallel to the dataset directory, so a dataset can have its
+    own code version independent of the websites and other datasets.
 
     dsid (string): The id of the dataset.  E.g. '4'.  This is used to derive
     a dataset directory.
@@ -186,20 +184,12 @@ def ds(dsid):
     env.hosts = ['orchestra.med.harvard.edu']
     config.deploy_env = 'dataset'
     config.system_python = '/groups/cbi/bin/python2.7'
+    config.deploy_dir = '/groups/public+cbi/sites/roundup/code/{}'.format(dsid)
     config.site_dir = '/groups/public+cbi/sites/roundup'
-    # bogus current_dataset, since not used during dataset computation/loading.
-    config.archive_datasets = ['/groups/public+cbi/sites/roundup/datasets/test']
-    config.current_dataset = config.archive_datasets[0]
-    # associate the code used to compute the dataset with the dataset.
-    config.deploy_dir = os.path.join(config.site_dir, 'datasets', dsid, 'code')
     config.mail_service_type = 'orchestra'
     config.blast_bin_dir = '/opt/blast-2.2.24/bin'
     config.kalign_bin_dir = '/home/td23/bin'
-    config.no_lsf = False
     config.log_from_addr = 'roundup-noreply@hms.harvard.edu'
-    config.site_url_root = 'http://roundup.hms.harvard.edu'
-    config.http_host = 'roundup.hms.harvard.edu'
-    config.django_debug = False
 
     post_config(config)
 
@@ -250,23 +240,29 @@ def clean():
 @task
 def init():
     '''
-    Make directory for deploying code and configuration, and the link required
-    by Phusion Passenger and Apache.
-    Make directories for data that persists across deployments like results and
-    log files.
+    Make directory for deploying code and configuration.
+    Make directories used by code, like the log dir and tmp dir.
+    '''
+    require('configured')
+    run('mkdir -p -m 2775 ' + ' '.join([config.log, config.tmp,
+                                        config.deploy_dir]))
+
+@task
+def init_web():
+    '''
+    Make the link required by Phusion Passenger and Apache.
     '''
     require('configured')
     # passenger requires that docroot be a link to the webapp's public dir
-    site_dirs = [os.path.join(config.site_dir, d) for d in ['datasets', 'log', 'tmp']]
-    deploy_dirs = [os.path.join(config.deploy_dir, 'app', 'public')]
-    run('mkdir -p -m 2775 ' + ' '.join(site_dirs + deploy_dirs))
+    run('mkdir -p -m 2775 ' + os.path.join(config.deploy_dir, 'app', 'public'))
     with cd(config.deploy_dir):
-        # make link (b/c apache likes docroot and passenger likes app/public).
+        run('rm -f docroot')
+        # make link b/c apache likes docroot and passenger likes app/public.
         run('ln -s app/public docroot')
 
 
 @task
-def conf():
+def conf_web():
     '''
     Deploy configuration files, files that vary by deployment environment.
     '''
@@ -278,29 +274,43 @@ def conf():
         os.path.join(config.app, 'public/.htaccess'),
         context={'app_dir': config.app}, mode=0664)
 
+    # Create webdeployenv.py file and upload it
+    text = StringIO.StringIO()
+    text.write("# Autogenerated file.  Do not modify.\n")
+    text.write("# Web-specific configuration which varies by environment.\n")
+    text.write("\n")
+    text.write("ARCHIVE_DATASETS = {!r}\n".format(config.archive_datasets))
+    text.write("CURRENT_DATASET = {!r}\n".format(config.current_dataset))
+    text.write("NO_LSF = {!r}\n".format(config.no_lsf))
+    text.write('# never deploy django in production with DEBUG==True\n')
+    text.write('# https://docs.djangoproject.com/en/dev/ref/settings/#debug\n')
+    text.write("DJANGO_DEBUG = {!r}\n".format(config.django_debug))
+    put(text, os.path.join(config.app, 'webdeployenv.py'), mode=0664)
+
+
+@task
+def conf():
+    '''
+    Deploy configuration files, files that vary by deployment environment.
+    '''
+    require('configured')
+
     # copy secrets files
     put(os.path.join(HERE, 'secrets/{}.py'.format(config.deploy_env)),
         os.path.join(config.app, 'secrets.py'), mode=0660)
 
     # Create deployenv.py file and upload it
-    deployenv = StringIO.StringIO()
-    deployenv.write("# Autogenerated file.  Do not modify.\n")
-    deployenv.write("# Configuration which varies by environment.\n")
-    deployenv.write("\n")
-    deployenv.write("ARCHIVE_DATASETS = {!r}\n".format(config.archive_datasets))
-    deployenv.write("CURRENT_DATASET = {!r}\n".format(config.current_dataset))
-    deployenv.write("MAIL_SERVICE_TYPE = {!r}\n".format(config.mail_service_type))
-    deployenv.write("BLAST_BIN_DIR = {!r}\n".format(config.blast_bin_dir))
-    deployenv.write("KALIGN_BIN_DIR = {!r}\n".format(config.kalign_bin_dir))
-    deployenv.write("NO_LSF = {!r}\n".format(config.no_lsf))
-    deployenv.write("LOG_FROM_ADDR = {!r}\n".format(config.log_from_addr))
-    deployenv.write("SITE_URL_ROOT = {!r}\n".format(config.site_url_root))
-    deployenv.write("HTTP_HOST = {!r}\n".format(config.http_host))
-    deployenv.write('# never deploy django in production with DEBUG==True\n')
-    deployenv.write('# https://docs.djangoproject.com/en/dev/ref/settings/#debug\n')
-    deployenv.write("DJANGO_DEBUG = {!r}\n".format(config.django_debug))
-    deployenv.write("SITE_DIR = {!r}\n".format(config.site_dir))
-    put(deployenv, os.path.join(config.app, 'deployenv.py'), mode=0664)
+    text = StringIO.StringIO()
+    text.write("# Autogenerated file.  Do not modify.\n")
+    text.write("# Configuration which varies by environment.\n")
+    text.write("\n")
+    text.write("MAIL_SERVICE_TYPE = {!r}\n".format(config.mail_service_type))
+    text.write("BLAST_BIN_DIR = {!r}\n".format(config.blast_bin_dir))
+    text.write("KALIGN_BIN_DIR = {!r}\n".format(config.kalign_bin_dir))
+    text.write("LOG_FROM_ADDR = {!r}\n".format(config.log_from_addr))
+    text.write("TMP_DIR = {!r}\n".format(config.tmp))
+    text.write("LOG_DIR = {!r}\n".format(config.log))
+    put(text, os.path.join(config.app, 'deployenv.py'), mode=0664)
 
 
 @task
@@ -346,14 +356,33 @@ def restart():
         run ('touch tmp/restart.txt')
 
 
+#########################################
+# CONVENIENCE TASKS FOR DOING MANY THINGS
+
+
 @task
-def all():
+def all_code():
+    '''
+    Do everything needed for a clean deployment of code.
+    '''
     require('configured')
     execute(venv_install)
     execute(clean)
     execute(init)
     execute(conf)
     execute(deploy)
+
+
+
+@task
+def all():
+    '''
+    Do everything necessary for a clean deployment of code to the website.
+    '''
+    require('configured')
+    execute(all_code)
+    execute(init_web)
+    execute(conf_web)
     execute(link_downloads)
     execute(restart)
 

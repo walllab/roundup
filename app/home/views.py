@@ -21,6 +21,7 @@ import django.utils.html
 sys.path.append('..')
 import BioUtilities
 import config
+import webconfig
 import lsf
 import orthresult
 import orthutil
@@ -143,7 +144,7 @@ def contact(request):
         if form.is_valid(): # All validation rules pass
             form.cleaned_data['host'] = request.get_host()
             logging.debug(form.cleaned_data)
-            rtEmail = config.RT_EMAIL
+            rtEmail = webconfig.RT_EMAIL
             message = '''This ticket was submitted via http://%(host)s.
 -------------------------------------------------------------------------------
 Requestor contact information:
@@ -207,7 +208,7 @@ def cache_download_datas():
     dataset, release to the download file data, and release to just the 
     filename.
     '''
-    for ds in config.ARCHIVE_DATASETS:
+    for ds in webconfig.ARCHIVE_DATASETS:
         release = roundup.dataset.getDatasetId(ds)
         datas = roundup_util.get_dataset_download_datas(ds)
         RELEASE_DOWNLOAD_DATAS[release] = datas
@@ -247,7 +248,7 @@ def download(request):
 
     # a list of releases and the download links associated with each release
     release_link_datas = []
-    for ds in config.ARCHIVE_DATASETS:
+    for ds in webconfig.ARCHIVE_DATASETS:
         release = roundup.dataset.getDatasetId(ds)
         release_link_data = {'release': release, 'links': []}
         for data in get_release_download_datas(release):
@@ -299,16 +300,16 @@ def api_raw_download(request, first_genome, second_genome, divergence, evalue):
             orthData = roundup_util.getOrthData((first_genome, second_genome, divergence, evalue))
             orthologsTxt = orthutil.orthDatasToStr([orthData])
             response = django.http.HttpResponse(orthologsTxt, content_type='text/plain')
-            full_filename = 'roundup-{}-orthologs_for_{}_{}_{}_{}.txt'.format(config.CURRENT_RELEASE, first_genome, second_genome, divergence, evalue)
+            full_filename = 'roundup-{}-orthologs_for_{}_{}_{}_{}.txt'.format(webconfig.CURRENT_RELEASE, first_genome, second_genome, divergence, evalue)
             response['Content-Disposition'] = 'attachment; filename={}'.format(full_filename)
             return response
         elif contentType == CT_XML:
             orthData = roundup_util.getOrthData((first_genome, second_genome, divergence, evalue))
             with io.BytesIO() as handle:
-                roundup.dataset.convertOrthDatasToXml(config.CURRENT_DATASET, [orthData], [orthData], handle)
+                roundup.dataset.convertOrthDatasToXml(webconfig.CURRENT_DATASET, [orthData], [orthData], handle)
                 orthologsXml = handle.getvalue()
             response = django.http.HttpResponse(orthologsXml, content_type='text/xml')
-            full_filename = 'roundup-{}-orthologs_for_{}_{}_{}_{}.xml'.format(config.CURRENT_RELEASE, first_genome, second_genome, divergence, evalue)
+            full_filename = 'roundup-{}-orthologs_for_{}_{}_{}_{}.xml'.format(webconfig.CURRENT_RELEASE, first_genome, second_genome, divergence, evalue)
             response['Content-Disposition'] = 'attachment; filename={}'.format(full_filename)
             return response
     else:
@@ -334,7 +335,7 @@ def lookup(request):
         if form.is_valid(): # All validation rules pass
             logging.debug(form.cleaned_data)
             genome, fasta = form.cleaned_data['genome'], form.cleaned_data['fasta'] 
-            seqId = BioUtilities.findSeqIdWithFasta(fasta, roundup.dataset.getGenomeIndexPath(config.CURRENT_DATASET, genome))
+            seqId = BioUtilities.findSeqIdWithFasta(fasta, roundup.dataset.getGenomeIndexPath(webconfig.CURRENT_DATASET, genome))
             # store result in cache, so can do a redirect/get. 
             key = makeUniqueId()
             roundup_util.cacheSet(key, {'genome': genome, 'fasta': fasta, 'seqId': seqId})
@@ -381,7 +382,7 @@ def search_gene_names(request, key=None):
             logging.debug(form.cleaned_data)
             search_type, query_string = form.cleaned_data['search_type'], form.cleaned_data['query_string']
             pairs = roundup_db.findGeneNameGenomePairsLike(
-                config.CURRENT_RELEASE, substring=query_string,
+                webconfig.CURRENT_RELEASE, substring=query_string,
                 searchType=search_type)
             # store result in cache, so can do a redirect/get. 
             key = makeUniqueId()
@@ -506,7 +507,7 @@ def browse(request):
             if browseId and browseIdType == 'gene_name_type':
                 genome = form.cleaned_data['primary_genome']
                 seqIds = roundup_db.getSeqIdsForGeneName(
-                    config.CURRENT_RELEASE, geneName=browseId, genome=genome)
+                    webconfig.CURRENT_RELEASE, geneName=browseId, genome=genome)
                 if not seqIds: # no seq ids matching the gene name were found.  oh no!
                     message = u'In your Browse query, Roundup did not find any gene named "{}" in the genome "{}".  Try searching for a gene name.'.format(browseId, GENOME_TO_NAME[genome])
                     # store result in cache, so can do a redirect/get. 
@@ -637,8 +638,8 @@ def makeDefaultOrthQuery():
     orthQuery['go_term'] = True
     orthQuery['distance_lower_limit'] = None
     orthQuery['distance_upper_limit'] = None
-    orthQuery['release'] = config.CURRENT_RELEASE # needed for orthquery
-    orthQuery['dataset'] = config.CURRENT_DATASET # needed for orthresult
+    orthQuery['release'] = webconfig.CURRENT_RELEASE # needed for orthquery
+    orthQuery['dataset'] = webconfig.CURRENT_DATASET # needed for orthresult
     return orthQuery
 
 
@@ -712,12 +713,12 @@ def orth_result(request, resultId):
             return django.shortcuts.render(request, 'wide.html', {'html': page, 'nav_id': 'browse'})
         elif templateType == orthresult.DOWNLOAD_TEMPLATE:
             response = django.http.HttpResponse(page, content_type='text/plain')
-            full_filename = 'roundup-{}-gene_clusters_for_result_{}.txt'.format(config.CURRENT_RELEASE, resultId)
+            full_filename = 'roundup-{}-gene_clusters_for_result_{}.txt'.format(webconfig.CURRENT_RELEASE, resultId)
             response['Content-Disposition'] = 'attachment; filename={}'.format(full_filename)
             return response
         elif templateType == orthresult.DOWNLOAD_XML_TEMPLATE:
             response = django.http.HttpResponse(page, content_type='text/xml')
-            full_filename = 'roundup-{}-gene_clusters_for_result_{}.xml'.format(config.CURRENT_RELEASE, resultId)
+            full_filename = 'roundup-{}-gene_clusters_for_result_{}.xml'.format(webconfig.CURRENT_RELEASE, resultId)
             response['Content-Disposition'] = 'attachment; filename={}'.format(full_filename)
             return response
         else:
@@ -744,10 +745,10 @@ def orth_query(request, queryId):
     if USE_CACHE and roundup_util.cacheHasKey(resultId) and orthresult.resultExists(resultId):
         logging.debug('cache hit.')
         return django.shortcuts.redirect(django.core.urlresolvers.reverse(orth_result, kwargs={'resultId': resultId}))
-    elif not config.NO_LSF and lsf.isJobNameOn(resultId, retry=True, delay=0.2):
+    elif not webconfig.NO_LSF and lsf.isJobNameOn(resultId, retry=True, delay=0.2):
         logging.debug('cache miss. job is already running.  go to waiting page.')
         return django.shortcuts.redirect(django.core.urlresolvers.reverse(orth_wait, kwargs={'resultId': resultId}))
-    elif config.NO_LSF or querySize <= SYNC_QUERY_LIMIT:
+    elif webconfig.NO_LSF or querySize <= SYNC_QUERY_LIMIT:
         logging.debug('cache miss. run job sync.')
         # wait for query to run and store query
         roundup_util.do_orthology_query(cache_key=resultId,

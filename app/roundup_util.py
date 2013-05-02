@@ -9,9 +9,10 @@ import argparse
 import glob
 import os
 
+import config
+import webconfig
 import cacheutil
 import cliutil
-import config
 import lsf
 import orthquery
 import roundup.dataset
@@ -55,7 +56,7 @@ def static_download_path(release, filename):
     A path corresponding to the static url for a dataset download file.
     e.g. /www/roundup.hms.harvard.edu/app/public/static/download/4/roundup-4-genomes.tar.gz
     '''
-    return os.path.join(config.STATIC_DIR, 'download', release, filename)
+    return os.path.join(webconfig.STATIC_DIR, 'download', release, filename)
 
 
 def static_download_url(release, filename):
@@ -72,7 +73,7 @@ def link_downloads():
     download files for various data sets.  This allows dataset files to be
     served statically (e.g. via apache) instead of through django.
     '''
-    for ds in config.ARCHIVE_DATASETS:
+    for ds in webconfig.ARCHIVE_DATASETS:
         release = roundup.dataset.getDatasetId(ds)
         for data in get_dataset_download_datas(ds):
             src = data['path']
@@ -90,7 +91,7 @@ def getOrthData(params):
     qdb, sdb, div, evalue = params
     pair = roundup_common.makePair(qdb, sdb)
     # get orthologs from db
-    dbOrthologs = roundup_db.getOrthologs(release=config.CURRENT_RELEASE,
+    dbOrthologs = roundup_db.getOrthologs(release=webconfig.CURRENT_RELEASE,
                                           qdb=pair[0], sdb=pair[1],
                                           divergence=div, evalue=evalue)
     # get a map to external sequence ids
@@ -100,7 +101,7 @@ def getOrthData(params):
         sequenceIds.add(ortholog[1])
     sequenceIds = list(sequenceIds)
     sequenceIdToSequenceDataMap = roundup_db.getSequenceIdToSequenceDataMap(
-        release=config.CURRENT_RELEASE, sequenceIds=sequenceIds)
+        release=webconfig.CURRENT_RELEASE, sequenceIds=sequenceIds)
     # 
     orthologs = [(sequenceIdToSequenceDataMap[qid][roundup_common.EXTERNAL_SEQUENCE_ID_KEY],
                   sequenceIdToSequenceDataMap[sid][roundup_common.EXTERNAL_SEQUENCE_ID_KEY],
@@ -117,7 +118,7 @@ def getRawResults(params):
     qdb, sdb, div, evalue = params
     pair = roundup_common.makePair(qdb, sdb)
     # get orthologs from db
-    orthologs = roundup_db.getOrthologs(release=config.CURRENT_RELEASE,
+    orthologs = roundup_db.getOrthologs(release=webconfig.CURRENT_RELEASE,
                                         qdb=pair[0], sdb=pair[1],
                                         divergence=div, evalue=evalue)
     # get a map to external sequence ids
@@ -127,7 +128,7 @@ def getRawResults(params):
         sequenceIds.add(ortholog[1])
     sequenceIds = list(sequenceIds)
     sequenceIdToSequenceDataMap = roundup_db.getSequenceIdToSequenceDataMap(
-        release=config.CURRENT_RELEASE, sequenceIds=sequenceIds)
+        release=webconfig.CURRENT_RELEASE, sequenceIds=sequenceIds)
 
     # format orthologs for download by mapping to external sequence ids.
     results = None
@@ -139,22 +140,22 @@ def getRawResults(params):
         
 
 def getDatasetStats():
-    return roundup.dataset.getDatasetStats(config.CURRENT_DATASET)
+    return roundup.dataset.getDatasetStats(webconfig.CURRENT_DATASET)
     
 
-def getSourceUrls(ds=config.CURRENT_DATASET):
+def getSourceUrls(ds=webconfig.CURRENT_DATASET):
     return roundup.dataset.getSourceUrls(ds)
 
 
-def getRelease(ds=config.CURRENT_DATASET):
+def getRelease(ds=webconfig.CURRENT_DATASET):
     return roundup.dataset.getReleaseName(ds)
 
 
-def getReleaseDate(ds=config.CURRENT_DATASET):
+def getReleaseDate(ds=webconfig.CURRENT_DATASET):
     return roundup.dataset.getReleaseDate(ds)
 
 
-def getUniprotRelease(ds=config.CURRENT_DATASET):
+def getUniprotRelease(ds=webconfig.CURRENT_DATASET):
     return roundup.dataset.getUniprotRelease(ds)
 
 
@@ -162,14 +163,14 @@ def getGenomesAndNames():
     '''
     return: list of pairs of genome and name.  used by website for dropdowns.  
     '''
-    return roundup_db.getGenomesAndNames(release=config.CURRENT_RELEASE)
+    return roundup_db.getGenomesAndNames(release=webconfig.CURRENT_RELEASE)
 
 
 def getGenomeDescriptions():
     '''
     returns: a list of tuples with data describing each genome in roundup.
     '''
-    genomesData = roundup_db.getGenomesData(release=config.CURRENT_RELEASE)
+    genomesData = roundup_db.getGenomesData(release=webconfig.CURRENT_RELEASE)
     return genomesData
 
 
@@ -187,12 +188,12 @@ def do_orthology_query(cache_key, cache_file, query_kws):
 
 def cacheHasKey(key):
     return cacheutil.Cache(manager=util.ClosingFactoryCM(config.openDbConn),
-                           table=config.CACHE_TABLE).has_key(key)
+                           table=webconfig.CACHE_TABLE).has_key(key)
 
 
 def cacheGet(key, default=None):
     return cacheutil.Cache(manager=util.ClosingFactoryCM(config.openDbConn),
-                           table=config.CACHE_TABLE).get(key, default=default)
+                           table=webconfig.CACHE_TABLE).get(key, default=default)
 
 
 def cacheSet(key, value):
@@ -200,7 +201,7 @@ def cacheSet(key, value):
     value: serialized in the cache as json, so only strings as dict keys.
     '''
     return cacheutil.Cache(manager=util.ClosingFactoryCM(config.openDbConn),
-                           table=config.CACHE_TABLE).set(key, value)
+                           table=webconfig.CACHE_TABLE).set(key, value)
 
 
 def dropCreateCache():
@@ -208,7 +209,7 @@ def dropCreateCache():
     create a clean cache.  used when "refreshing" the roundup mysql database
     '''
     return cacheutil.Cache(manager=util.ClosingFactoryCM(config.openDbConn),
-                           table=config.CACHE_TABLE, drop=True, create=True)
+                           table=webconfig.CACHE_TABLE, drop=True, create=True)
 
 
 def cache(output, key, filename):

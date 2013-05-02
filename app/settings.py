@@ -4,10 +4,11 @@ import os
 
 # roundup project configuration
 import config
+import webconfig
 import secrets
 
 
-DEBUG = config.DJANGO_DEBUG
+DEBUG = webconfig.DJANGO_DEBUG
 TEMPLATE_DEBUG = DEBUG
 
 ADMINS = (
@@ -81,7 +82,7 @@ STATICFILES_DIRS = (
     # Put strings here, like "/home/html/static" or "C:/www/django/static".
     # Always use forward slashes, even on Windows.
     # Don't forget to use absolute paths, not relative paths.
-    config.STATIC_DIR,
+    webconfig.STATIC_DIR,
 )
 
 # List of finder classes that know how to find static files in
