@@ -205,11 +205,8 @@ def writeLookupTable(items, itemToId, itemsFile):
 
 
 def getDones(ds):
-    '''
-    Track which orthdatas files have already been loaded.
-    '''
-    filename = os.path.join(ds, 'load_dataset_dones.json')
-    return dones.FileDones(filename)
+    ns = 'roundup_load_{}_dones'.format(roundup.dataset.getDatasetId(ds))
+    return dones.get(ns)
 
 
 def cleanOrthDatasDones(ds):

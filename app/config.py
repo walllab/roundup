@@ -118,6 +118,7 @@ if util.getBoolFromEnv('ROUNDUP_MYSQL_CREDS_FROM_CNF', False):
 MYSQL_URL = 'mysql://{user}:{password}@{host}/{db}'.format(
     user=MYSQL_USER, password=MYSQL_PASSWORD, host=MYSQL_HOST, db=MYSQL_DB)
 os.environ['ROUNDUP_MYSQL_URL'] = MYSQL_URL
+os.environ['DONES_DB_URL'] = MYSQL_URL
 
 
 def openDbConn(host=MYSQL_HOST, db=MYSQL_DB, user=MYSQL_USER, password=MYSQL_PASSWORD):

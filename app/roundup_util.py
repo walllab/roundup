@@ -221,16 +221,6 @@ def cache(output, key, filename):
     return output
 
 
-########################
-# COMMAND LINE INTERFACE
-
-
-def cli_orthology_query(params):
-    # function args and kws
-    fargs, fkws = cliutil.params_from_file(params)
-    do_orthology_query(*fargs, **fkws)
-
-
 def bsub_orthology_query(cache_key, cache_file, query_kws, job_name):
     lsf_options = ['-o', '/dev/null', '-N',
                    # '-q', 'short', # short is a big queue but often busy
@@ -242,6 +232,16 @@ def bsub_orthology_query(cache_key, cache_file, query_kws, job_name):
                                    'query_kws': query_kws})
     cmd = cliutil.script_list(__file__) + ['orthquery', '--params', filename]
     return lsf.bsub(cmd, lsf_options)
+
+
+########################
+# COMMAND LINE INTERFACE
+
+
+def cli_orthology_query(params):
+    # function args and kws
+    fargs, fkws = cliutil.params_from_file(params)
+    do_orthology_query(*fargs, **fkws)
 
 
 def main():

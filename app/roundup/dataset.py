@@ -355,7 +355,7 @@ def examineDats(ds, dats=None, surprisesFile=None, countsFile=None):
         countData[genome] = data
         countList.append([data['count'], data['complete_count'], data['reference_count'], data['sprot_count'], data['trembl_count'],
                           data['genome'], data['org_code'], data['name'], data['num_names'], data['num_taxons'], data['num_org_codes']])
-        
+
     with open(countsFile, 'w') as fh:
         for data in sorted(countList):
             fh.write('\t'.join(str(d) for d in data) + '\n')
@@ -1620,14 +1620,9 @@ def getTaxonToData(ds):
 # pros: concurrency. fast even with millions of dones.
 # cons: different mysql db for dev and prod, so must use the prod code on a prod dataset.
 
-DONES_CACHE = {}
 def getDones(ds):
-    if ds not in DONES_CACHE:
-        ns = 'roundup_dataset_{}_dones'.format(getDatasetId(ds))
-        connect = kvstore.make_closing_connect(config.openDbConn)
-        k = kvstore.KStore(connect, ns=ns)
-        DONES_CACHE[ds] = dones.Dones(k)
-    return DONES_CACHE[ds]
+    ns = 'roundup_dataset_{}_dones'.format(getDatasetId(ds))
+    return dones.get(ns)
 
 
 def reset_blast_dones(ds, query_genome, subject_genome, reverse=False):
