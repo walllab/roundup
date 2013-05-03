@@ -1,11 +1,25 @@
 
 
+'''
+A module which creates a command suitable for running a module as a script.
+
+Assuming the current sys.path is appropriate for running the module and its 
+dependencies, this module can:
+
+- set PYTHONPATH to the contents of sys.path
+- return a command (a list of arguments suitable for subprocess.Popen) that
+  contains the current python executable and the path the the module file.
+
+This module will not work if:
+
+- PYTHONPATH needs to be set to something different
+- the module calling script_list() does not have an .py file for some reason.
+
+'''
+
 import os
 import re
 import sys
-
-import temps
-import util
 
 
 def pythonpath():
@@ -47,38 +61,5 @@ def script_list(script):
                                       script))
     # use the current python executable to run this script
     return [os.path.abspath(sys.executable), filename]
-
-
-def params_to_file(args=None, kws=None, filename=None):
-    '''
-    Serialize args, kws, and write them to filename.  If filename
-    is None, use temps to create a temporary file.  Return the filename the
-    parameters were stored in.
-
-    args: a list of function arguments.  If None (default), an empty list will
-    be used.
-    kws: a dict of function keyword arguments  If None (default), an empty
-    dict will be used.
-    filename: where to store the serialized args and kws.  If None (default),
-    the temps module will be used to create a unique filename in which to
-    store the params.
-    '''
-    args = [] if args is None else args
-    kws = {} if kws is None else kws
-    if filename is None:
-        filename = temps.tmppath(prefix='params_')
-    util.dumpObject((args, kws), filename)
-    return filename
-
-def params_from_file(filename, delete=True):
-    '''
-    Read and unserialize parameters from a file and return a tuple of
-    args and kws.  If delete is True (the default), remove 
-    filename after reading the parameters.
-    '''
-    args, kws = util.loadObject(filename)
-    if delete:
-        os.remove(filename)
-    return args, kws
 
 

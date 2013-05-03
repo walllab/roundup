@@ -12,6 +12,7 @@ import os
 import config
 import webconfig
 import cacheutil
+import filemsg
 import cliutil
 import lsf
 import orthquery
@@ -227,9 +228,8 @@ def bsub_orthology_query(cache_key, cache_file, query_kws, job_name):
                    '-q', 'cbi_12h', # cbi_12h has few nodes but is rarely busy
                    '-W', '2:0',
                    '-J', job_name]
-    filename = cliutil.params_to_file(kws={'cache_key': cache_key,
-                                   'cache_file': cache_file,
-                                   'query_kws': query_kws})
+    filename = filemsg.dump({'cache_key': cache_key, 'cache_file': cache_file,
+                             'query_kws': query_kws})
     cmd = cliutil.script_list(__file__) + ['orthquery', '--params', filename]
     return lsf.bsub(cmd, lsf_options)
 
@@ -239,9 +239,12 @@ def bsub_orthology_query(cache_key, cache_file, query_kws, job_name):
 
 
 def cli_orthology_query(params):
+    '''
+    params: file containing the args and kws params
+    '''
     # function args and kws
-    fargs, fkws = cliutil.params_from_file(params)
-    do_orthology_query(*fargs, **fkws)
+    kws = filemsg.load(params)
+    do_orthology_query(**kws)
 
 
 def main():
