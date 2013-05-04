@@ -50,6 +50,7 @@ sendtextmail = mailutil.make_sendtextmail(sendmail)
 # TMP DIRS, WORKING DIRS, SCRATCH SPACE
 
 os.environ['NESTED_TMP_DIR'] = TMP_DIR
+os.environ['TEMPS_DIR'] = TMP_DIR
 
 
 #########
