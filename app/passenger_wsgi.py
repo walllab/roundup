@@ -4,9 +4,7 @@ import sys
 import traceback
 
 # Add to sys.path the location of user-defined modules.  Assume user-defined
-# modules (e.g. index.py) are located with passenger_wsgi.py, this file.  This
-# assumption can fail when __file__ refers to the .pyc file, which can
-# sometimes be stored in a different location.
+# modules (e.g. index.py) are located with passenger_wsgi.py, this file.
 HERE = os.path.abspath(os.path.dirname(__file__))
 sys.path.append(HERE)
 

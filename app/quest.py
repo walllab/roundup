@@ -19,7 +19,6 @@ import glob
 import os
 import re
 import subprocess
-import sys
 from pprint import pprint
 
 import fasta
@@ -27,8 +26,8 @@ import nested
 import orthutil
 import roundup.dataset as rd
 import dones
-import kvstore
 import config
+import lsfdo
 
 
 def makedirs(d, mode=0775):
@@ -60,11 +59,11 @@ class Quest(object):
         else:
             self.version = m.group('version')
 
-        # Dones
-        ns = 'roundup_dataset_{}_dones'.format(self.dsid)
-        connect = kvstore.make_closing_connect(config.openDbConn)
-        k = kvstore.KStore(connect, ns=ns)
-        self.dones = dones.Dones(k)
+        # Dones namespace
+        self.ns = 'roundup_dataset_{}_dones'.format(self.dsid)
+
+    def dones(self):
+        return dones.get(self.ns)
 
     # SOURCES
 
@@ -132,17 +131,26 @@ class Quest(object):
         all_done = rd.computeJobs(self.ds)
         if not all_done:
             # indicate to workflow that this step is not done yet.
-            raise Exception('Jobs are not all done.')
+            raise Exception('Compute jobs are not all done. Try rerunning workflow when they are done.')
 
 
     def format_genomes(self):
         '''
         A wrapper around roundup.dataset.format_genome to only format a 
-        genome if it is not done already.
+        genome if it is not done already and to parallelize on lsf genome
+        formatting.
         '''
+        tasks = []
         for genome in rd.getGenomes(self.ds):
-            self.do('format_genome {}'.format(genome),
-                    rd.format_genome, self.ds)
+            tasks.append(lsfdo.FuncTask(
+                'quest_format_genome {}'.format(genome),
+                'roundup.dataset.format_genome', 
+                [self.ds, genome]))
+        all_done = lsfdo.run_tasks(
+            self.ns, tasks, lsfopts=['-q', 'short', '-W', '60'])
+        if not all_done:
+            raise Exception('Format jobs are not all done. Try rerunning workflow when they are done.')
+
 
     # WORKFLOW
 
@@ -152,10 +160,10 @@ class Quest(object):
         skip it.  If it has not, run it with args and kws and mark it done
         if it successfully completes.
         '''
-        if not self.dones.done(name):
+        if not self.dones().done(name):
             print 'Doing', name
             out = func(*args, **kws)
-            self.dones.mark(name)
+            self.dones().mark(name)
             return out
 
         print 'Done', name
@@ -167,7 +175,7 @@ class Quest(object):
                 self.download_reference_proteomes)
         self.do('unpack_reference_proteomes',
                 self.unpack_reference_proteomes)
-        # self.dones.unmark('set_genomes_and_fasta_from_reference_proteomes')
+        # self.dones().unmark('set_genomes_and_fasta_from_reference_proteomes')
         self.do('set_genomes_and_fasta_from_reference_proteomes',
                 self.set_genomes_and_fasta_from_reference_proteomes)
         self.do('format_genomes', self.format_genomes)
@@ -207,7 +215,7 @@ def convert_fasta(infile, outfile):
         seqlines = lines[1:]
         seqid = nameline.split(':')[1].split()[0]
         # add 'lcl' because ncbi blast expects it in order to parse namelines (like the ones we have)
-        # when formating a fasta file, and we format thusly b/c roundup likes to retrieve fasta
+        # when formatting a fasta file, and we format thusly b/c roundup likes to retrieve fasta
         # sequences by id, for which parsing namelines when formatting is required.
         # More on namelines: http://www.ncbi.nlm.nih.gov/books/NBK7183/?rendertype=table&id=ch_demo.T5
         newNameline = '>lcl|' + seqid + '\n'

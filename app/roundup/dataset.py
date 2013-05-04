@@ -58,12 +58,11 @@ if _root_module_dir not in sys.path:
     sys.path.append(_root_module_dir)
 
 # our modules
-import cliutil
 import config
 import dones
 import fasta
 import kvstore
-import lsf
+import lsfdo
 import nested
 import orthoxml
 import orthutil
@@ -1119,67 +1118,10 @@ def cleanGenomes(ds):
     setGenomes(ds)
 
 
-##########
-# WORKFLOW
-##########
-
-def bsub_cmds(ds, cmds, names, options):
-    '''
-    Submit cmds to lsf if they are not already done or submitted.  Use names
-    to see which commands are already done or submitted.
-
-    cmds: a list of command lines to run on lsf.  Each command line is a list
-      of arguments.
-    names: a list of unique names, one for each command
-    options: a list of lists of lsf options, one for each command.
-    '''
-    # The names of every job currently on the lsf queue
-    onJobNames = set(lsf.getOnJobNames())
-
-    for cmd, name, lsf_options in zip(cmds, names, options):
-        if getDones(ds).done(name):
-            print 'Already done. ds={}, name={}, cmd={}'.format(ds, name, cmd)
-        elif name in onJobNames: 
-            print 'Already running. ds={}, name={}, cmd={}'.format(ds, name,
-                                                                   cmd)
-        else:
-            jobid = lsf.bsub(cmd, lsf_options)
-            print 'Submitted lsf job {}. ds={}, name={}, cmd={}'.format(
-                jobid, ds, name, cmd)
-
-    return cmds_all_done(ds, names)
-
-
-def cmds_all_done(ds, names):
-    '''
-    Returns True iff all the commands identified by names are marked done.
-
-    names: a list of unique names, one for each command
-    '''
-    return getDones(ds).all_done(names)
-
 
 ##########
 # RUN JOBS
 ##########
-
-
-def compute_job_cmd_name_options(ds, job):
-    '''
-    Generate the command, name, and lsf options for a dataset ortholog
-    computation job.
-    '''
-    # command to be run on lsf
-    cmd = cliutil.script_list(__file__) + ['compute_job', ds, job]
-    # name used to track if command is done or on lsf
-    name = 'roundup_compute_job_{dsid}_{job}'.format(dsid=getDatasetId(ds),
-                                                     job=job)
-    # lsf options used for cmd: make sure there is enough temp space, run for a
-    # long time, do not save the script output, and set the job name so it 
-    # can be easily tracked.
-    options = ['-R', 'rusage[tmp=500]', '-q', 'long', '-W', '720:0', '-J',
-               name, '-o', '/dev/null']
-    return cmd, name, options
 
 
 def computeJobs(ds):
@@ -1189,23 +1131,26 @@ def computeJobs(ds):
     '''
     # a job is a name of a directory and a set of genome pairs for ortholog computation.
     jobs = sorted(getJobs(ds))
-    cmds, names, options = zip(*[compute_job_cmd_name_options(ds, job) for job in jobs])
-    # ensure that dataset.py will be able to import all the modules it needs 
-    # when it is invoked to run computeJob.
-    cliutil.set_pythonpath()
-    return bsub_cmds(ds, cmds, names, options)
+
+    # create a "task" to run on lsf for each job
+    dsid = getDatasetId(ds)
+    ns = 'roundup_dataset_{}_compute_jobs'.format(dsid)
+    names = ['roundup_compute_job_{}_{}'.format(dsid, job) for job in jobs]
+    func = 'roundup.dataset.computeJob'
+    lsfopts = ['-R', 'rusage[tmp=500]', '-q', 'long', '-W', '720:0']
+    tasks = [lsfdo.FuncTask(name, func, [ds, job]) for name, job in 
+             zip(names, jobs)]
+
+    all_done = lsfdo.run_tasks(ns, tasks, lsfopts)
+    return all_done
 
 
 def computeJob(ds, job):
     '''
     job: identifies which job this is so it knows which pairs to compute.
-    computes orthologs for every pair in the job.  merges the orthologs into a single file and puts that file in the dataset orthologs dir.
+    computes orthologs for every pair in the job.  merges the orthologs into a
+    single file and puts that file in the dataset orthologs dir.
     '''
-    cmd, name, options = compute_job_cmd_name_options(ds, job)
-    # check if the job is done
-    if getDones(ds).done(name):
-        return
-
     pairs = getJobPairs(ds, job)
     jobDir = getJobDir(ds, job)
     print ds, job, pairs, jobDir
@@ -1231,9 +1176,6 @@ def computeJob(ds, job):
         orthologsPath = os.path.join(jobDir, '{}_{}.pair.orthologs.txt'.format(*pair))
         if os.path.exists(orthologsPath):
             os.remove(orthologsPath)
-
-    # mark the job done.
-    getDones(ds).mark(name)
 
 
 def computePair(ds, pair, workingDir, orthologsPath):
@@ -1934,9 +1876,6 @@ def main():
         return addGenomeFasta(args.dataset, args.genome, args.fasta_file,
                 name=args.name, taxon=args.taxon)
 
-    def compute_job(args):
-        return computeJob(args.dataset, args.job)
-
     def prepare_jobs(args):
         return prepareJobs(args.dataset, numJobs=args.num)
 
@@ -2026,12 +1965,6 @@ def main():
     prepare_jobs_parser.add_argument('-n', '--num', type=int, default=DEFAULT_NUM_JOBS,
             help='number of jobs in which to split the dataset pairs. e.g. 1000')
     prepare_jobs_parser.set_defaults(func=prepare_jobs)
-
-    # compute a single ortholgy computation job
-    compute_job_parser = subparsers.add_parser('compute_job', help='Compute orthologs for pairs associated with a dataset job.')
-    compute_job_parser.add_argument('dataset', help='root directory of the dataset')
-    compute_job_parser.add_argument('job', help='id of the computation job, e.g. 27')
-    compute_job_parser.set_defaults(func=compute_job)
 
     # convert_to_orthoxml
     convert_to_orthoxml_parser = subparsers.add_parser('convert_to_orthoxml', 

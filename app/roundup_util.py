@@ -230,7 +230,7 @@ def bsub_orthology_query(cache_key, cache_file, query_kws, job_name):
                    '-J', job_name]
     filename = filemsg.dump({'cache_key': cache_key, 'cache_file': cache_file,
                              'query_kws': query_kws})
-    cmd = cliutil.script_list(__file__) + ['orthquery', '--params', filename]
+    cmd = cliutil.args(__file__) + ['orthquery', '--params', filename]
     return lsf.bsub(cmd, lsf_options)
 
 

@@ -1,6 +1,12 @@
 # This is a file of useful commands associated with Roundup.  Enjoy.  -TFD
 
 
+Test lsfdo and filemsg on orchestra:
+    
+    # you need to set 'username' and 'password'
+    cd /www/dev.roundup.hms.harvard.edu && TEST_LSFDO_WAIT=30 DONES_DB_URL=mysql://username:password@dev.mysql.orchestra/devroundup venv/bin/nosetests
+
+
 ################################
 # VERSION CONTROL AND DEPLOYMENT
 ################################
