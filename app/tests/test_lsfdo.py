@@ -6,16 +6,18 @@ import lsfdo
 
 
 TEST_NS = 'test_lsfdo'
+DEFAULT_QUEUE = 'cbi_12h'
 
 def setup():
     # ensure that lsfdo can import test_lsfdo.example_func
     os.environ['PYTHONPATH'] = os.path.dirname(os.path.abspath(__file__))
 
 
-def example_func(msg, msg2=None):
+def example_func(msg, msg2=None, pause=0):
     '''
     Used to test running a python function on lsf.
     '''
+    time.sleep(pause)
     print msg
     if msg2 is not None:
         print msg2
@@ -41,7 +43,7 @@ def get_func_tasks():
     Return two FuncTask objects for testing.
     '''
     return [lsfdo.FuncTask(name='test_func_task_{}'.format(i),
-                           func='test_lsfdo.example_func',
+                           func=example_func,
                            args=['hello {}'.format(i)],
                            kws={'msg2': 'test {}'.format(i)}) for i in range(2)]
 
@@ -81,7 +83,7 @@ def test_task_classes():
         assert not ne == e1
 
 
-def test_run_cmd_tasks():
+def test_do_cmd_tasks():
     '''
     Test creating CmdTasks and running them synchronously in process.  This
     tests much of the code in the run-on-lsf code path without the time
@@ -96,12 +98,12 @@ def test_run_cmd_tasks():
     assert not lsfdo.all_done(ns, tasks)
     # run jobs
     for task in tasks:
-        lsfdo._run_task(ns, task)
+        lsfdo.do(ns, task)
     # wait for jobs to finish and assert that they are all done.
     assert lsfdo.all_done(ns, tasks)
-    # run_tasks again.  They should be marked done, so they should not run.
+    # run tasks again.  They should be marked done, so they should not run.
     for task in tasks:
-        lsfdo._run_task(ns, task)
+        lsfdo.do(ns, task)
 
     # clean up dones and make sure jobs are now not done.
     lsfdo.reset(ns)
@@ -109,7 +111,7 @@ def test_run_cmd_tasks():
     # finally, clean up tables.
     lsfdo.reset(ns)
 
-def test_run_func_tasks():
+def test_do_func_tasks():
     '''
     Test creating FuncTasks and running them synchronously in process.  This
     tests much of the code in the run-on-lsf code path without the time
@@ -124,12 +126,12 @@ def test_run_func_tasks():
     assert not lsfdo.all_done(ns, tasks)
     # run jobs
     for task in tasks:
-        lsfdo._run_task(ns, task)
+        lsfdo.do(ns, task)
     # wait for jobs to finish and assert that they are all done.
     assert lsfdo.all_done(ns, tasks)
-    # run_tasks again.  They should be marked done, so they should not run.
+    # run tasks again.  They should be marked done, so they should not run.
     for task in tasks:
-        lsfdo._run_task(ns, task)
+        lsfdo.do(ns, task)
 
     # clean up dones and make sure jobs are now not done.
     lsfdo.reset(ns)
@@ -137,18 +139,53 @@ def test_run_func_tasks():
     # finally, clean up tables.
     lsfdo.reset(ns)
 
-
-def test_run_lsf_tasks(wait=50, queue='cbi_12h'):
+def test_bsubmany_timeout():
     '''
-    Test running some functions on lsf.
-
-    wait: how long (in seconds) to wait before asserting that all jobs are
-    done.  tune this so that lsf has time to finish all the jobs.
-    queue: An LSF queue name.  For testing, choose a queue name that jobs will
-    start quickly on.
+    Test submitting tasks to lsf and not waiting until they are done.
     '''
-    wait = int(os.environ.get('TEST_LSFDO_WAIT', wait))
-    queue = os.environ.get('TEST_LSFDO_QUEUE', queue)
+    queue = os.environ.get('TEST_LSFDO_QUEUE', DEFAULT_QUEUE)
+
+    tasks = [lsfdo.FuncTask(name='timeout_task_{}'.format(i),
+                           func=example_func,
+                           args=['hello {}'.format(i)],
+                           kws={'pause': 40}) for i in range(2)]
+    # lsf options
+    opts = [['-q', queue, '-W', '2'] for t in tasks]
+
+    ns = TEST_NS
+    # make sure dones are reset before running the test.
+    lsfdo.reset(ns)
+
+
+    assert not lsfdo.all_done(ns, tasks)
+    # Run tasks on lsf and only wait 6 seconds for them to finish.
+    try:
+        lsfdo.bsubmany(ns, tasks, opts, pause=10, timeout=6)
+    except lsfdo.NotDoneError:
+        pass
+    # The tasks should not yet be done.
+    assert not lsfdo.all_done(ns, tasks)
+    # Now try running the tasks again and wait a little bit more.  This time
+    # they should not be resubmitted.
+    try:
+        lsfdo.bsubmany(ns, tasks, opts, pause=10, timeout=16)
+    except lsfdo.NotDoneError:
+        pass
+    # The tasks should not yet be done.
+    assert not lsfdo.all_done(ns, tasks)
+    # Wait for the jobs to stop running
+    lsfdo.bsubmany(ns, tasks, opts)
+    # The tasks should now be done.
+    assert lsfdo.all_done(ns, tasks)
+
+    # Clean up dones and make sure jobs are now not done.
+    lsfdo.reset(ns)
+    assert not lsfdo.all_done(ns, tasks)
+    # finally, clean up tables.
+    lsfdo.reset(ns)
+
+def test_bsubmany():
+    queue = os.environ.get('TEST_LSFDO_QUEUE', DEFAULT_QUEUE)
 
     tasks = get_func_tasks()
     ns = TEST_NS
@@ -156,22 +193,18 @@ def test_run_lsf_tasks(wait=50, queue='cbi_12h'):
     lsfdo.reset(ns)
 
     # lsf options
-    lsfopts = ['-q', queue, '-W', '2']
+    opt = ['-q', queue, '-W', '2']
 
     assert not lsfdo.all_done(ns, tasks)
-    # Run tasks on lsf.  Since they are just starting they should not be done.
-    assert not lsfdo.run_tasks(ns, tasks, lsfopts, devnull=False)
-    # Wait for jobs to finish.
-    time.sleep(wait)
+    # Run tasks on lsf and wait for them to finish.
+    lsfdo.bsubmany(ns, tasks, [opt for t in tasks])
     # Now all tasks should be done.
     assert lsfdo.all_done(ns, tasks)
-    # Now try running the tasks again.  This should return True because
-    # all the tasks are done.
-    assert lsfdo.run_tasks(ns, tasks, lsfopts)
+    # Now try running the tasks again.
+    lsfdo.bsubmany(ns, tasks, [opt for t in tasks])
     # Clean up dones and make sure jobs are now not done.
     lsfdo.reset(ns)
     assert not lsfdo.all_done(ns, tasks)
     # finally, clean up tables.
     lsfdo.reset(ns)
-
 

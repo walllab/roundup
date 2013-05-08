@@ -15,18 +15,14 @@ This involves:
 '''
 
 import argparse
-import glob
 import os
 import re
 import subprocess
 from pprint import pprint
 
-import fasta
-import nested
+import config # import config to set up DONES_DB_URL and other env vars.
 import orthutil
 import roundup.dataset as rd
-import dones
-import config
 import lsfdo
 
 
@@ -53,17 +49,11 @@ class Quest(object):
         m = re.search(r'^qfo_(?P<version>\d{4}_\d{2})$', self.dsid)
         if not m:
             msg = 'Dataset id {} does not match expected pattern of a "qfo_"'
-            msg += ' prefix followed by a uniprot version (e.g. 2011_04).'
+            msg += ' prefix followed by a uniprot version (e.g. qfo_2011_04).'
             msg = msg.format(self.dsid)
             raise Exception(msg)
         else:
             self.version = m.group('version')
-
-        # Dones namespace
-        self.ns = 'roundup_dataset_{}_dones'.format(self.dsid)
-
-    def dones(self):
-        return dones.get(self.ns)
 
     # SOURCES
 
@@ -122,142 +112,39 @@ class Quest(object):
         return genomes
 
 
-    def compute_jobs(self):
-        '''
-        A wrapper around roundup.dataset.computeJobs() to make it more
-        compatible for use in workflow() by raising an exception when
-        the jobs are not all done.
-        '''
-        all_done = rd.computeJobs(self.ds)
-        if not all_done:
-            # indicate to workflow that this step is not done yet.
-            raise Exception('Compute jobs are not all done. Try rerunning workflow when they are done.')
-
-
-    def format_genomes(self):
-        '''
-        A wrapper around roundup.dataset.format_genome to only format a 
-        genome if it is not done already and to parallelize on lsf genome
-        formatting.
-        '''
-        tasks = []
-        for genome in rd.getGenomes(self.ds):
-            tasks.append(lsfdo.FuncTask(
-                'quest_format_genome {}'.format(genome),
-                'roundup.dataset.format_genome', 
-                [self.ds, genome]))
-        all_done = lsfdo.run_tasks(
-            self.ns, tasks, lsfopts=['-q', 'short', '-W', '60'])
-        if not all_done:
-            raise Exception('Format jobs are not all done. Try rerunning workflow when they are done.')
-
-
     # WORKFLOW
-
-    def do(self, name, func, *args, **kws):
-        '''
-        Use name to track whether or not func has been run.  If it has,
-        skip it.  If it has not, run it with args and kws and mark it done
-        if it successfully completes.
-        '''
-        if not self.dones().done(name):
-            print 'Doing', name
-            out = func(*args, **kws)
-            self.dones().mark(name)
-            return out
-
-        print 'Done', name
 
     def workflow(self):
 
-        self.do('prepare_dataset', rd.prepare_dataset, self.ds)
-        self.do('download_reference_proteomes',
-                self.download_reference_proteomes)
-        self.do('unpack_reference_proteomes',
-                self.unpack_reference_proteomes)
-        # self.dones().unmark('set_genomes_and_fasta_from_reference_proteomes')
-        self.do('set_genomes_and_fasta_from_reference_proteomes',
-                self.set_genomes_and_fasta_from_reference_proteomes)
-        self.do('format_genomes', self.format_genomes)
-        self.do('prepare_jobs', rd.prepareJobs, self.ds)
-        self.do('compute_jobs', self.compute_jobs)
-        self.do('collate_orthologs', rd.collateOrthologs, self.ds)
-        self.do('zip_download_paths', rd.zipDownloadPaths, self.ds)
+        ns = 'roundup_dataset_{}_dones'.format(self.dsid)
 
-        return
+        # helper functions
+        def dofunc(name, func, *args, **kws):
+            task = lsfdo.FuncTask(name, func, args, kws)
+            lsfdo.do(ns, task)
 
-def do_all():
-    pass
-    # process proteomes into dataset genomes
+        def dometh(name, obj, method, *args, **kws):
+            task = lsfdo.MethodTask(name, obj, method, args, kws)
+            lsfdo.do(ns, task)
 
-    # compute orthologs
-
-    # collate orthologs
-
-    # convert orthologs to orthoxml
-
-    # prepare as a downloadable file.
-
-
-
-def convert_fasta(infile, outfile):
-    '''
-    Convert reference proteome fasta file namelines into a format that rsd can parse.
-    Basically it changes the namelines from '>ns:id blah' to '>lcl|id' and
-    removes some blank lines from the files.
-    '''
-    # set filterBlankLines because 
-    # /groups/cbi/td23/quest_for_orthologs/v5/2011_04_reference_proteomes/9606_homo_sapiens.fasta
-    # starts with a blank line and has a blank line within the file after a single sequence.  Weird.
-    outlines = []
-    for lines in fasta.readFastaLines(infile, filterBlankLines=True): 
-        nameline = lines[0]
-        seqlines = lines[1:]
-        seqid = nameline.split(':')[1].split()[0]
-        # add 'lcl' because ncbi blast expects it in order to parse namelines (like the ones we have)
-        # when formatting a fasta file, and we format thusly b/c roundup likes to retrieve fasta
-        # sequences by id, for which parsing namelines when formatting is required.
-        # More on namelines: http://www.ncbi.nlm.nih.gov/books/NBK7183/?rendertype=table&id=ch_demo.T5
-        newNameline = '>lcl|' + seqid + '\n'
-        outlines.append(newNameline)
-        outlines.extend(seqlines)
-    with open(outfile, 'w') as fh:
-        fh.write(''.join(outlines))
-
-    numIn = fasta.numSeqsInPath(infile)
-    numOut = fasta.numSeqsInPath(outfile)
-    if numIn != numOut:
-        msg = 'Different number of sequences between infile and outfile.'
-        msg += ' infile={}, num_in_seqs={}, outfile={}, num_out_seqs={}\n'
-        print msg.format(infile, numIn, outfile, numOut)
-
-
-def convert_fastas(ds, srcdir):
-    '''
-    Converts all the reference proteomes fasta files to a nameline format rsd likes,
-    Also writes those files to the appropriate location in the dataset and
-    parses the genomeToTaxon and genomeToName metadata from the srcdir filenames
-    and saves that info.
-    All fasta files are in srcdir and named <taxonid>_<genomename>.fasta
-    '''
-    print 'convert_fastas'
-    infiles = glob.glob(os.path.join(srcdir, '*_*.fasta'))
-    # example filenames: 10090_mus_musculus.fasta, 6239_caenorhabditis_elegans.fasta 
-    filenameRE = re.compile('(\d+)_(.+?)\.fasta')
-    print 'infiles', infiles
-    with nested.NestedTempDir() as tmpDir:
-        fasta_file = os.path.join(tmpDir, 'converted.fasta')
-        cmd = '../webapp/python ../webapp/roundup/dataset.py add_fasta {ds}'
-        cmd += ' {genome} {fasta_file} --name {name} --taxon {taxon}'
-        for infile in infiles:
-            m = filenameRE.search(os.path.basename(infile))
-            taxon, name = m.group(1), m.group(2)
-            genome = taxon
-            convert_fasta(infile, fasta_file)
-            # copy fasta file into dataset.  update name and taxon metadata.
-            cmd2 = cmd.format(**locals())
-            print 'running:', cmd2
-            subprocess.check_call(cmd2, shell=True)
+        dofunc('prepare_dataset', rd.prepare_dataset, self.ds)
+        dometh('download_reference_proteomes', self,
+               'download_reference_proteomes')
+        dometh('unpack_reference_proteomes', self, 'unpack_reference_proteomes')
+        dometh('set_genomes_and_fasta_from_reference_proteomes', self,
+               'set_genomes_and_fasta_from_reference_proteomes')
+        dofunc('format_genomes', rd.format_genomes, self.ds)
+        # format genomes in parallel
+        # tasks = [
+            # lsfdo.FuncTask('quest_format_genome {}'.format(genome),
+                           # rd.format_genome, [self.ds, genome])
+            # for genome in rd.getGenomes(self.ds)]
+        # opts = [['-q', 'short', '-W', '60'] for task in tasks]
+        # lsfdo.bsubmany(ns, tasks, opts, timeout=0)
+        dofunc('prepare_jobs', rd.prepare_jobs, self.ds)
+        dofunc('compute_jobs', rd.computeJobs, self.ds)
+        dofunc('collate_orthologs', rd.collate_orthologs, self.ds)
+        dofunc('zip_download_paths', rd.zip_download_paths, self.ds)
 
 
 def convert_orthologs_for_upload(infile, outfile):
@@ -276,9 +163,6 @@ def convert_orthologs_for_upload(infile, outfile):
 
 def main():
 
-
-    def do_fastas(args):
-        return convert_fastas(args.dataset, args.srcdir)
 
     parser = argparse.ArgumentParser(description='')
     subparsers = parser.add_subparsers()

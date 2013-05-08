@@ -104,9 +104,8 @@ BIG_DATA_KEYS = [GENES, GENE_TO_GENOME, GENE_TO_NAME, GENE_TO_DESC,
 LOCAL_DIR = '/tmp'
 
 
-#######################
-# MAIN DATASET PIPELINE
-#######################
+##################
+# DATASET CREATION
 
 def prepare_dataset(ds):
     '''
@@ -118,6 +117,9 @@ def prepare_dataset(ds):
             os.makedirs(path, DIR_MODE)
 
 
+########################################
+# DOWNLOADING AND PROCESSING SOURCE DATA
+
 def download_sources(ds):
     '''
     Download uniprot files contained in an archive of a uniprot release.
@@ -126,7 +128,7 @@ def download_sources(ds):
     Save source urls, but fudge the uniprot ones to look like the archive url, b/c the "current" urls
     are not stable.
     '''
-    
+
     print 'download_sources: {}'.format(ds)
     sourcesDir = getSourcesDir(ds)
 
@@ -136,10 +138,10 @@ def download_sources(ds):
 
     taxonUrlDests = [('ftp://ftp.ncbi.nih.gov/pub/taxonomy/taxcat.tar.gz', os.path.join(sourcesDir, 'ncbi', 'taxcat.tar.gz')),
                      ('ftp://ftp.ncbi.nih.gov/pub/taxonomy/taxdump.tar.gz', os.path.join(sourcesDir, 'ncbi', 'taxdump.tar.gz'))]
-    
+
     goUrlDests = [('ftp://ftp.geneontology.org/pub/go/godatabase/archive/go_daily-termdb-tables.tar.gz',
                    os.path.join(sourcesDir, 'geneontology/go_daily-termdb-tables.tar.gz'))]
-    
+
     urlDests = uniprotUrlDests + taxonUrlDests + goUrlDests
     print urlDests
     for url, dest in urlDests:
@@ -177,7 +179,7 @@ def downloadSource(ds, url, dest):
     pause = 10
     print 'pausing for {} seconds.'.format(pause)
     time.sleep(pause)
-    
+
 
 def process_sources(ds):
     '''
@@ -185,7 +187,7 @@ def process_sources(ds):
     '''
     print 'processing sources...'
     sourcesDir = getSourcesDir(ds)
-    
+
     uniprotFiles = [
              'uniprot/uniprot_sprot.dat.gz', 
              'uniprot/uniprot_trembl.dat.gz', 
@@ -206,11 +208,15 @@ def process_sources(ds):
             print '...gunzip file'
             subprocess.check_call(['gunzip', path])
         getDones(ds).mark(('process source', path))
-            
+
     print '...done'
 
 
-def extractTaxonData(ds):
+######################################
+# EXTRACT TAXON AND GENE ONTOLOGY DATA
+
+
+def extract_taxon_data(ds):
     '''
     taxon category codes and names from ftp://ftp.ncbi.nlm.nih.gov/pub/taxonomy/taxcat_readme.txt:
     A = Archaea
@@ -236,7 +242,7 @@ def extractTaxonData(ds):
     setData(ds, TAXON_TO_DATA, taxonToData)
 
         
-def extractFromGeneOntology(ds):
+def extract_gene_ontology_data(ds):
     '''
     creates a lookup for go term accessions to name and term_type.  e.g. 'GO:2000779' => 'regulation of double-strand break repair', 'biological_process'    
     '''
@@ -247,7 +253,7 @@ def extractFromGeneOntology(ds):
     # `is_obsolete` int(11) NOT NULL DEFAULT '0',
     # `is_root` int(11) NOT NULL DEFAULT '0',
     # `is_relation` int(11) NOT NULL DEFAULT '0',
-    
+
     termToData = {}
     with open(os.path.join(getSourcesDir(ds), 'geneontology/go_daily-termdb-tables/term.txt')) as fh:
         for line in fh:
@@ -257,7 +263,11 @@ def extractFromGeneOntology(ds):
     setData(ds, TERM_TO_DATA, termToData)
 
 
-def examineDats(ds, dats=None, surprisesFile=None, countsFile=None):
+###########################################################
+# EXTRACT FASTA FILES AND OTHER DATA FROM UNIPROT DAT FILES
+
+
+def examine_dats(ds, dats=None, surprisesFile=None, countsFile=None):
     '''
     Investigate which genomes we should include in roundup.  Gather data about
     the sequences and genomes in the dat files, primarily counts per genome of
@@ -283,7 +293,7 @@ def examineDats(ds, dats=None, surprisesFile=None, countsFile=None):
     print 'dats:', dats
     print 'surprisesFile:', surprisesFile
     print 'countsFile:', countsFile
-    
+
     genomeToCount = collections.defaultdict(int) # maps each genome to the number of sequences (in the dat files) for that genome.
     genomeToCompleteCount = collections.defaultdict(int) # track number of seqs in the Complete proteome set of an organism
     genomeToReferenceCount = collections.defaultdict(int) # track number of seqs in the Reference proteome set of an organism
@@ -298,7 +308,7 @@ def examineDats(ds, dats=None, surprisesFile=None, countsFile=None):
     # do genes have more than one gene name, description?
     # do genomes have more than one version of a name, a taxon, a complete status?
     allSurprises = []
-    
+
     for path in dats:
         for entryNum, data in enumerate(uniprot.genDatEntries(path)):
             ns, gene, orgCode, orgName, taxon, geneName, geneDesc, complete, reference, geneIds, goTerms, fastaLines, surprises = data
@@ -338,7 +348,7 @@ def examineDats(ds, dats=None, surprisesFile=None, countsFile=None):
         # surprise! genome has multiple taxons
         if len(genomeToTaxons[genome]) > 1:
             allSurprises.append('\t'.join(('multiple_genome_taxons', genome, ' '.join(genomeToTaxons[genome])))) 
-            
+
         refCount = genomeToReferenceCount[genome]
         compCount = genomeToCompleteCount[genome]
         if refCount and refCount != compCount:
@@ -371,9 +381,13 @@ def examineDats(ds, dats=None, surprisesFile=None, countsFile=None):
 
 def set_genomes_from_filter(ds):
     '''
-    Set the genomes to be ones that have >= MIN_GENOME_SIZE sequences marked
-    'Complete proteome' and are archaea, bacteria, or eukayota, and have taxon
-    data.  Report all genomes rejected for missing taxon data if they meet the
+    Set the genomes to be ones that:
+
+    - have >= MIN_GENOME_SIZE sequences marked 'Complete proteome'
+    - and are archaea, bacteria, or eukayota.  Reject viruses and unknown taxons.
+    - and have taxon data
+
+    Report all genomes rejected for missing taxon data if they meet the
     sequence count criterion.
     '''
     countData = getData(ds, 'dat_genome_counts')
@@ -403,91 +417,18 @@ def set_genomes_from_filter(ds):
     setGenomes(ds, genomes3)
 
 
-def setGenomesFromCounts(ds):
+def extract_from_dats(ds, dats=None, writing=True, cleanDirs=False, bufSize=5000000):
     '''
-    Use to set the genomes from uniprot that we are interested in.  These are genomes who have >= MIN_GENOME_SIZE
-    sequences marked 'Complete proteome'.
-    '''
-    raise Exception('Deprecated.  See set_genomes_from_filter')
-    # we are interested in genomes with complete counts >= MIN_GENOME_SIZE
-    countData = getData(ds, 'dat_genome_counts')
-    genomes = [g for g in countData if countData[g]['complete_count'] >= MIN_GENOME_SIZE]
-    setGenomes(ds, genomes)
+    Gather data about each 'Complete proteome' sequence, including name, description, go terms, ncbi gene ids.  Gather data about each
+    associated genome, including name, ncbi taxon id, and sequence counts.  Create fasta files containing the seqs, one for each genome,
+    trying to mimic the fasta name lines in the fasta files from uniprot.
 
-
-def findMissingTaxonToData(ds):
-    '''
-    Report which genomes (of the genomes we are interested in) are missing from taxonToData or do not
-    have all the data they should.
-    Sadly, some taxon ids for uniprot genomes are missing from the ncbi taxonToData (category.dmp, names.dmp).
-    Why are they missing?  Some are for organisms (e.g. virus isolates like VAR66) not in ncbi.
-    For others, uniprot uses the wrong taxon id (e.g. SALPB).  Also, sometimes NCBI category.dmp disagrees
-    with names.dmp, perhaps b/c one taxon can be replaced with another.  E.g. 662066 by 1111464
-    This prints out which are missing.
-    Then one should construct by hand a lookup table for the missing taxons and use
-    setMissingTaxonToData() to create a lookup to be used when the database is loaded.
-    '''
-    raise Exception('Deprecated.  See set_genomes_from_filter')
-    genomes = getGenomes(ds)
-    taxonToData = getTaxonToData(ds)
-    for genome in genomes:
-        taxon = genome
-        if taxon not in taxonToData:
-            print 'missing_taxon', taxon
-        else:
-            name = taxonToData[taxon].get(NAME)
-            catCode = taxonToData[taxon].get(CAT_CODE)
-            catName = taxonToData[taxon].get(CAT_NAME)
-            if None in (name, catCode, catName):
-                print 'missing_data', taxon, name, catCode, catName
-
-
-def setMissingTaxonToData(ds, missingTaxonToData):
-    '''
-    update taxonToData with data for the genome taxons that were missing data.
-    # example of updating taxonToData with missing taxon data
-    cd /www/dev.roundup.hms.harvard.edu/webapp && time python -c "import roundup.dataset;
-    ds = '/groups/cbi/roundup/datasets/3'
-    missingData = {
-    '654926': {roundup.dataset.NAME: 'Ectocarpus siliculosus virus 1 (isolate New Zealand/Kaikoura/1988)',
-    roundup.dataset.CAT_CODE: 'V',
-    roundup.dataset.CAT_NAME: 'Viruses and Viroids'},
-    '654925': {roundup.dataset.NAME: 'Emiliania huxleyi virus 86 (isolate United Kingdom/English Channel/1999)',
-    roundup.dataset.CAT_CODE: 'V',
-    roundup.dataset.CAT_NAME: 'Viruses and Viroids'},
-    '1054147': {roundup.dataset.NAME: 'Dictyostelium fasciculatum (strain SH3)',
-    roundup.dataset.CAT_CODE: 'E',
-    roundup.dataset.CAT_NAME: 'Eukaryota'},
-    '587202': {roundup.dataset.NAME: 'Variola virus (isolate Human/Japan/Yamada MS-2(A)/1946)',
-    roundup.dataset.CAT_CODE: 'V',
-    roundup.dataset.CAT_NAME: 'Viruses and Viroids'},
-    '587203': {roundup.dataset.NAME: 'Variola virus (isolate Human/Brazil/v66-39/1966)',
-    roundup.dataset.CAT_CODE: 'V',
-    roundup.dataset.CAT_NAME: 'Viruses and Viroids'},
-    '587201': {roundup.dataset.NAME: 'Variola virus (isolate Human/South Africa/102/1965)',
-    roundup.dataset.CAT_CODE: 'V',
-    roundup.dataset.CAT_NAME: 'Viruses and Viroids'},
-    }
-    roundup.dataset.setMissingTaxonToData(ds, missingTaxonToData)
-    "
-    '''
-    raise Exception('Deprecated.  See set_genomes_from_filter')
-    taxonToData = getTaxonToData(ds)
-    taxonToData.update(missingTaxonToData)
-    setData(ds, TAXON_TO_DATA, taxonToData)
-
-
-def extractFromDats(ds, dats=None, writing=True, cleanDirs=False, bufSize=5000000):
-    '''
     ds: a dataset (dir)
     dats: a list of dat file paths.  Defaults to the dat files in the dataset.
     writing: debugging. if False, fasta files will not be writen. Useful for debugging
     cleanDirs: optimization.  if True, all fasta files in the dataset will be removed before splitting the genomes, which takes time.
     bufSize: number of fasta sequence to cache in memory before writing to files.  this is to avoid writing frequently to
       files, b/c opening and closing files on Isilon fileserver is slow.
-    Gather data about each 'Complete proteome' sequence, including name, description, go terms, ncbi gene ids.  Gather data about each
-    associated genome, including name, ncbi taxon id, and sequence counts.  Create fasta files containing the seqs, one for each genome,
-    trying to mimic the fasta name lines in the fasta files from uniprot.
     '''
 
     if not dats:
@@ -518,7 +459,7 @@ def extractFromDats(ds, dats=None, writing=True, cleanDirs=False, bufSize=500000
     # use count data to avoid rescanning dat files.
     countData = getData(ds, 'dat_genome_counts')
     taxonToData = getTaxonToData(ds)
-    
+
     genomes = getGenomes(ds)
     genomeToName = {g: taxonToData[g][NAME] for g in genomes} # use taxon name as genome name.
     genomeToCount = {g: countData[g]['complete_count'] for g in genomes}
@@ -531,7 +472,7 @@ def extractFromDats(ds, dats=None, writing=True, cleanDirs=False, bufSize=500000
 
     # paranoid check: All genome names should be unique
     assert len(genomeToName.values()) == len(set(genomeToName.values()))
-    
+
     geneToGenome = {} # track which sequences belong to which genome.  store sequences of all complete genomes
     geneToName = {}
     geneToDesc = {}
@@ -593,7 +534,7 @@ def extractFromDats(ds, dats=None, writing=True, cleanDirs=False, bufSize=500000
     setData(ds, 'genomeToOrgCode', genomeToOrgCode)
 
     print 'all done.', datetime.datetime.now()
-    
+
 
 def updateGenomeCounts(ds):
     '''
@@ -607,15 +548,19 @@ def updateGenomeCounts(ds):
     setData(ds, 'genomeToCount', genomeToCount)
 
 
-def formatGenomes(ds):
+def format_genomes(ds):
     '''
     Format genomes for blast.
     ds: dataset for which to format genomes
     '''
     print 'formatting genomes. {}'.format(ds)
+    ns = 'roundup_dataset_{}_dones'.format(getDatasetId(ds))
     genomes = getGenomes(ds)
-    for genome in genomes:
-        format_genome(ds, genome)
+    tasks = [lsfdo.FuncTask('format_genome_{}'.format(genome), 
+                            format_genome, [ds, genome]) 
+             for genome in genomes]
+    opts = [['-q', 'short', '-W', '60'] for task in tasks]
+    lsfdo.bsubmany(ns, tasks, opts)
 
 
 def format_genome(ds, genome):
@@ -624,42 +569,63 @@ def format_genome(ds, genome):
     rsd.formatForBlast(fastaPath)
 
 
-def prepareJobs(ds, numJobs=DEFAULT_NUM_JOBS, pairs=None):
+#############################################
+# COLLECTING SIZE AND PERFORMANCE STATISTICS 
+
+def extract_dataset_stats(ds):
     '''
-    ds: dataset to ready to compute pairs
-    numJobs: split pairs into this many jobs.  More jobs = shorter jobs, better parallelism.
-      Fewer jobs = fewer dirs and files to make isilon run slowly and overload lsf queue.
-      Recommendation: <= 10000.
-    pairs: If None, compute orthologs for all pairs of genomes.  If not None, only compute these pairs.  useful for testing.  
+    update the dataset metadata with num genomes, num pairs, total num orthologs.
     '''
-    print 'prepare jobs for {}'.format(ds)
+    numGenomes = len(getGenomes(ds))
+    numPairs = len(getPairs(ds))
+    numOrthologs = 0
+    for params, orthologs in orthutil.orthDatasFromFilesGen(getOrthologsFiles(ds)):
+        numOrthologs += len(orthologs)
+    setData(ds, 'numGenomes', numGenomes)
+    setData(ds, 'numPairs', numPairs)
+    setData(ds, 'numOrthologs', numOrthologs)
+
+
+def extract_performance_stats(ds, pairs=None):
+    '''
+    pairs: default is to collect stats for all pairs.  It can be useful for testing to set pairs to a specific list of pairs.
+    times are in seconds.
+    '''
+    blastStats = {}
+    rsdStats = {}
+    totalTime = 0
+    totalRsdTime = 0
+    totalBlastTime = 0
 
     if pairs is None:
         pairs = getPairs(ds)
-    print 'pair count:', len(pairs)
 
-    # create up to N jobs for the pairs to be computed.
-    # each job contain len(pairs)/N pairs, except if N does not divide len(pairs) evenly, some jobs get an extra pair.
-    # e.g. if you had 11 pairs (1,2,3,4,5,6,7,8,9,10,11) and 3 jobs, the pairs would be split
-    # into these jobs: (1,2,3,4),(5,6,7,8),(9,10,11)
-    # Distribute pairs randomly among jobs so that each job will have about the same running time.
-    # Ideally job running time would be explictly balanced, but currently pairs are just assigned randomly.
-    random.shuffle(pairs)
-    for i, jobPairs in enumerate(util.splitIntoN(pairs, numJobs)):
-        if i % 100 == 0:
-            print 'preparing job', i
-        job = 'job_{}'.format(i)
-        print 'job:', job
-        print 'len(jobPairs)=', len(jobPairs)
-        jobDir = getJobDir(ds, job)
-        print 'jobDir:', jobDir
-        os.makedirs(getJobDir(ds, job), 0770)
-        setJobPairs(ds, job, jobPairs)
+    def elapsedTime(stats):
+        return stats['endTime'] - stats['startTime']
 
-    refreshJobs(ds) # refresh the cached metadata
+    with statsCM(ds) as stats:
+        for qdb, sdb in pairs:
+            forwardTime = elapsedTime(stats.getBlast(qdb, sdb))
+            reverseTime = elapsedTime(stats.getBlast(sdb, qdb))
+            rsdTime = elapsedTime(stats.getRsd(qdb, sdb))
+
+            blastStats[json.dumps((qdb, sdb))] = forwardTime
+            blastStats[json.dumps((sdb, qdb))] = reverseTime
+            rsdStats[json.dumps((qdb, sdb))] = rsdTime
+
+            totalTime += forwardTime + reverseTime + rsdTime
+            totalBlastTime += forwardTime + reverseTime
+            totalRsdTime += rsdTime
+
+    print 'total time:', totalTime
+    print 'total blast time:', totalBlastTime
+    print 'total rsd time:', totalRsdTime
+    print 'saving stats'
+    setData(ds, BLAST_STATS, blastStats)
+    setData(ds, RSD_STATS, rsdStats)
 
 
-def makeChangeLog(ds, others):
+def make_change_log(ds, others):
     '''
     others: a list of other datasets to compare this one too.
     '''
@@ -737,68 +703,12 @@ def makeChangeLog(ds, others):
         print '\n'.join([str(t) + '\t' + str(data[dsid1]['taxonToName'][t]) for t in diff])
     changeLog = {'data': data, 'differences': diffs, 'sizes': sizes}
     setData(ds, CHANGE_LOG, changeLog)
-                
-
-def extractDatasetStats(ds):
-    '''
-    update the dataset metadata with num genomes, num pairs, total num orthologs.
-    '''
-    numGenomes = len(getGenomes(ds))
-    numPairs = len(getPairs(ds))
-    numOrthologs = 0
-    for params, orthologs in orthutil.orthDatasFromFilesGen(getOrthologsFiles(ds)):
-        numOrthologs += len(orthologs)
-    setData(ds, 'numGenomes', numGenomes)
-    setData(ds, 'numPairs', numPairs)
-    setData(ds, 'numOrthologs', numOrthologs)
-
-    
-def extractPerformanceStats(ds, pairs=None):
-    '''
-    pairs: default is to collect stats for all pairs.  It can be useful for testing to set pairs to a specific list of pairs.
-    times are in seconds.
-    '''
-    blastStats = {}
-    rsdStats = {}
-    totalTime = 0
-    totalRsdTime = 0
-    totalBlastTime = 0
-    
-    if pairs is None:
-        pairs = getPairs(ds)
-
-    def elapsedTime(stats):
-        return stats['endTime'] - stats['startTime']
-    
-    with statsCM(ds) as stats:
-        for qdb, sdb in pairs:
-            forwardTime = elapsedTime(stats.getBlast(qdb, sdb))
-            reverseTime = elapsedTime(stats.getBlast(sdb, qdb))
-            rsdTime = elapsedTime(stats.getRsd(qdb, sdb))
-
-            blastStats[json.dumps((qdb, sdb))] = forwardTime
-            blastStats[json.dumps((sdb, qdb))] = reverseTime
-            rsdStats[json.dumps((qdb, sdb))] = rsdTime
-
-            totalTime += forwardTime + reverseTime + rsdTime
-            totalBlastTime += forwardTime + reverseTime
-            totalRsdTime += rsdTime
-
-    print 'total time:', totalTime
-    print 'total blast time:', totalBlastTime
-    print 'total rsd time:', totalRsdTime
-    print 'saving stats'
-    setData(ds, BLAST_STATS, blastStats)
-    setData(ds, RSD_STATS, rsdStats)
-       
 
 
+##############################################
+# PREPARING GENOMES AND ORTHOLOGS FOR DOWNLOAD
 
-#################################
-# DOWNLOAD AND ORTHOXML FUNCTIONS
-#################################
-
-def processGenomesForDownload(ds):
+def process_genomes_for_download(ds):
     '''
     copy genome fasta files into a dir under download dir, then tar.gz the dir.
     '''
@@ -828,8 +738,8 @@ def getDownloadOrthologsPath(ds, div, evalue):
     downloadDir = getDownloadDir(ds)
     return os.path.join(downloadDir, 'roundup-{}-orthologs_{}_{}.txt.gz'.format(dsid, div, evalue))
 
-    
-def collateOrthologs(ds):
+
+def collate_orthologs(ds):
     '''
     collate orthologs from jobs files into files for each parameter combination in the download dir.
     '''
@@ -850,7 +760,7 @@ def collateOrthologs(ds):
             fh.close()
 
 
-def zipDownloadPaths(ds):
+def zip_download_paths(ds):
     '''
     after orthologs have been collated and converted to orthoxml, zip the files
     '''
@@ -878,12 +788,15 @@ def getDownloadPaths(ds):
     return divEvalues, txtPaths, xmlPaths
 
 
-def convertToOrthoXML(ds, origin, originVersion, databaseName, databaseVersion, protLink=None, clean=False):
+#####################
+# ORTHOXML CONVERSION
+
+def convert_to_orthoxml(ds, origin, origin_version, database, database_version, protLink=None, clean=False):
     '''
     origin: e.g. 'roundup'
-    originVersion: e.g. getReleaseName(ds)
-    databaseName: e.g. 'Uniprot'
-    databaseVersion: e.g. getUniprotRelease(ds)
+    origin_version: e.g. getReleaseName(ds)
+    database: e.g. 'Uniprot'
+    database_version: e.g. getUniprotRelease(ds)
     protLink: e.g. 'http://www.uniprot.org/uniprot/'
     convert collated orthologs files to orthoxml format.
     clean: if True, will delete the xml files if they already exist.
@@ -896,8 +809,8 @@ def convertToOrthoXML(ds, origin, originVersion, databaseName, databaseVersion, 
                 os.remove(xmlPath)
 
     for txtPath, xmlPath in zip(txtPaths, xmlPaths):
-        convertTxtToOrthoXML(ds, txtPath, xmlPath, origin, originVersion,
-                             databaseName, databaseVersion, protLink)
+        convertTxtToOrthoXML(ds, txtPath, xmlPath, origin, origin_version,
+                             database, database_version, protLink)
 
 
 def convertTxtToOrthoXML(ds, txtPath, xmlPath, origin, originVersion, databaseName, databaseVersion, protLink):
@@ -949,14 +862,14 @@ def convertOrthDatasToXml(ds, orthDatas, orthDatasAgain, xmlOut,
     '''
     if originVersion is None:
         originVersion = getReleaseName(ds)
-    
+
     if databaseVersion is None:
         databaseVersion = getUniprotRelease(ds)
 
     print 'getting metadata'
     genomeToName = getGenomeToName(ds)
     genomeToTaxon = getGenomeToTaxon(ds)
-    
+
     print 'pass 1: collecting genes'
     genomeToGenes = collections.defaultdict(set)
     for params, orthologs in orthDatas:
@@ -1000,20 +913,20 @@ def convertOrthGroupsToXml(ds, groups, genomeToGenes, div, evalue, xmlOut,
     '''
     if originVersion is None:
         originVersion = getReleaseName(ds)
-    
+
     if databaseVersion is None:
         databaseVersion = getUniprotRelease(ds)
 
     print 'getting metadata'
     genomeToName = getGenomeToName(ds)
     genomeToTaxon = getGenomeToTaxon(ds)
-    
+
     print 'making species'
     speciesList, geneToIden = makeOrthoxmlSpecies(genomeToGenes, genomeToName,
             genomeToTaxon, databaseName, databaseVersion, protLink)
 
     scoreDef = orthoxml.ScoreDef('avgdist', 'Mean maximum likelihood evolutionary distance of all orthologous pairs in a group')
-    
+
     print 'writing xml'
 
     def groupGen():
@@ -1032,6 +945,19 @@ def convertOrthGroupsToXml(ds, groups, genomeToGenes, div, evalue, xmlOut,
 # DATASET STUFF
 ###############
 
+
+def previousDataset(ds):
+    '''
+    Big assumption here, that the basename of ds is an integer and the previous
+    dataset is the a directory named after the next smallest integer and
+    located in the same parent directory
+
+    For example, if ds is '/groups/cbi/roundup/datasets/4', the the previous
+    dataset is  '/groups/cbi/roundup/datasets/3'.
+    '''
+    return os.path.join(os.path.dirname(ds), str(int(os.path.basename(ds)) - 1))
+
+
 def getDatasetId(ds):
     '''
     e.g. 3
@@ -1046,11 +972,11 @@ def getGenomesDir(ds):
 def getJobsDir(ds):
     return os.path.join(ds, 'jobs')
 
-    
+
 def getOrthologsDir(ds):
     return os.path.join(ds, 'orthologs')
 
-    
+
 def getSourcesDir(ds):
     return os.path.join(ds, 'sources')
 
@@ -1093,7 +1019,7 @@ def cleanJobs(ds):
         if os.path.exists(path):
             print 'removing {}'.format(path)
             shutil.rmtree(path)
-    
+
     refreshJobs(ds) # reset jobs cache
     print 'resetting dones...'
     getDones(ds).clean()
@@ -1119,15 +1045,49 @@ def cleanGenomes(ds):
 
 
 
-##########
-# RUN JOBS
-##########
+###############################
+# RUN ORTHOLOG COMPUTATION JOBS
+
+def prepare_jobs(ds, numJobs=DEFAULT_NUM_JOBS, pairs=None):
+    '''
+    ds: dataset to ready to compute pairs
+    numJobs: split pairs into this many jobs.  More jobs = shorter jobs, better parallelism.
+      Fewer jobs = fewer dirs and files to make isilon run slowly and overload lsf queue.
+      Recommendation: <= 10000.
+    pairs: If None, compute orthologs for all pairs of genomes.  If not None, only compute these pairs.  useful for testing.  
+    '''
+    print 'prepare jobs for {}'.format(ds)
+
+    if pairs is None:
+        pairs = getPairs(ds)
+    print 'pair count:', len(pairs)
+
+    # create up to N jobs for the pairs to be computed.
+    # each job contain len(pairs)/N pairs, except if N does not divide len(pairs) evenly, some jobs get an extra pair.
+    # e.g. if you had 11 pairs (1,2,3,4,5,6,7,8,9,10,11) and 3 jobs, the pairs would be split
+    # into these jobs: (1,2,3,4),(5,6,7,8),(9,10,11)
+    # Distribute pairs randomly among jobs so that each job will have about the same running time.
+    # Ideally job running time would be explictly balanced, but currently pairs are just assigned randomly.
+    random.shuffle(pairs)
+    for i, jobPairs in enumerate(util.splitIntoN(pairs, numJobs)):
+        if i % 100 == 0:
+            print 'preparing job', i
+        job = 'job_{}'.format(i)
+        print 'job:', job
+        print 'len(jobPairs)=', len(jobPairs)
+        jobDir = getJobDir(ds, job)
+        print 'jobDir:', jobDir
+        os.makedirs(getJobDir(ds, job), 0770)
+        setJobPairs(ds, job, jobPairs)
+
+    refreshJobs(ds) # refresh the cached metadata
 
 
-def computeJobs(ds):
+
+def compute_jobs(ds):
     '''
     Submit all incomplete and non-running jobs to lsf, so they can compute
-    their respective pairs.  Return True if all jobs are done.
+    their respective pairs.
     '''
     # a job is a name of a directory and a set of genome pairs for ortholog computation.
     jobs = sorted(getJobs(ds))
@@ -1136,16 +1096,15 @@ def computeJobs(ds):
     dsid = getDatasetId(ds)
     ns = 'roundup_dataset_{}_compute_jobs'.format(dsid)
     names = ['roundup_compute_job_{}_{}'.format(dsid, job) for job in jobs]
-    func = 'roundup.dataset.computeJob'
-    lsfopts = ['-R', 'rusage[tmp=500]', '-q', 'long', '-W', '720:0']
-    tasks = [lsfdo.FuncTask(name, func, [ds, job]) for name, job in 
+    opts = [['-R', 'rusage[tmp=500]', '-q', 'long', '-W', '720:0'] for job in
+            jobs]
+    tasks = [lsfdo.FuncTask(name, compute_job, [ds, job]) for name, job in 
              zip(names, jobs)]
 
-    all_done = lsfdo.run_tasks(ns, tasks, lsfopts)
-    return all_done
+    lsfdo.bsubmany(ns, tasks, opts, timeout=0)
 
 
-def computeJob(ds, job):
+def compute_job(ds, job):
     '''
     job: identifies which job this is so it knows which pairs to compute.
     computes orthologs for every pair in the job.  merges the orthologs into a
@@ -1257,7 +1216,7 @@ def getJobPairs(ds, job):
 def setJobPairs(ds, job, pairs):
     with open(os.path.join(getJobDir(ds, job), 'job_pairs.json'), 'w') as fh:
         json.dump(pairs, fh, indent=0)
-    
+
 
 
 def getJobDir(ds, job):
@@ -1294,7 +1253,7 @@ def setGenomes(ds, genomes=None):
         genomes = os.listdir(getGenomesDir(ds))
     return setData(ds, 'genomes', genomes)
 
-    
+
 def getGenomesAndPaths(ds):
     '''
     returns: a dict mapping every genome in the dataset to its genomePath.
@@ -1366,12 +1325,12 @@ def makeGenomeDir(ds, genome):
     if not os.path.exists(genomePath):
         os.mkdir(genomePath, DIR_MODE)
 
-    
+
 ###################
 # ORTHOLOGS/RESULTS
 ###################
 
-    
+
 def getOrthologsFiles(ds):
     return glob.glob(os.path.join(getOrthologsDir(ds), '*.orthologs.txt'))
 
@@ -1486,15 +1445,15 @@ def getReleaseDate(ds):
     logging.debug('getReleaseDate: dateStr={}'.format(dateStr))
     return datetime.datetime.strptime(dateStr, "%Y-%m-%d").date()
 
-    
-def setReleaseDate(ds, date=None):
+
+def set_release_date(ds, date=None):
     '''
     date: a datetime.date object.  if None, datetime.date.today() is used.
     '''
     if date is None:
         date = datetime.date.today()
     setData(ds, 'releaseDate', str(date.strftime("%Y-%m-%d")))
-    
+
 
 def getGenomeToName(ds):
     return getData(ds, 'genomeToName', {})
@@ -1688,13 +1647,7 @@ class Stats(object):
 ##########
 # Workflow for constructing a dataset
 
-def getWorkflow(ds):
-    # import workflow
-    # return workflow.Workflow()
-    pass
-
-
-def do_all(ds):
+def workflow(ds):
     '''
     This function runs the entire workflow needed to create a new roundup dataset,
     from preparing the directories, to downloading genomes, to preprocessing,
@@ -1702,23 +1655,25 @@ def do_all(ds):
     '''
     raise NotImplementedError()
 
-    wf = getWorkflow(ds)
-    wf.do(prepare_dataset, [ds])
-    prepare_dataset(ds)
+    dsid = getDatasetId(ds)
+    ns = 'roundup_dataset_{}_compute_jobs'.format(dsid)
 
-    # Download and process sources
-    download_sources(ds)
-    process_sources(ds)
+    def do(name, func, *args, **kws):
+        task = lsfdo.FuncTask(name, func, args, kws)
+        lsfdo.do(ns, task)
+
+    do('prepare_dataset', prepare_dataset, ds)
+    do('download_sources', download_sources, ds)
+    do('process_sources', process_sources, ds)
 
     # Extract some metadata
-    extract_taxon(ds)
-    extract_gene_ontology(ds)
+    do('extract_taxon', extract_taxon_data, ds)
+    do('extract_gene_ontology', extract_gene_ontology_data, ds)
 
     # Scan dat files, compiling the counts of various genomes, completes, reference, sprot, etc.  This can take an hour or so.
-    examine_dats(ds)
+    do('examine_dats', examine_dats, ds)
 
-    # Some output from the examine_dats function showing that trembl is much bigger than sprot
-
+    # Some output from the examine_dats function showing that trembl 50-100 times bigger than sprot
     # td23@clarinet002-039:/groups/cbi/sites/roundup/datasets/4/code/app$     cd $DS_APP && time $DS_PYTHON roundup/dataset.py examine_dats(ds)
     # Namespace(action='examine_dats', dataset='/groups/cbi/sites/roundup/datasets/4', ds_func=<function examineDats at 0x25e5e60>, func=<function dispatch_ds_func at 0x25ecb18>)
     # dats: ['/groups/cbi/sites/roundup/datasets/4/sources/uniprot/uniprot_sprot.dat', '/groups/cbi/sites/roundup/datasets/4/sources/uniprot/uniprot_trembl.dat']
@@ -1738,44 +1693,15 @@ def do_all(ds):
     # entry count: 28200000
     # entry count: 28300000
 
-    # Check for bad surprises
-    check_dat_surprises(ds)
 
-    # cd $DS_DIR && cat dat_surprises.txt | cut -f1 | sort | uniq
-
-    # The only kind of surprises were reference counts differing from complete counts, which is fairly benign:
-
-    # $ cat dat_surprises.txt 
-    # reference_count_with_different_complete_count		29760			reference count: 29837, complete count: 29839
-    # reference_count_with_different_complete_count		10665			reference count: 273, complete count: 550
-    # reference_count_with_different_complete_count		194966			reference count: 52, complete count: 64
-    # reference_count_with_different_complete_count		246196			reference count: 6601, complete count: 9232
-    # reference_count_with_different_complete_count		10754			reference count: 64, complete count: 148
-    # reference_count_with_different_complete_count		1392			reference count: 5493, complete count: 6614
-    # reference_count_with_different_complete_count		10760			reference count: 84, complete count: 244
-    # reference_count_with_different_complete_count		329852			reference count: 4, complete count: 18
-    # reference_count_with_different_complete_count		83333			reference count: 4303, complete count: 4305
-    # reference_count_with_different_complete_count		12219			reference count: 1, complete count: 2
-    # reference_count_with_different_complete_count		10679			reference count: 43, complete count: 87
-    # reference_count_with_different_complete_count		10678			reference count: 110, complete count: 127
-    # reference_count_with_different_complete_count		632			reference count: 3908, complete count: 5749
-    # reference_count_with_different_complete_count		10710			reference count: 66, complete count: 119
-    # reference_count_with_different_complete_count		5811			reference count: 7841, complete count: 14012
-    # reference_count_with_different_complete_count		10726			reference count: 162, complete count: 255
-    # reference_count_with_different_complete_count		441771			reference count: 3590, complete count: 4237
-    # reference_count_with_different_complete_count		1773			reference count: 3976, complete count: 5223
-    # reference_count_with_different_complete_count		10658			reference count: 30, complete count: 61
-    # reference_count_with_different_complete_count		196627			reference count: 3093, complete count: 3930
-
-
-    # Once everything looks good, set the genomes list to only contain genomes with
+    # Set the genomes list to only contain genomes with
     # enough sequences marked 'Complete proteome' and that are a Eukaryota, Bacteria,
     # or Archaea, and have taxon data.  Historically some viruses have been missing
     # taxon data, which means that the NCBI taxon id Uniprot sets for them is not
-    # present in the taxon data we get from NCBI.
-    set_genomes_from_filter(ds)
+    # present in the taxon data we get from NCBI.  Weird, right?
+    do('set_genomes_from_filter', set_genomes_from_filter, ds)
 
-    # Here is the output showing the taxons with missing taxon data (two big ones!),
+    # Here is output showing the taxons with missing taxon data (two big ones!),
     # and the viruses that got filtered out:
 
     # td23@clarinet002-039:/groups/cbi/sites/roundup/datasets/4/code/app$     cd $DS_APP && time $DS_PYTHON roundup/dataset.py set_genomes_from_filter(ds)
@@ -1814,14 +1740,14 @@ def do_all(ds):
     # after_taxon_category_filter 2044
 
     # Compile genome fasta files from the dat files.  This can take a while
-    extract_dats(ds)
+    do('extract_from_dats', extract_from_dats, ds)
 
     # Format the genomes for BLAST.  This also can take a while.  By default it
     # distributes the jobs onto orchestra, otherwise it takes a really long time.
-    format_genomes(ds)
+    do('format_genomes', format_genomes, ds)
 
     # Prepare jobs for computing all orthologs
-    prepare_jobs(ds)
+    do('prepare_jobs', prepare_jobs, ds)
 
     # Compute the orthologs by running lots of jobs on Orchestra.  This step is often
     # run several times, depending on how many times orchestra services melt down and
@@ -1833,175 +1759,68 @@ def do_all(ds):
     # export DS_APP="$DS_DIR/code/app"
     # export DS_PYTHON="$DS_DIR/code/venv/bin/python"
     # echo $DS_DIR $DS_APP $DS_PYTHON
-    compute(ds)
-
+    do('compute_jobs', compute_jobs, ds)
 
     # Make the Change Log for this dataset / roundup release vs. the previous release (3)
-    make_change_log(ds, '/groups/cbi/sites/roundup/datasets/3')
-
+    do('make_change_log', make_change_log, ds, [previousDataset(ds)])
 
     # When computation is finished, extract stats and prepare files for download:
-    extract_dataset_stats(ds)
-    extract_performance_stats(ds)
+    do('extract_dataset_stats', extract_dataset_stats, ds)
+    do('extract_performance_stats', extract_performance_stats, ds)
     # making all genomes and orthologs available for download.
-    process_genomes_for_download(ds)
-    collate_orthologs(ds)
+    do('process_genomes_for_download', process_genomes_for_download, ds)
+    do('collate_orthologs', collate_orthologs, ds)
     # compress genomes and ortholog download files once they are ready.  This takes a long time.  Could be parallelized.
-    zip_download_paths(ds)
+    do('zip_download_paths', zip_download_paths, ds)
+
+    raise Exception('''Here is where the database should be loaded.  That needs
+                    to be invoked from here without creating a circular
+                    dependency on roundup_load.py.  Also need to make sure RITG
+                    has room in the db before loading a new dataset.  Also need
+                    to delete an old dataset to free up more space.''')
+
     # this is done on the day the dataset is released on the production website.  Or it can be set manually by passing in a datetime.date object.
-    set_release_date(ds)
+    do('set_release_date', set_release_date, ds)
 
 
 
 def main():
-    '''
-    Command line functionality.  These commands are meant to simplify the
-    syntax for making a dataset, so that you do not need to write commands
-    like:
-
-        python -c 'import roundup.dataset; roundup.dataset.prepare_dataset("/groups/cbi/roundup/datasets/4")'
-
-    Instead you can write commands like:
-
-        python roundup/dataset.py prepare_dataset /groups/cbi/roundup/datasets/4
-
-    '''
-
-    # wrappers to transform arguments from subparsers into the
-    # appropriate function call.
-    def format_genomes(args):
-        return formatGenomes(args.dataset)
-
-    def add_fasta(args):
-        return addGenomeFasta(args.dataset, args.genome, args.fasta_file,
-                name=args.name, taxon=args.taxon)
-
-    def prepare_jobs(args):
-        return prepareJobs(args.dataset, numJobs=args.num)
-
-    def convert_to_orthoxml(args):
-        return convertToOrthoXML(args.dataset, args.origin,
-                                 args.origin_version, args.database,
-                                 args.database_version, clean=True)
-
-    def reset_blast_dones_cli(args):
-        return reset_blast_dones(args.dataset, args.query_genome,
-                                 args.subject_genome, args.reverse)
-
-    def make_change_log_cli(args):
-        return makeChangeLog(args.dataset, args.previous_datasets)
-
-
     parser = argparse.ArgumentParser(description='')
-    subparsers = parser.add_subparsers(dest='action')
+    subparsers = parser.add_subparsers(help='')
 
-    def make_ds_subparser(action, func, help=None):
+    def add_ds_parser(name, func, help=None):
         '''
-        action: the name of the subparser.
-        func: A callable that takes a single argument, a dataset
+        Create a subparser named by name and add a dataset argument.
+        Also add a function which takes 'ds' as its first argument.
+        Return the subparser so more arguments can be added if needed.
         '''
-        def ds_func(args):
-            '''
-            Will dispatch to a module-level function named by args.action, passing
-            it the argument args.dataset.
-            '''
-            return func(args.dataset)
+        subparser = subparsers.add_parser(name, help=help)
+        subparser.add_argument('ds', metavar='dataset', 
+                               help='root directory of the dataset')
+        subparser.set_defaults(func=func)
+        return subparser
 
-        subparser = subparsers.add_parser(action, help=help)
-        ds_help = 'The root directory of the dataset.'
-        ds_help += '  E.g. /groups/cbi/sites/roundup/datasets/3'
-        subparser.add_argument('dataset', help=ds_help)
-        subparser.set_defaults(func=ds_func)
-
-    # Command Lines that only take a dataset parameter
-    make_ds_subparser('prepare_dataset', prepare_dataset,
-                      help='Initialize the dataset directory and tables.')
-    make_ds_subparser('download_sources', download_sources,
-                      help='Download uniprot, taxon data, etc.')
-    make_ds_subparser('process_sources', process_sources,
-                      help='Gunzip (and untar) some source files.')
-    make_ds_subparser('extract_taxon', extractTaxonData,
-                      help='')
-    make_ds_subparser('extract_gene_ontology', extractFromGeneOntology,
-                      help='')
-    make_ds_subparser('examine_dats', examineDats,
-                      help='')
-    make_ds_subparser('set_genomes_from_filter', set_genomes_from_filter,
-                      help='Set the list of genomes to be those genomes' +
-                      ' that have >= MIN_GENOME_SIZE sequences marked' +
-                      ' "Complete proteome", and are a Bacteria, Archaea,' +
-                      ' or Eukaryota.')
-    make_ds_subparser('extract_dats', extractFromDats,
-                      help='')
-    make_ds_subparser('format_genomes', formatGenomes,
-                      help='Format genomes in the dataset for using BLAST')
-    make_ds_subparser('compute', computeJobs,
-                      help='Compute orthologs.')
-    make_ds_subparser('collate', collateOrthologs,
-                      help='Collate orthologs in the dataset.')
-    make_ds_subparser('set_genomes', setGenomes,
-                      help='Cache a list of the genomes in the genomes' +
-                      ' directory in the dataset metadata, b/c the isilon' +
-                      ' is wicked slow at listing dirs.')
-    make_ds_subparser('extract_dataset_stats', extractDatasetStats, help='')
-    make_ds_subparser('extract_performance_stats', extractPerformanceStats, help='')
-    make_ds_subparser('process_genomes_for_download', processGenomesForDownload, help='')
-    make_ds_subparser('collate_orthologs', collateOrthologs, help='')
-    make_ds_subparser('zip_download_paths', zipDownloadPaths, help='')
-    make_ds_subparser('set_release_date', setReleaseDate, help='')
-
-    # add genome fasta to dataset
-    add_fasta_parser = subparsers.add_parser('add_fasta', help='import a genome fasta file into the dataset')
-    add_fasta_parser.add_argument('dataset', help='root directory of the dataset')
-    add_fasta_parser.add_argument('genome', help='id of the genome.  e.g. 9606 or homo_sapiens')
-    add_fasta_parser.add_argument('fasta_file', help='path to file containing fasta formatted sequences for the genome.')
-    add_fasta_parser.add_argument('--name', required=True, help='The name of the genome. e.g. Homo sapiens.')
-    add_fasta_parser.add_argument('--taxon', required=True, help='The NCBI taxon id of the genome. e.g. 9606.')
-    add_fasta_parser.set_defaults(func=add_fasta)
-
-    # prepare ortholog jobs 
-    prepare_jobs_parser = subparsers.add_parser('prepare_jobs', help='prepare_jobs genomes in the dataset')
-    prepare_jobs_parser.add_argument('dataset', help='root directory of the dataset')
-    prepare_jobs_parser.add_argument('-n', '--num', type=int, default=DEFAULT_NUM_JOBS,
-            help='number of jobs in which to split the dataset pairs. e.g. 1000')
-    prepare_jobs_parser.set_defaults(func=prepare_jobs)
+    add_ds_parser('workflow', workflow)
 
     # convert_to_orthoxml
-    convert_to_orthoxml_parser = subparsers.add_parser('convert_to_orthoxml', 
-            help='convert dataset orthologs to orthoxml')
-    convert_to_orthoxml_parser.add_argument('dataset', help='root directory of the dataset')
-    convert_to_orthoxml_parser.add_argument('--origin', required=True, help='The source of the orthologs. e.g. roundup.')
-    convert_to_orthoxml_parser.add_argument('--origin-version', required=True, help='The version of the orthologs. e.g. 3.0')
-    convert_to_orthoxml_parser.add_argument('--database', required=True, help='The database name of the source of genomes. e.g. Uniprot')
-    convert_to_orthoxml_parser.add_argument('--database-version', required=True, help='The version of the source genomes. e.g. 2012_04')
-    convert_to_orthoxml_parser.set_defaults(func=convert_to_orthoxml)
-
-    # reset blast dones
-    subparser = subparsers.add_parser(
-        'reset_blast_dones',
-        help='Unmark that blast hits have been computed for a pair of ' +
-        'genomes in the forward (default) or reverse direction')
-    subparser.add_argument('dataset', help='root directory of the dataset')
-    subparser.add_argument('query_genome',
-                           help='The query genome ncbi taxon id of a pair.')
-    subparser.add_argument('subject_genome',
-                           help='The subject genome ncbi taxon id of a pair.')
-    subparser.add_argument('-r', '--reverse', action='store_true', default=False,
-                          help='Unmark blast dones for the pair in the reverse direction.')
-    subparser.set_defaults(func=reset_blast_dones_cli)
+    subparser = add_ds_parser('convert_to_orthoxml', convert_to_orthoxml,
+                              help='Convert dataset orthologs to orthoxml')
+    subparser.add_argument('--origin', required=True, help='The source of the orthologs. e.g. roundup.')
+    subparser.add_argument('--origin-version', required=True, help='The version of the orthologs. e.g. 3.0')
+    subparser.add_argument('--database', required=True, help='The database name of the source of genomes. e.g. Uniprot')
+    subparser.add_argument('--database-version', required=True, help='The version of the source genomes. e.g. 2012_04')
 
     # make changelog
-    subparser = subparsers.add_parser(
-        'make_change_log',
+    subparser = add_ds_parser('make_change_log', make_change_log,
         help='Create list of differences between two datasets.')
-    subparser.add_argument('dataset', help='root directory of the dataset')
-    subparser.add_argument('previous_datasets', metavar='previous_dataset', 
+    subparser.add_argument('others', metavar='previous_dataset', 
         nargs='+', help='previous datasets to compare with dataset.')
-    subparser.set_defaults(func=make_change_log_cli)
 
-    # parse command line arguments and invoke the appropriate handler.
+    # parse command line args and pass as keyword args to func.
     args = parser.parse_args()
-    args.func(args)
+    kws = dict(vars(args))
+    del kws['func']
+    return args.func(**kws)
 
 
 if __name__ == '__main__':

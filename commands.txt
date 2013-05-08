@@ -7,6 +7,31 @@ Test lsfdo and filemsg on orchestra:
     cd /www/dev.roundup.hms.harvard.edu && TEST_LSFDO_WAIT=30 DONES_DB_URL=mysql://username:password@dev.mysql.orchestra/devroundup venv/bin/nosetests
 
 
+# Quest for Orthologs
+
+## Build a new Quest for Orthologs dataset
+
+Deploying the code for the first time, creating a virtual environment:
+
+    cd ~work/roundup/app
+    # Do a full deployment of code from scratch, including creating a virtual environment and installing requirements.
+    fab ds:qfo_2013_04 full
+
+Deploying the code all the rest of the time:
+
+    # Alternatively, after creating the virtualenv, just deploy the code and config.
+    fab ds:qfo_2013_04 most
+
+On an orchestra compute node, run the quest for orthologs workflow.  Currently
+this will "fail" when launching jobs on orchestra to format genomes or compute
+orthologs.  This is fine.  Just wait for the lsf jobs to finish and rerun the
+workflow and it will pick up where it left off:
+
+    cd ~/roundup/code/qfo_2013_04
+    ROUNDUP_MYSQL_CREDS_FROM_CNF=True venv/bin/python app/quest.py workflow /groups/public+cbi/sites/roundup/datasets/qfo_2013_04
+
+
+
 ################################
 # VERSION CONTROL AND DEPLOYMENT
 ################################
