@@ -64,10 +64,13 @@ def connCM(conn=None, commit=True):
 
 def releaseTable(release, table):
     '''
-    table: e.g. 'genomes', 'sequence', or 'results'.  
-    creates the database-scoped, correct name for a table in the roundup database.
-    basically, it fills in this template: 'roundup.roundup_<release>_<table>'.
-    returns: the full table name e.g. 'roundup.roundup_201106_dataset_genomes'
+    Create the database-scoped, correct name for a table in the roundup
+    database.  Basically, it fills in this template:
+        'roundup.roundup_<release>_<table>'.
+
+    Return the full table name e.g. 'roundup.roundup_201106_dataset_genomes'
+
+    table: e.g. 'genomes', 'sequence', or 'results'.
     '''
     return '{}.roundup_{}_{}'.format(ROUNDUP_DB, release, table)
 
