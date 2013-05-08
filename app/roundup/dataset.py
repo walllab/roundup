@@ -1653,10 +1653,8 @@ def workflow(ds):
     from preparing the directories, to downloading genomes, to preprocessing,
     to computing orthologs, and to post-processing.
     '''
-    raise NotImplementedError()
-
     dsid = getDatasetId(ds)
-    ns = 'roundup_dataset_{}_compute_jobs'.format(dsid)
+    ns = 'roundup_dataset_{}_workflow'.format(dsid)
 
     def do(name, func, *args, **kws):
         task = lsfdo.FuncTask(name, func, args, kws)
