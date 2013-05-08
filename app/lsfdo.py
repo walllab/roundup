@@ -157,6 +157,10 @@ def do(ns, task):
     print 'Done', task.name
 
 
+def bsub(ns, task, opt, pause=DEFAULT_PAUSE, timeout=-1):
+    return bsubmany(ns, [task], [opt], pause=pause, timeout=timeout)
+
+
 def bsubmany(ns, tasks, opts, pause=DEFAULT_PAUSE, timeout=-1):
     '''
     tasks: a list of Task objects which will be pickled.

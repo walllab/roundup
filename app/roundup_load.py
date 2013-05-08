@@ -1,11 +1,15 @@
 '''
 Module for loading a dataset into the database.
 
-loadDatabase():  Drops and creates and loads the genomes, divergences, evalues,
+load_database():  Drops and creates and loads the genomes, divergences, evalues,
 sequence, and sequence_to_go_terms tables by writing temp files that are loaded
-with LOAD DATA INFILE.  initLoadOrthDatas(): Drops and creates the results
+with LOAD DATA INFILE.  
+
+init_load_orth_datas(): Drops and creates the results
 table.  Also drops and creates the dones table, which tracks what orthologs
-files have been loaded.  loadOrthDatas():  Loads orthologs into the results
+files have been loaded.  
+
+load_orth_datas():  Loads orthologs into the results
 table.  uses INSERT INTO.  LOAD DATA INFILE not used for a few reasons:
  - because compressed results (how they are stored in the db) do not fit on a
  single line, so they do not fit into the LOAD DATA INFILE schema easily (one
@@ -14,21 +18,25 @@ table.  uses INSERT INTO.  LOAD DATA INFILE not used for a few reasons:
  - it takes a long time to load results and if the job is suspended on lsf, the
  db connection will be load, causing the load job to fail.
 
-bad?: Currently knows implementation details of roundup_db.  Most of this code
-could be in roundup_db, but I do not want roundup_db to depend on
-roundup.dataset.
+Software design notes: 
+
+    Currently knows implementation details of roundup_db.  Most of this code
+    could be in roundup_db, but I do not want roundup_db to depend on
+    roundup.dataset.
 '''
 
 
+import argparse
 import os
 import itertools
 
+import dones
+import lsfdo
+import nested
+import orthutil
 import roundup_common
 import roundup.dataset
 import roundup_db
-import dones
-import nested
-import orthutil
 
 
 #################################
@@ -36,7 +44,7 @@ import orthutil
 #################################
 
 
-def loadDatabase(ds, dropCreate=True, writeLookups=True, writeSeqs=True, readSeqsMetadata=True, loadTables=True):
+def load_database(ds, dropCreate=True, writeLookups=True, writeSeqs=True, readSeqsMetadata=True, loadTables=True):
     '''
     Drop and create the genomes, divergences, evalues, sequence, and sequence_to_go_terms tables
     Does NOT load orthologs.
@@ -98,40 +106,22 @@ def loadDatabase(ds, dropCreate=True, writeLookups=True, writeSeqs=True, readSeq
             genomeToTaxon = roundup.dataset.getGenomeToTaxon(ds)
             genomeToCount = roundup.dataset.getGenomeToCount(ds)
             taxonToData = roundup.dataset.getTaxonToData(ds)
-            writeGenomesTable(genomes, genomeToId, genomeToName, genomeToTaxon, genomeToCount, taxonToData, genomesFile)
-            writeLookupTable(divs, divToId, divsFile)
-            writeLookupTable(evalues, evalueToId, evaluesFile)
+            write_genomes_table(genomes, genomeToId, genomeToName, genomeToTaxon, genomeToCount, taxonToData, genomesFile)
+            write_lookup_table(divs, divToId, divsFile)
+            write_lookup_table(evalues, evalueToId, evaluesFile)
 
         if writeSeqs:
             print 'writing seqToGoTerms table'
-            writeSeqToGoTermsTable(genes, geneToId, geneToGoTerms, termToData, seqToGoTermsFile)
+            write_seq_to_go_terms_table(genes, geneToId, geneToGoTerms, termToData, seqToGoTermsFile)
             print 'writing seqs table'
-            writeSeqsTable(genes, geneToId, geneToName, geneToGeneIds, geneToGenome, genomeToId, seqsFile)
+            write_seqs_table(genes, geneToId, geneToName, geneToGeneIds, geneToGenome, genomeToId, seqsFile)
 
         if loadTables:
             print 'loading tables'
             roundup_db.loadRelease(release, genomesFile, divsFile, evaluesFile, seqsFile, seqToGoTermsFile)
 
 
-def makeIds(ds):
-    print 'creating unique ids for genes, genomes, divs, and evalues'
-    print '...loading genomeToGenes'
-    genomeToGenes = roundup.dataset.getGenomeToGenes(ds)
-    print '...creating ids'
-    genomes = roundup.dataset.getGenomes(ds)
-    genomeToId = dict([(genome, i) for i, genome in enumerate(genomes, 1)])
-    # only use genes from genomes used by dataset, not all genomes.
-    # sometimes a dataset does not compute orthologs for all genomes in the genomes dir, e.g. if you are running a test computation.
-    genes = list(itertools.chain.from_iterable([genomeToGenes[genome] for genome in genomes])) 
-    geneToId = dict([(gene, i) for i, gene in enumerate(genes, 1)])
-    divs = roundup_common.DIVERGENCES
-    divToId = dict([(div, i) for i, div in enumerate(divs, 1)])
-    evalues = roundup_common.EVALUES
-    evalueToId = dict([(evalue, i) for i, evalue in enumerate(evalues, 1)])
-    return genomes, genomeToId, genes, geneToId, divs, divToId, evalues, evalueToId
-
-
-def writeSeqToGoTermsTable(genes, geneToId, geneToGoTerms, termToData, seqToGoTermsFile):
+def write_seq_to_go_terms_table(genes, geneToId, geneToGoTerms, termToData, seqToGoTermsFile):
     '''
     `id` int(10) unsigned NOT NULL auto_increment,
     `sequence_id` int(10) unsigned NOT NULL,
@@ -150,7 +140,7 @@ def writeSeqToGoTermsTable(genes, geneToId, geneToGoTerms, termToData, seqToGoTe
                     fh.write('{}\t{}\t{}\t{}\t{}\n'.format(i, geneToId[gene], term, termName, termType))
 
 
-def writeSeqsTable(genes, geneToId, geneToName, geneToGeneIds, geneToGenome, genomeToId, seqsFile):
+def write_seqs_table(genes, geneToId, geneToName, geneToGeneIds, geneToGenome, genomeToId, seqsFile):
     '''
     `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
     `external_sequence_id` varchar(100) NOT NULL,
@@ -167,7 +157,7 @@ def writeSeqsTable(genes, geneToId, geneToName, geneToGeneIds, geneToGenome, gen
             fh.write('{}\t{}\t{}\t{}\t{}\n'.format(geneToId[gene], gene, genomeId, geneName, geneId))
                  
 
-def writeGenomesTable(genomes, genomeToId, genomeToName, genomeToTaxon, genomeToCount, taxonToData, genomesFile):
+def write_genomes_table(genomes, genomeToId, genomeToName, genomeToTaxon, genomeToCount, taxonToData, genomesFile):
     '''
     id smallint unsigned auto_increment primary key,
     acc varchar(100) NOT NULL,
@@ -188,9 +178,9 @@ def writeGenomesTable(genomes, genomeToId, genomeToName, genomeToTaxon, genomeTo
             catName = taxonToData[taxon][roundup.dataset.CAT_NAME]
             numSeqs = genomeToCount[genome]
             fh.write('\t'.join(str(f) for f in (gid, genome, name, taxon, taxonName, catCode, catName, numSeqs)) + '\n')
-    
-            
-def writeLookupTable(items, itemToId, itemsFile):
+
+
+def write_lookup_table(items, itemToId, itemsFile):
     '''
     write a file appropriate for loading into mysql.  each line contains a tab-separated id and item.
     '''
@@ -204,25 +194,25 @@ def writeLookupTable(items, itemToId, itemsFile):
 ########################
 
 
-def getDones(ds):
+def get_dones(ds):
     ns = 'roundup_load_{}_dones'.format(roundup.dataset.getDatasetId(ds))
     return dones.get(ns)
 
 
-def cleanOrthDatasDones(ds):
-    getDones(ds).clear()
+def clean_orth_datas_dones(ds):
+    get_dones(ds).clear()
 
 
-def initLoadOrthDatas(ds):
+def init_load_orth_datas(ds):
     release = roundup.dataset.getDatasetId(ds)
     print 'dropping and creating results table'
     roundup_db.dropReleaseResults(release)
     roundup_db.createReleaseResults(release)
     print 'resetting dones'
-    getDones(ds).clear()
+    get_dones(ds).clear()
 
 
-def loadOrthDatas(ds):
+def load_orth_datas(ds):
     '''
     load orthDatas serially.  takes a long time.  use dones to resume job if it dies.
     '''
@@ -236,12 +226,57 @@ def loadOrthDatas(ds):
 
     print 'loading orthDatas'
     for path in roundup.dataset.getOrthologsFiles(ds):
-        if getDones(ds).done(path):
+        if get_dones(ds).done(path):
             print 'already loaded:', path
         else:
             print 'loading', path
             orthDatasGen = orthutil.orthDatasFromFileGen(path)
             roundup_db.loadReleaseResults(release, genomeToId, divToId, evalueToId, geneToId, orthDatasGen)
-            getDones(ds).mark(path)
+            get_dones(ds).mark(path)
     print 'done loading all orthDatas'
+
+
+
+def workflow(ds):
+
+    release = roundup.dataset.getDatasetId(ds)
+    ns = 'roundup_load_{}_workflow'.format(release)
+
+    def do(name, func, *args, **kws):
+        task = lsfdo.FuncTask(name, func, args, kws)
+        lsfdo.do(ns, task)
+
+    # load everything but the orthologs.  Takes 10-15 minutes.
+    do('load_database', load_database, ds)
+    # clear the dones and prepare the tables for loading orthologs.  Takes seconds.
+    do('init_load_orth_datas', init_load_orth_datas, ds)
+    # submit to the long queue.  How long does this take?  A day or so?
+    opt = ['-q', 'long', '-W', '168:0', '-R', 'rusage[mem=16384]']
+    task = lsfdo.FuncTask('load_orth_datas', load_orth_datas, ds)
+    lsfdo.bsub(ns, task, opt, timeout=0)
+    # now that the database is loaded, set the release date (publication date)
+    # this should also be the day the dataset is pushed to production.
+    do('set_release_date', roundup.dataset.set_release_date, ds)
+
+
+def main():
+    parser = argparse.ArgumentParser(description='')
+    subparsers = parser.add_subparsers(help='')
+
+    subparser = subparsers.add_parser('workflow',
+                                      help='Load a dataset into the database.')
+    subparser.add_argument('ds', metavar='dataset',
+                            help='Root directory of the dataset')
+    subparser.set_defaults(func=workflow)
+
+    # parse command line args and pass as keyword args to func.
+    args = parser.parse_args()
+    kws = dict(vars(args))
+    del kws['func']
+    return args.func(**kws)
+
+
+if __name__ == '__main__':
+    main()
+
 

@@ -99,6 +99,7 @@ def local():
     config.no_lsf = True
     config.log_from_addr = 'todddeluca@yahoo.com'
     config.django_debug = True
+    config.use_mycnf = False
 
     post_config(config)
 
@@ -125,6 +126,7 @@ def dev():
     config.no_lsf = False
     config.log_from_addr = 'roundup-noreply@hms.harvard.edu'
     config.django_debug = False
+    config.use_mycnf = False
 
     post_config(config)
 
@@ -151,6 +153,7 @@ def prod():
     config.no_lsf = False
     config.log_from_addr = 'roundup-noreply@hms.harvard.edu'
     config.django_debug = False
+    config.use_mycnf = False
 
     post_config(config)
 
@@ -178,6 +181,9 @@ def ds(dsid):
     config.blast_bin_dir = '/opt/blast-2.2.24/bin'
     config.kalign_bin_dir = '/home/td23/bin'
     config.log_from_addr = 'roundup-noreply@hms.harvard.edu'
+    # Default to using mysql username and password from ~/.my.cnf because
+    # orchestra dev/prod roundup db user does not have create table privileges.
+    config.use_mycnf = True
 
     post_config(config)
 
@@ -277,6 +283,7 @@ def conf():
     text.write("LOG_FROM_ADDR = {!r}\n".format(config.log_from_addr))
     text.write("TMP_DIR = {!r}\n".format(config.tmp))
     text.write("LOG_DIR = {!r}\n".format(config.log))
+    text.write("USE_MYCNF = {!r}\n".format(config.use_mycnf))
     put(text, os.path.join(config.app, 'deployenv.py'), mode=0664)
 
     if config.website:

@@ -16,7 +16,7 @@ import util
 # DEPLOYMENT ENVIRONMENT SPECIFIC CONFIGURATION
 
 from deployenv import (BLAST_BIN_DIR, KALIGN_BIN_DIR, LOG_FROM_ADDR,
-                       MAIL_SERVICE_TYPE, LOG_DIR, TMP_DIR)
+                       MAIL_SERVICE_TYPE, LOG_DIR, TMP_DIR, USE_MYCNF)
 import secrets
 
 
@@ -112,7 +112,7 @@ MYSQL_DB = secrets.MYSQL_DATABASE
 MYSQL_USER = secrets.MYSQL_USER
 MYSQL_PASSWORD = secrets.MYSQL_PASSWORD
 # Get credentials from a ~/.my.cnf file
-if util.getBoolFromEnv('ROUNDUP_MYSQL_CREDS_FROM_CNF', False):
+if util.getBoolFromEnv('ROUNDUP_MYSQL_CREDS_FROM_CNF', USE_MYCNF):
     MYSQL_USER = getpass.getuser()
     MYSQL_PASSWORD = orchmysql.getCnf()['password']
 

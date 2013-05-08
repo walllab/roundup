@@ -946,18 +946,6 @@ def convertOrthGroupsToXml(ds, groups, genomeToGenes, div, evalue, xmlOut,
 ###############
 
 
-def previousDataset(ds):
-    '''
-    Big assumption here, that the basename of ds is an integer and the previous
-    dataset is the a directory named after the next smallest integer and
-    located in the same parent directory
-
-    For example, if ds is '/groups/cbi/roundup/datasets/4', the the previous
-    dataset is  '/groups/cbi/roundup/datasets/3'.
-    '''
-    return os.path.join(os.path.dirname(ds), str(int(os.path.basename(ds)) - 1))
-
-
 def getDatasetId(ds):
     '''
     e.g. 3
@@ -1440,9 +1428,9 @@ def getReleaseDate(ds):
     '''
     returns: a datetime.date object
     '''
-    logging.debug('getReleaseDate: ds={}'.format(ds))
+    # logging.debug('getReleaseDate: ds={}'.format(ds))
     dateStr = getData(ds, 'releaseDate')
-    logging.debug('getReleaseDate: dateStr={}'.format(dateStr))
+    # logging.debug('getReleaseDate: dateStr={}'.format(dateStr))
     return datetime.datetime.strptime(dateStr, "%Y-%m-%d").date()
 
 
@@ -1647,7 +1635,7 @@ class Stats(object):
 ##########
 # Workflow for constructing a dataset
 
-def workflow(ds):
+def workflow(ds, previous_dataset=None):
     '''
     This function runs the entire workflow needed to create a new roundup dataset,
     from preparing the directories, to downloading genomes, to preprocessing,
@@ -1760,7 +1748,8 @@ def workflow(ds):
     do('compute_jobs', compute_jobs, ds)
 
     # Make the Change Log for this dataset / roundup release vs. the previous release (3)
-    do('make_change_log', make_change_log, ds, [previousDataset(ds)])
+    if previous_dataset:
+        do('make_change_log', make_change_log, ds, [previous_dataset])
 
     # When computation is finished, extract stats and prepare files for download:
     do('extract_dataset_stats', extract_dataset_stats, ds)
@@ -1770,16 +1759,6 @@ def workflow(ds):
     do('collate_orthologs', collate_orthologs, ds)
     # compress genomes and ortholog download files once they are ready.  This takes a long time.  Could be parallelized.
     do('zip_download_paths', zip_download_paths, ds)
-
-    raise Exception('''Here is where the database should be loaded.  That needs
-                    to be invoked from here without creating a circular
-                    dependency on roundup_load.py.  Also need to make sure RITG
-                    has room in the db before loading a new dataset.  Also need
-                    to delete an old dataset to free up more space.''')
-
-    # this is done on the day the dataset is released on the production website.  Or it can be set manually by passing in a datetime.date object.
-    do('set_release_date', set_release_date, ds)
-
 
 
 def main():
@@ -1798,7 +1777,11 @@ def main():
         subparser.set_defaults(func=func)
         return subparser
 
-    add_ds_parser('workflow', workflow)
+    subparser = add_ds_parser('workflow', workflow)
+    subparser.add_argument('--previous-dataset', help='''The dataset directory
+                           of the previous dataset, used to create a log of
+                           changes between this dataset and the previous
+                           one.''')
 
     # convert_to_orthoxml
     subparser = add_ds_parser('convert_to_orthoxml', convert_to_orthoxml,
