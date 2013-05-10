@@ -877,7 +877,7 @@ def convertOrthDatasToXml(ds, orthDatas, orthDatasAgain, xmlOut,
         for qid, sid, dist in orthologs:
             genomeToGenes[qdb].add(qid)
             genomeToGenes[sdb].add(sid)
-        
+
     print 'making species'
     speciesList, geneToIden = makeOrthoxmlSpecies(genomeToGenes, genomeToName,
             genomeToTaxon, databaseName, databaseVersion, protLink)

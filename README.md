@@ -1,34 +1,67 @@
-# CREATED: 2004/11/18 td23
-# MODIFIED: 2009/03/19 td23
-# MODIFIED: 2011/08/02 td23
-
-This file explains the structures and processes of Roundup.
-There is no guarantee that this file is up-to-date and complete!
-But read it anyway.
 
 
-###################################
-# HOW TO MAKE A NEW ROUNDUP RELEASE
-###################################
 
-Create a new dataset by following the steps in roundup_dataset.py.  Computing orthologs should take weeks.
-Load the dataset into the database using roundup_load.py
-Change config.py so the CURRENT_RELEASE is the new one.
+# Introduction
 
 
-##################
-# WHAT IS ROUNDUP?
-##################
+What is Roundup?  Roundup is a database of orthologous proteins between many
+organisms.  Roundup uses the Reciprocal Shortest Distance (RSD) algorithm to
+compute orthologs between a pair of genomes.  Roundup is a website that queries
+a database loaded with orthologous genes to return phylogenetic profiles and
+other multi-genome perspectives on the database.  Roundup is code for
+downloading genomes for a dataset, computing orthologs for the dataset, and
+loading the dataset into mysql for the web queries.
 
-Roundup is a database of orthologous sequences/genes between many genomes.
-Roundup uses the Reciprocal Shortest Distance (RSD) algorithm to compute orthologs between a pair of genomes.
-Roundup is a website that queries a database loaded with orthologous genes to return phylogenetic profiles and other multi-genome perspectives on the database.
-Roundup is code for downloading genomes for a dataset, computing orthologs for the dataset, and loading the dataset into mysql for the web queries.
+
+# How to make a new Roundup dataset
+
+Making a new dataset entails downloading the sources of the dataset from the
+web, computing orthologs, loading the data into the database for the website,
+and updating the website to point to the new dataset.
+
+Each dataset has its own code deployment.  Since computing a dataset on
+Orchestra is currently a multi-month process, it is important that the
+computation has a stable set of code on which to run, while allowing the
+website code to be updated independently if necessary.
+
+First, figure out the number of the next dataset.  If the current dataset is
+release 4, the next dataset is release 5.  Then add various values to your
+environment (for the convenience of writing commands):
+
+    export DSID=5
+    export DSDIR=/groups/public+cbi/sites/roundup/datasets/$DSID
+    # The previous dataset is presumably one less than this dataset
+    export PREV_DS=/groups/public+cbi/sites/roundup/datasets/`dc -e "$DSID 1 - p"`
+    export DSCODE=/groups/public+cbi/sites/roundup/code/$DSID
+    echo $DSID $DSDIR $DSCODE
 
 
-#############################
+Deploy code for a new dataset from a roundup git repository:
+    
+    cd ~/work/roundup
+    fab ds:$DSID full
+
+Run the dataset workflow to compute the orthologs:
+
+    cd $DSCODE && venv/bin/python app/roundup/dataset.py workflow $DSDIR $PREV_DS
+
+Load the orthologs into the database for the website:
+
+    cd $DSCODE && venv/bin/python app/roundup_load.py workflow $DSDIR
+
+Publish the new dataset to the website:
+
+    # Prepend the dataset dir to `config.archive_datasets` for the `dev` and `prod` tasks.
+    vim fabfile.py
+    # Deploy to the dev website.  Test it.
+    fab dev most
+    # Deploy to the production website.  Test it again.
+    fab prod most
+    # Commit the new dataset.
+    git com -am 'Add newest dataset to website.'
+
+
 # Where is the code and data?
-#############################
 
 There are (at least) two kinds of roundup code and data, dev and prod, i.e. development and production.
 Dev code is code deployed to /www/dev.roundup.hms.harvard.edu/webapp
@@ -37,13 +70,11 @@ Dev code by default uses the dev database.
 Prod code by default uses the prod database.
 Dev code can be made to use the prod database by setting various environment variables.  See examples in this file.
 Prod code could run on the dev database, but why would you do that?
-Prod data is located in /groups/cbi/roundup and mysql.cl.med.harvard.edu in the roundup database.
-Dev data is located in /groups/cbi/dev.roundup and dev.mysql.cl.med.harvard.edu in the devroundup database.
+Prod data is located in /groups/public+cbi/sites/roundup and mysql.orchestra in the roundup database.
+Dev data is located in /groups/public+cbi/sites/dev.roundup and dev.mysql.orchestra in the devroundup database.
 
 
-###########################################
 # What are some of the concepts in roundup?
-###########################################
 
 GENOMES: A genome refers to several things: a id, like HUMAN or MYCGE;  a directory (named after the id) that contains fasta files and blast-formatted indices.
 For historical reasons genomes are sometimes referred to as qdb and sdb, which stand for query database and subject database, where database means genome.
@@ -69,27 +100,20 @@ DATABASE: most of the roundup website uses data from a mysql database.  Tables f
 RELEASE: Each dataset is called a release on the website and in the code.  Releases are named with a number.  Release 1 is from May 2010.  And so on.
 
 
-########################################
 # WHAT ARE SOME OF THE FILES IN ROUNDUP?
-########################################
 
 config.py contains a lot of configuration that is specific to the dev or prod environments.
 
 roundup_common.py contains code shared in common across other files and for abstracting some of the concepts in roundup.
 
-roundup_dataset.py contains code to prepare a new dataset for the next release of roundup, by creating the directory structure, downloading source files, creating genomes from those sources, extracting metadata (genome names, go terms for genes, etc., etc., etc.) from source files, preparing jobs for computation, computing jobs (which run RSD on the pairs of genomes), and extracting more metadata (number of orthologs found, etc.).  
+roundup/dataset.py contains code to prepare a new dataset for the next release of roundup, by creating the directory structure, downloading source files, creating genomes from those sources, extracting metadata (genome names, go terms for genes, etc., etc., etc.) from source files, preparing jobs for computation, computing jobs (which run RSD on the pairs of genomes), and extracting more metadata (number of orthologs found, etc.).  
 
 roundup_load.py contains code for loading a dataset into mysql.
-
-
-roundup_download.py contains code for downloading genomes based on configurations, checking if the downloaded genomes are new and moving the new ones to the set of updated genomes.
 
 roundup_db.py contains code to manage orthologs, genomes, etc., in the mysql database.  (Almost) everything having to do with SQL or mysql is in here.
 
 roundup_util.py contains some code used by the web and other code.
 
 orthquery.py and clustering.py are used by the web to generate phylogenetic profiles and other results of web queries.
-
-rsd.py implements the RSD algorithm used to compute orthologs for all genome pairs in Roundup.
 
 
