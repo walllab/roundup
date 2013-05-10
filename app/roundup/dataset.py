@@ -120,6 +120,48 @@ def prepare_dataset(ds):
 ########################################
 # DOWNLOADING AND PROCESSING SOURCE DATA
 
+
+def download_taxon_sources(ds):
+    sourcesDir = getSourcesDir(ds)
+    urlDests = [('ftp://ftp.ncbi.nih.gov/pub/taxonomy/taxcat.tar.gz', os.path.join(sourcesDir, 'ncbi', 'taxcat.tar.gz')),
+                ('ftp://ftp.ncbi.nih.gov/pub/taxonomy/taxdump.tar.gz', os.path.join(sourcesDir, 'ncbi', 'taxdump.tar.gz'))]
+    for url, dest in urlDests:
+        downloadSource(ds, url, dest)
+
+    sources = [url for url, dest in urlDests]
+    setData(ds, 'taxon_sources', sources)
+
+
+def download_go_sources(ds):
+    sourcesDir = getSourcesDir(ds)
+    urlDests = [('ftp://ftp.geneontology.org/pub/go/godatabase/archive/go_daily-termdb-tables.tar.gz',
+                 os.path.join(sourcesDir, 'geneontology/go_daily-termdb-tables.tar.gz'))]
+    for url, dest in urlDests:
+        downloadSource(ds, url, dest)
+
+    sources = [url for url, dest in urlDests]
+    setData(ds, 'go_sources', sources)
+
+
+def download_uniprot_sources(ds):
+    sourcesDir = getSourcesDir(ds)
+    currentUrl = 'ftp://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/complete'
+    uniprotFiles = ['reldate.txt', 'uniprot_sprot.dat.gz', 'uniprot_trembl.dat.gz']
+    urlDests = [(currentUrl + '/' + f, os.path.join(sourcesDir, 'uniprot', f)) for f in uniprotFiles]
+    for url, dest in urlDests:
+        downloadSource(ds, url, dest)
+
+    # since Uniprot does not concurrently release an "archive" url when
+    # they put out a new release, pretend like the uniprot source was the
+    # "archive" url, not the "current" urls.
+    # e.g. release = 2011_09
+    release = uniprot.parseRelease(os.path.join(sourcesDir, 'uniprot', 'reldate.txt'))
+    uniprotArchiveUrl = 'ftp://ftp.uniprot.org/pub/databases/uniprot/previous_releases/release-{0}/knowledgebase/knowledgebase{0}.tar.gz'.format(release)
+    sources = [uniprotArchiveUrl]
+    setData(ds, 'uniprot_sources', sources)
+    setData(ds, 'uniprotRelease', release)
+
+
 def download_sources(ds):
     '''
     Download uniprot files contained in an archive of a uniprot release.
@@ -130,34 +172,13 @@ def download_sources(ds):
     '''
 
     print 'download_sources: {}'.format(ds)
-    sourcesDir = getSourcesDir(ds)
+    download_taxon_sources(ds)
+    download_go_sources(ds)
+    download_uniprot_sources(ds)
 
-    currentUrl = 'ftp://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/complete'
-    uniprotFiles = ['reldate.txt', 'uniprot_sprot.dat.gz', 'uniprot_trembl.dat.gz']
-    uniprotUrlDests = [(currentUrl + '/' + f, os.path.join(sourcesDir, 'uniprot', f)) for f in uniprotFiles]
-
-    taxonUrlDests = [('ftp://ftp.ncbi.nih.gov/pub/taxonomy/taxcat.tar.gz', os.path.join(sourcesDir, 'ncbi', 'taxcat.tar.gz')),
-                     ('ftp://ftp.ncbi.nih.gov/pub/taxonomy/taxdump.tar.gz', os.path.join(sourcesDir, 'ncbi', 'taxdump.tar.gz'))]
-
-    goUrlDests = [('ftp://ftp.geneontology.org/pub/go/godatabase/archive/go_daily-termdb-tables.tar.gz',
-                   os.path.join(sourcesDir, 'geneontology/go_daily-termdb-tables.tar.gz'))]
-
-    urlDests = uniprotUrlDests + taxonUrlDests + goUrlDests
-    print urlDests
-    for url, dest in urlDests:
-        downloadSource(ds, url, dest)
-
-    # since Uniprot does not concurrently release an "archive" url when
-    # they put out a new release, pretend like the uniprot source was the
-    # "archive" url, not the "current" urls.
-    # e.g. release = 2011_09
-    release = uniprot.parseRelease(os.path.join(sourcesDir, 'uniprot', 'reldate.txt'))
-    uniprotArchiveUrl = 'ftp://ftp.uniprot.org/pub/databases/uniprot/previous_releases/release-{0}/knowledgebase/knowledgebase{0}.tar.gz'.format(release)
-
-    sources = [uniprotArchiveUrl] + [url for url, dest in taxonUrlDests + goUrlDests]
+    sources = getData(ds, 'uniprot_sources') + getData(ds, 'taxon_sources') + getData(ds, 'go_sources') 
     print sources
     setData(ds, 'sources', sources)
-    setData(ds, 'uniprotRelease', release)
     print 'done downloading sources.'
 
 
@@ -181,35 +202,52 @@ def downloadSource(ds, url, dest):
     time.sleep(pause)
 
 
+def process_taxon_sources(ds):
+    files = ['ncbi/taxcat.tar.gz', 'ncbi/taxdump.tar.gz']
+    for f in files:
+        process_source(ds, f)
+
+
+def process_go_sources(ds):
+    files = ['geneontology/go_daily-termdb-tables.tar.gz']
+    for f in files:
+        process_source(ds, f)
+
+
+def process_uniprot_sources(ds):
+    files = [
+             'uniprot/uniprot_sprot.dat.gz', 
+             'uniprot/uniprot_trembl.dat.gz', 
+             ]
+    for f in files:
+        process_source(ds, f)
+
+
 def process_sources(ds):
     '''
     gunzip (and untar) some source files.
     '''
     print 'processing sources...'
-    sourcesDir = getSourcesDir(ds)
-
-    uniprotFiles = [
-             'uniprot/uniprot_sprot.dat.gz', 
-             'uniprot/uniprot_trembl.dat.gz', 
-             ]
-    taxonFiles = ['ncbi/taxcat.tar.gz', 'ncbi/taxdump.tar.gz']
-    goFiles = ['geneontology/go_daily-termdb-tables.tar.gz']
-
-    for f in uniprotFiles + taxonFiles + goFiles:
-        path = os.path.join(sourcesDir, f)
-        if getDones(ds).done(('process source', path)):
-            print '...skipping processing {} because already done.'.format(path)
-            continue
-        print 'processing', path
-        if path.endswith('.tar.gz'):
-            print '...tar xzf file'
-            subprocess.check_call(['tar', '-xzf', path], cwd=os.path.dirname(path))
-        elif path.endswith('.gz') and os.path.exists(path):
-            print '...gunzip file'
-            subprocess.check_call(['gunzip', path])
-        getDones(ds).mark(('process source', path))
-
+    process_taxon_sources(ds)
+    process_go_sources(ds)
+    process_uniprot_sources(ds)
     print '...done'
+
+
+def process_source(ds, filename):
+    sourcesDir = getSourcesDir(ds)
+    path = os.path.join(sourcesDir, filename)
+    if getDones(ds).done(('process source', path)):
+        print '...skipping processing {} because already done.'.format(path)
+        continue
+    print 'processing', path
+    if path.endswith('.tar.gz'):
+        print '...tar xzf file'
+        subprocess.check_call(['tar', '-xzf', path], cwd=os.path.dirname(path))
+    elif path.endswith('.gz') and os.path.exists(path):
+        print '...gunzip file'
+        subprocess.check_call(['gunzip', path])
+    getDones(ds).mark(('process source', path))
 
 
 ######################################
@@ -417,6 +455,30 @@ def set_genomes_from_filter(ds):
     setGenomes(ds, genomes3)
 
 
+def make_genome_to_name(ds):
+    '''
+    Build genomeToName from genome and taxon data and set it.
+    '''
+    genomes = getGenomes(ds)
+    taxonToData = getTaxonToData(ds)
+    genomeToName = {g: taxonToData[g][NAME] for g in genomes} # use taxon name as genome name.
+
+    # paranoid check: All genome names should be unique
+    assert len(genomeToName.values()) == len(set(genomeToName.values()))
+
+    setGenomeToName(ds, genomeToName)
+
+
+def make_genome_to_taxon(ds):
+    '''
+    Build genomeToTaxon from genome data and set it.
+    '''
+    genomes = getGenomes(ds)
+    # Easy since genome (ids) are ncbi taxon ids.
+    genomeToTaxon = {g: g for g in genomes}
+    setGenomeToTaxon(ds, genomeToTaxon)
+
+
 def extract_from_dats(ds, dats=None, writing=True, cleanDirs=False, bufSize=5000000):
     '''
     Gather data about each 'Complete proteome' sequence, including name, description, go terms, ncbi gene ids.  Gather data about each
@@ -458,20 +520,13 @@ def extract_from_dats(ds, dats=None, writing=True, cleanDirs=False, bufSize=5000
 
     # use count data to avoid rescanning dat files.
     countData = getData(ds, 'dat_genome_counts')
-    taxonToData = getTaxonToData(ds)
-
     genomes = getGenomes(ds)
-    genomeToName = {g: taxonToData[g][NAME] for g in genomes} # use taxon name as genome name.
     genomeToCount = {g: countData[g]['complete_count'] for g in genomes}
-    genomeToTaxon = {g: g for g in genomes}
     genomeToOrgCode = {g: countData[g]['org_code'] for g in genomes}
 
     # paranoid check:  No genome should have >1 name, taxon, or org code.
     for g in genomes:
         assert countData[g]['num_names'] == 1 and countData[g]['num_taxons'] == 1 and countData[g]['num_org_codes'] == 1
-
-    # paranoid check: All genome names should be unique
-    assert len(genomeToName.values()) == len(set(genomeToName.values()))
 
     geneToGenome = {} # track which sequences belong to which genome.  store sequences of all complete genomes
     geneToName = {}
@@ -528,8 +583,6 @@ def extract_from_dats(ds, dats=None, writing=True, cleanDirs=False, bufSize=5000
     setData(ds, GENE_TO_GENOME, geneToGenome)
     setData(ds, GENOME_TO_GENES, genomeToGenes)
     setGenomes(ds)
-    setGenomeToName(ds, genomeToName)
-    setGenomeToTaxon(ds, genomeToTaxon)
     setData(ds, 'genomeToCount', genomeToCount)
     setData(ds, 'genomeToOrgCode', genomeToOrgCode)
 
@@ -762,7 +815,7 @@ def collate_orthologs(ds):
 
 def zip_download_paths(ds):
     '''
-    after orthologs have been collated and converted to orthoxml, zip the files
+    fter orthologs have been collated and converted to orthoxml, zip the files
     '''
     divEvalues, txtPaths, xmlPaths = getDownloadPaths(ds)
     for path in txtPaths + xmlPaths:
@@ -791,7 +844,8 @@ def getDownloadPaths(ds):
 #####################
 # ORTHOXML CONVERSION
 
-def convert_to_orthoxml(ds, origin, origin_version, database, database_version, protLink=None, clean=False):
+def convert_to_orthoxml(ds, origin, origin_version, database, database_version,
+                        protLink=None, clean=False):
     '''
     origin: e.g. 'roundup'
     origin_version: e.g. getReleaseName(ds)
@@ -813,7 +867,8 @@ def convert_to_orthoxml(ds, origin, origin_version, database, database_version, 
                              database, database_version, protLink)
 
 
-def convertTxtToOrthoXML(ds, txtPath, xmlPath, origin, originVersion, databaseName, databaseVersion, protLink):
+def convertTxtToOrthoXML(ds, txtPath, xmlPath, origin, originVersion,
+                         databaseName, databaseVersion, protLink):
     '''
     WARNING: xml files on the production roundup dataset are too big.  This step should be skipped.
     txtPath: a orthdatas file
@@ -821,28 +876,35 @@ def convertTxtToOrthoXML(ds, txtPath, xmlPath, origin, originVersion, databaseNa
     '''
     print txtPath, '=>', xmlPath
     with open(xmlPath, 'w') as xmlOut:
-        convertOrthDatasToXml(ds, orthutil.orthDatasFromFileGen(txtPath), orthutil.orthDatasFromFileGen(txtPath), xmlOut,
-                              origin, originVersion, databaseName, databaseVersion, protLink)
+        convertOrthDatasToXml(
+            ds, orthutil.orthDatasFromFileGen(txtPath),
+            orthutil.orthDatasFromFileGen(txtPath), xmlOut, origin,
+            originVersion, databaseName, databaseVersion, protLink)
 
 
-def makeOrthoxmlSpecies(genomeToGenes, genomeToName, genomeToTaxon, databaseName, databaseVersion, protLink):
+def makeOrthoxmlSpecies(genomeToGenes, genomeToName, genomeToTaxon,
+                        databaseName, databaseVersion, protLink):
     '''
-    Create a orthoxml.Species object for each genome in genomeToGenes, generating document-unique ids for each gene.
-    returns: a list of orthoxml.Species objects, and a dict from gene to the integer id used as a gene id
-    for the genes in the Species list.
+    Create a orthoxml.Species object for each genome in genomeToGenes,
+    generating document-unique ids for each gene. Return a list of
+    orthoxml.Species objects, and a dict from gene to the integer id used as a
+    gene id for the genes in the Species list.
     '''
     speciesList = []
     geneToIden = {}
-    iden = 0 # orthoxml wants a interger gene id for each gene, internal to the xml document.
+    # orthoxml wants a interger gene id for each gene, internal to the xml
+    # document.
+    iden = 0
     for genome in genomeToGenes:
         genes = []
         for gene in genomeToGenes[genome]:
             iden += 1
             genes.append(orthoxml.Gene(iden, protId=gene))
             geneToIden[gene] = iden
-        # genes = [orthoxml.Gene(gene, protId=gene) for gene in genomeToGenes[genome]]
-        database = orthoxml.Database(databaseName, databaseVersion, genes=genes, protLink=protLink)
-        species = orthoxml.Species(genomeToName[genome], genomeToTaxon[genome], [database])
+        database = orthoxml.Database(databaseName, databaseVersion,
+                                     genes=genes, protLink=protLink)
+        species = orthoxml.Species(genomeToName[genome], genomeToTaxon[genome],
+                                   [database])
         speciesList.append(species)
     return speciesList, geneToIden
 
@@ -882,7 +944,8 @@ def convertOrthDatasToXml(ds, orthDatas, orthDatasAgain, xmlOut,
     speciesList, geneToIden = makeOrthoxmlSpecies(genomeToGenes, genomeToName,
             genomeToTaxon, databaseName, databaseVersion, protLink)
 
-    scoreDef = orthoxml.ScoreDef('dist', 'Maximum likelihood evolutionary distance')
+    scoreDef = orthoxml.ScoreDef(
+        'dist', 'Maximum likelihood evolutionary distance')
 
     print 'pass 2: writing xml'
 
@@ -892,11 +955,15 @@ def convertOrthDatasToXml(ds, orthDatas, orthDatasAgain, xmlOut,
             for qid, sid, dist in orthologs:
                 qGeneRef = orthoxml.GeneRef(geneToIden[qid])
                 sGeneRef = orthoxml.GeneRef(geneToIden[sid])
-                group = orthoxml.OrthologGroup([qGeneRef, sGeneRef], scores=[orthoxml.Score(scoreDef.id, dist)])
+                group = orthoxml.OrthologGroup(
+                    [qGeneRef, sGeneRef],
+                    scores=[orthoxml.Score(scoreDef.id, dist)])
                 yield group
 
     notes = orthoxml.Notes('These orthologs were computed using the following Reciprocal Smallest Distance (RSD) parameters: divergence={} and evalue={}.  See http://roundup.hms.harvard.edu for more information about Roundup and RSD.'.format(div, evalue))
-    for xmlText in orthoxml.toOrthoXML(origin, originVersion, speciesList, groupGen(), scoreDefs=[scoreDef], notes=notes):
+    for xmlText in orthoxml.toOrthoXML(origin, originVersion, speciesList,
+                                       groupGen(), scoreDefs=[scoreDef],
+                                       notes=notes):
         xmlOut.write(xmlText)
 
 
@@ -1724,6 +1791,9 @@ def workflow(ds, previous_dataset=None):
     # filtered_taxon_cat_code 12353 cat_code V complete_count 273 name Enterobacteria phage RB69 (Bacteriophage RB69)
     # filtered_taxon_cat_code 10254 cat_code V complete_count 217 name Vaccinia virus (strain Western Reserve)
     # after_taxon_category_filter 2044
+
+    do('make_genome_to_taxon', make_genome_to_taxon, ds)
+    do('make_genome_to_name', make_genome_to_name, ds)
 
     # Compile genome fasta files from the dat files.  This can take a while
     do('extract_from_dats', extract_from_dats, ds)

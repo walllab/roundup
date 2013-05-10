@@ -131,19 +131,24 @@ class Quest(object):
         dometh('download_reference_proteomes', self,
                'download_reference_proteomes')
         dometh('unpack_reference_proteomes', self, 'unpack_reference_proteomes')
+        dofunc('download_taxon_sources', rd.download_taxon_sources, self.ds)
+        dofunc('process_taxon_sources', rd.process_taxon_sources, self.ds)
         dometh('set_genomes_and_fasta_from_reference_proteomes', self,
                'set_genomes_and_fasta_from_reference_proteomes')
         dofunc('format_genomes', rd.format_genomes, self.ds)
-        # format genomes in parallel
-        # tasks = [
-            # lsfdo.FuncTask('quest_format_genome {}'.format(genome),
-                           # rd.format_genome, [self.ds, genome])
-            # for genome in rd.getGenomes(self.ds)]
-        # opts = [['-q', 'short', '-W', '60'] for task in tasks]
-        # lsfdo.bsubmany(ns, tasks, opts, timeout=0)
+
+        # taxon data needed to construct orthoxml
+        dofunc('extract_taxon_data', rd.extract_taxon_data, self.ds)
+        dofunc('make_genome_to_taxon', rd.make_genome_to_taxon, self.ds)
+        dofunc('make_genome_to_name', rd.make_genome_to_name, self.ds)
+
         dofunc('prepare_jobs', rd.prepare_jobs, self.ds)
         dofunc('compute_jobs', rd.computeJobs, self.ds)
         dofunc('collate_orthologs', rd.collate_orthologs, self.ds)
+        dofunc('convert_to_orthoxml', rd.convert_to_orthoxml, self.ds,
+               origin='roundup', origin_version=self.dsid,
+               database='quest_for_orthologs_reference_proteomes',
+               database_version=self.version)
         dofunc('zip_download_paths', rd.zip_download_paths, self.ds)
 
 
