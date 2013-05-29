@@ -118,6 +118,7 @@ def dev():
     config.archive_datasets = ['/groups/public+cbi/sites/roundup/datasets/4',
                                '/groups/public+cbi/sites/roundup/datasets/3',
                                '/groups/public+cbi/sites/roundup/datasets/2',
+                               '/groups/public+cbi/sites/roundup/datasets/qfo_2013_04',
                                '/groups/public+cbi/sites/roundup/datasets/qfo_2011_04']
     config.current_dataset = config.archive_datasets[0]
     config.mail_service_type = 'orchestra'
@@ -145,6 +146,7 @@ def prod():
     config.archive_datasets = ['/groups/public+cbi/sites/roundup/datasets/4',
                                '/groups/public+cbi/sites/roundup/datasets/3',
                                '/groups/public+cbi/sites/roundup/datasets/2',
+                               '/groups/public+cbi/sites/roundup/datasets/qfo_2013_04',
                                '/groups/public+cbi/sites/roundup/datasets/qfo_2011_04']
     config.current_dataset = config.archive_datasets[0]
     config.mail_service_type = 'orchestra'

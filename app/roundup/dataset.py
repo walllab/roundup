@@ -239,7 +239,7 @@ def process_source(ds, filename):
     path = os.path.join(sourcesDir, filename)
     if getDones(ds).done(('process source', path)):
         print '...skipping processing {} because already done.'.format(path)
-        continue
+        return
     print 'processing', path
     if path.endswith('.tar.gz'):
         print '...tar xzf file'
@@ -792,14 +792,20 @@ def getDownloadOrthologsPath(ds, div, evalue):
     return os.path.join(downloadDir, 'roundup-{}-orthologs_{}_{}.txt.gz'.format(dsid, div, evalue))
 
 
-def collate_orthologs(ds):
+def collate_orthologs(ds, div_evalues=None):
     '''
-    collate orthologs from jobs files into files for each parameter combination in the download dir.
-    '''
+    Collate orthologs from jobs files into files in the download dir, one for
+    each parameter combination in the job files.
 
-    divEvalues, txtPaths, xmlPaths = getDownloadPaths(ds)
-    # open files
-    divEvalueToFH = dict([(divEvalue, open(path, 'w')) for divEvalue, path in zip(divEvalues, txtPaths)])
+    div_evalues: a list of tuples of (divergence, evalue) thresholds in the
+    dataset to collate.  By default (None) all divergence and evalue
+    combinations in the dataset are collated.  Example: [('0.8', '1e-5')]
+    '''
+    div_evalues = div_evalues if div_evalues is not None else roundup_common.divEvalues()
+    txt_paths = [txt_download_path(ds, div, evalue) for div, evalue in div_evalues]
+    # cache open filehandles
+    fh_cache = dict([(divEvalue, open(path, 'w')) for divEvalue, path in
+                     zip(div_evalues, txt_paths)])
     try:
         print 'collating orthologs'
         for orthFile in sorted(getOrthologsFiles(ds)):
@@ -807,17 +813,19 @@ def collate_orthologs(ds):
             for orthData in orthutil.orthDatasFromFileGen(orthFile):
                 params, orthologs = orthData
                 qdb, sdb, div, evalue = params
-                orthutil.orthDatasToStream([orthData], divEvalueToFH[(div, evalue)])
+                orthutil.orthDatasToStream([orthData], fh_cache[(div, evalue)])
     finally:
-        for fh in divEvalueToFH.values():
+        for fh in fh_cache.values():
             fh.close()
 
 
-def zip_download_paths(ds):
+def zip_download_paths(ds, div_evalues=None):
     '''
     fter orthologs have been collated and converted to orthoxml, zip the files
     '''
-    divEvalues, txtPaths, xmlPaths = getDownloadPaths(ds)
+    div_evalues = div_evalues if div_evalues is not None else roundup_common.divEvalues()
+    txtPaths = [txt_download_path(ds, div, evalue) for div, evalue in div_evalues]
+    xmlPaths = [xml_download_path(ds, div, evalue) for div, evalue in div_evalues]
     for path in txtPaths + xmlPaths:
         zipDownloadPath(path)
 
@@ -832,20 +840,23 @@ def zipDownloadPath(path):
             raise Exception('Missing path for gzip', path)
 
 
-def getDownloadPaths(ds):
+def txt_download_path(ds, div, evalue):
     dsid = getDatasetId(ds)
     downloadDir = getDownloadDir(ds)
-    divEvalues = list(roundup_common.genDivEvalueParams())
-    txtPaths = [os.path.join(downloadDir, 'roundup-{}-orthologs_{}_{}.txt'.format(dsid, div, evalue)) for div, evalue in divEvalues]
-    xmlPaths = [re.sub('\.txt$', '.xml', path) for path in txtPaths]
-    return divEvalues, txtPaths, xmlPaths
+    return os.path.join(downloadDir, 'roundup-{}-orthologs_{}_{}.txt'.format(dsid, div, evalue))
+
+
+def xml_download_path(ds, div, evalue):
+    dsid = getDatasetId(ds)
+    downloadDir = getDownloadDir(ds)
+    return os.path.join(downloadDir, 'roundup-{}-orthologs_{}_{}.xml'.format(dsid, div, evalue))
 
 
 #####################
 # ORTHOXML CONVERSION
 
 def convert_to_orthoxml(ds, origin, origin_version, database, database_version,
-                        protLink=None, clean=False):
+                        protLink=None, clean=False, div_evalues=None):
     '''
     origin: e.g. 'roundup'
     origin_version: e.g. getReleaseName(ds)
@@ -855,7 +866,9 @@ def convert_to_orthoxml(ds, origin, origin_version, database, database_version,
     convert collated orthologs files to orthoxml format.
     clean: if True, will delete the xml files if they already exist.
     '''
-    divEvalues, txtPaths, xmlPaths = getDownloadPaths(ds)
+    div_evalues = div_evalues if div_evalues is not None else roundup_common.divEvalues()
+    txtPaths = [txt_download_path(ds, div, evalue) for div, evalue in div_evalues]
+    xmlPaths = [xml_download_path(ds, div, evalue) for div, evalue in div_evalues]
 
     if clean:
         for xmlPath in xmlPaths:
@@ -1209,7 +1222,7 @@ def computePair(ds, pair, workingDir, orthologsPath):
     forwardHitsPath = os.path.join(workingDir, '{}_{}.forward_hits.pickle'.format(*pair))
     reverseHitsPath = os.path.join(workingDir, '{}_{}.reverse_hits.pickle'.format(*pair))
     maxEvalue = max([float(evalue) for evalue in roundup_common.EVALUES]) # evalues are strings like '1e-5'
-    divEvalues = list(roundup_common.genDivEvalueParams())    
+    divEvalues = roundup_common.divEvalues()
     with nested.NestedTempDir(dir=LOCAL_DIR) as tmpDir:
         logging.debug('computePair. tmpDir={}'.format(tmpDir))
         if not getDones(ds).done(('blast', queryGenome, subjectGenome)):

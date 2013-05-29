@@ -127,6 +127,10 @@ class Quest(object):
             task = lsfdo.MethodTask(name, obj, method, args, kws)
             lsfdo.do(ns, task)
 
+        def unmark_func(name, func, *args, **kws):
+            task = lsfdo.FuncTask(name, func, args, kws)
+            lsfdo.unmark(ns, task)
+
         dofunc('prepare_dataset', rd.prepare_dataset, self.ds)
         dometh('download_reference_proteomes', self,
                'download_reference_proteomes')
@@ -143,13 +147,18 @@ class Quest(object):
         dofunc('make_genome_to_name', rd.make_genome_to_name, self.ds)
 
         dofunc('prepare_jobs', rd.prepare_jobs, self.ds)
-        dofunc('compute_jobs', rd.computeJobs, self.ds)
-        dofunc('collate_orthologs', rd.collate_orthologs, self.ds)
+        dofunc('compute_jobs', rd.compute_jobs, self.ds)
+        div_evalues = [('0.8', '1e-5')]
+        dofunc('collate_orthologs', rd.collate_orthologs, self.ds,
+               div_evalues=div_evalues)
         dofunc('convert_to_orthoxml', rd.convert_to_orthoxml, self.ds,
                origin='roundup', origin_version=self.dsid,
                database='quest_for_orthologs_reference_proteomes',
-               database_version=self.version)
-        dofunc('zip_download_paths', rd.zip_download_paths, self.ds)
+               database_version=self.version,
+               div_evalues=div_evalues)
+        # unmark_func('zip_download_paths', rd.zip_download_paths, self.ds)
+        dofunc('zip_download_paths', rd.zip_download_paths, self.ds,
+               div_evalues=div_evalues)
 
 
 def convert_orthologs_for_upload(infile, outfile):

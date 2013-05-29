@@ -71,12 +71,11 @@ def isSortedPair(qdb, sdb):
 ################################
 
 
-def genDivEvalueParams():
-    ''' used for simultaneously rounding up multiple param combinations for a pair.'''
-    params = []
-    for div in DIVERGENCES:
-        for evalue in EVALUES:
-            params.append((div, evalue))
-    return params
+def divEvalues():
+    '''
+    Return a list of tuples of every divergence and evalue combination
+    computed in Roundup.
+    '''
+    return [(div, evalue) for div in DIVERGENCES for evalue in EVALUES]
 
 
