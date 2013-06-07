@@ -27,7 +27,9 @@ Maintenance Alert: Saturday, September 10 2011, from 4:00 - 8:00 AM EDT the webs
 <p>Roundup is a large-scale orthology database.  The orthologs are computed using the Reciprocal Smallest Distance (RSD) algorithm. This algorithm detects more (and more accurate) orthologs than reciprocal best blast hits and gives each ortholog a score based on its maximum likelihood evolutionary distance.</p>
 <p>Every release of Roundup downloads the latest genomes from <a href="http://www.uniprot.org/">UniProt</a> and computes orthologs for them.  See <a href="{% url 'home.views.about' %}">About</a> for more information about Roundup's data sources and release schedule.</p>
 <p>
-<a href="{% url 'home.views.download' %}">Download</a> a locally-installable version of the RSD algorithm.  A <a href="http://wall.hms.harvard.edu/sites/default/files/RSD_tutorial.pdf">tutorial</a> (PDF) about RSD is also available.
+<a href="{% url 'home.views.download' %}">Download</a> a locally-installable
+version of the RSD algorithm.  You can learn more about how to run RSD at
+<a href="https://github.com/todddeluca/reciprocal_smallest_distance">GitHub</a>.
 </p>
 <p>We have also run RSD on <a href="http://aws.amazon.com/ec2/">Amazon Elastic Compute Cloud</a>. The steps and code we used to run RSD on the cloud may be downloaded <a href="http://wall.hms.harvard.edu/sites/default/files/Cloud_RSD.zip">here</a>.</p>
 </div>
