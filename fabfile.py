@@ -385,10 +385,3 @@ def most():
         execute(link_downloads)
         execute(restart)
 
-
-if __name__ == '__main__':
-    main()
-
-
-# pass
-
