@@ -13,7 +13,6 @@ urlpatterns = patterns(
 
     url(r'^documentation/$', 'home.views.documentation', name='documentation'),
     url(r'^contact/$', 'home.views.contact', name='contact'),
-    url(r'^contact/thanks/$', 'home.views.contact_thanks', name='contact_thanks'),
     url(r'^about/$', 'home.views.about', name='about'),
     url(r'^updates/$', 'home.views.updates', name='updates'),
     url(r'^genomes/$', 'home.views.genomes', name='genomes'),

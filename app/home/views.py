@@ -124,52 +124,18 @@ def genomes(request):
 
 def updates(request):
     return django.shortcuts.render(request, 'updates.html', {'nav_id': 'updates'})
-    
+
 
 ###################
 # CONTACT FUNCTIONS
 ###################
 
-class ContactForm(django.forms.Form):
-    name = django.forms.CharField(max_length=100, required=False, widget=django.forms.TextInput(attrs={'size': '60'}))
-    affiliation = django.forms.CharField(max_length=100, required=False, widget=django.forms.TextInput(attrs={'size': '60'}))
-    email = django.forms.EmailField(widget=django.forms.TextInput(attrs={'size': '60'}))
-    subject = django.forms.CharField(max_length=100, widget=django.forms.TextInput(attrs={'size': '60'}))
-    message = django.forms.CharField(help_text='Please be detailed', widget=django.forms.Textarea(attrs={'cols': '60', 'rows': '10', 'wrap': 'physical'}))
 
-    
 def contact(request):
-    if request.method == 'POST': # If the form has been submitted...
-        form = ContactForm(request.POST, auto_id=False) # A form bound to the POST data
-        if form.is_valid(): # All validation rules pass
-            form.cleaned_data['host'] = request.get_host()
-            logging.debug(form.cleaned_data)
-            rtEmail = webconfig.RT_EMAIL
-            message = '''This ticket was submitted via http://%(host)s.
--------------------------------------------------------------------------------
-Requestor contact information:
-	Name: %(name)s
-        Email: %(email)s
-	Organization/Group: %(affiliation)s
-        Subject: %(subject)s
--------------------------------------------------------------------------------
-
-%(message)s
-'''%form.cleaned_data
-            config.sendtextmail(form.cleaned_data['email'], [rtEmail], form.cleaned_data['subject'], message) 
-            # redirect the post to a get.  http://en.wikipedia.org/wiki/Post/Redirect/Get
-            return django.shortcuts.redirect(django.core.urlresolvers.reverse(contact_thanks))
-    else:
-        form = ContactForm(auto_id=False) # An unbound form
-
-    return django.shortcuts.render(request, 'contact.html', {'form': form, 'nav_id': 'contact', 'form_doc_id': None,
-                                                         'form_action': django.core.urlresolvers.reverse(contact)})
+    # just redirect to wall lab contact page.
+    return django.shortcuts.redirect('http://wall.hms.harvard.edu/contact')
 
 
-def contact_thanks(request):
-    page = '<div><h2>Thank you for contacting us!</h2><p>Your submission has been received and you should receive a confirmation email shortly.</p></div>'
-    return django.shortcuts.render(request, 'regular.html', {'html': page, 'nav_id': 'contact'})
-    
 
 ####################
 # DOWNLOAD FUNCTIONS
