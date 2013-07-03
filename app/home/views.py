@@ -296,6 +296,8 @@ def lookup(request):
     get: render a form for user to lookup the sequence id for a fasta sequence from a genome.
     post: redirect to a page which will show the id.
     '''
+    raise django.http.Http404
+
     if request.method == 'POST': # If the form has been submitted...
         form = LookupForm(request.POST) # A form bound to the POST data
         if form.is_valid(): # All validation rules pass

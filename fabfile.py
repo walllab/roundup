@@ -110,6 +110,7 @@ def dev():
     Configure tasks for development deployment.
     '''
     env.hosts = ['orchestra.med.harvard.edu']
+    env.user = os.environ.get('ROUNDUP_DEPLOY_USER') or os.environ['USER']
     config.deploy_env = 'dev'
     config.website = True
     config.system_python = '/groups/cbi/bin/python2.7'
@@ -138,6 +139,7 @@ def prod():
     Configure tasks for production deployment.
     '''
     env.hosts = ['orchestra.med.harvard.edu']
+    env.user = os.environ.get('ROUNDUP_DEPLOY_USER') or os.environ['USER']
     config.website = True
     config.deploy_env = 'prod'
     config.system_python = '/groups/cbi/bin/python2.7'
