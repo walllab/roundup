@@ -43,27 +43,25 @@ from fabric.api import cd, env, execute, put, require, run, task
 from fabric.contrib.files import upload_template
 from fabric.contrib.project import rsync_project
 
-import diabric.venv
-import diabric.config
-import diabric.files
+import fabvenv
 
 
 HERE = os.path.abspath(os.path.dirname(__file__))
 # deploy envs options
 DEPLOY_OPTS = ['local', 'dev', 'prod', 'dataset']
 
-REQUIREMENTS = os.path.join(HERE, 'requirements.txt')
-
-
 ###############
 # CONFIGURATION
 
 
-# a global configuration "dictionary" (actually an attribute namespace).
-# an alternative to fabric.api.env, which IMHO is a bad place to store
-# application configuration, since that can conflict with fabric internals and
-# it is not flexible enough to store per-host configuration.
-config = diabric.config.Namespace()
+# 'config' is an alterantive to fabric.api.env, which does not risk having
+# application configuration conflict with fabric internals, like 'port'.
+class Namespace(object):
+    ''' An iterable attribute namespace '''
+    def __iter__(self):
+        return iter(self.__dict__)
+
+config = Namespace()
 
 
 def post_config(config):
@@ -71,10 +69,14 @@ def post_config(config):
     Called by one of the deployment environment configuration tasks: dev, prod,
     etc.  Sets some values in `config`.
     '''
-    config.log = os.path.join(config.site_dir, 'log')
-    config.tmp = os.path.join(config.site_dir, 'tmp')
+    # config.log = os.path.join(config.site_dir, 'log')
+    # config.tmp = os.path.join(config.site_dir, 'tmp')
+    config.log = os.path.join(config.deploy_dir, 'log')
+    config.tmp = os.path.join(config.deploy_dir, 'tmp')
     config.venv = os.path.join(config.deploy_dir, 'venv')
     config.app = os.path.join(config.deploy_dir, 'app')
+    config.code = config.app
+    config.requirements = os.path.join(HERE, 'requirements.txt')
     config.python = os.path.join(config.venv, 'bin', 'python')
     env.configured = True
     return config
@@ -113,14 +115,15 @@ def dev():
     env.user = os.environ.get('ROUNDUP_DEPLOY_USER') or os.environ['USER']
     config.deploy_env = 'dev'
     config.website = True
-    config.system_python = '/groups/cbi/bin/python2.7'
+    # config.system_python = '/groups-backup/cbi/bin/python2.7'
+    config.system_python = '/home/td23/bin/python2.7'
     config.deploy_dir = '/www/dev.roundup.hms.harvard.edu'
-    config.site_dir = '/groups/public+cbi/sites/dev.roundup'
-    config.archive_datasets = ['/groups/public+cbi/sites/roundup/datasets/4',
-                               '/groups/public+cbi/sites/roundup/datasets/3',
-                               '/groups/public+cbi/sites/roundup/datasets/2',
-                               '/groups/public+cbi/sites/roundup/datasets/qfo_2013_04',
-                               '/groups/public+cbi/sites/roundup/datasets/qfo_2011_04']
+    config.site_dir = '/groups-backup/public+cbi/sites/dev.roundup'
+    config.archive_datasets = ['/groups-backup/public+cbi/sites/roundup/datasets/4',
+                               '/groups-backup/public+cbi/sites/roundup/datasets/3',
+                               '/groups-backup/public+cbi/sites/roundup/datasets/2',
+                               '/groups-backup/public+cbi/sites/roundup/datasets/qfo_2013_04',
+                               '/groups-backup/public+cbi/sites/roundup/datasets/qfo_2011_04']
     config.current_dataset = config.archive_datasets[0]
     config.mail_service_type = 'orchestra'
     config.blast_bin_dir = '/opt/blast-2.2.24/bin'
@@ -142,14 +145,14 @@ def prod():
     env.user = os.environ.get('ROUNDUP_DEPLOY_USER') or os.environ['USER']
     config.website = True
     config.deploy_env = 'prod'
-    config.system_python = '/groups/cbi/bin/python2.7'
+    config.system_python = '/home/td23/bin/python2.7'
     config.deploy_dir = '/www/roundup.hms.harvard.edu'
-    config.site_dir = '/groups/public+cbi/sites/roundup'
-    config.archive_datasets = ['/groups/public+cbi/sites/roundup/datasets/4',
-                               '/groups/public+cbi/sites/roundup/datasets/3',
-                               '/groups/public+cbi/sites/roundup/datasets/2',
-                               '/groups/public+cbi/sites/roundup/datasets/qfo_2013_04',
-                               '/groups/public+cbi/sites/roundup/datasets/qfo_2011_04']
+    config.site_dir = '/groups-backup/public+cbi/sites/roundup'
+    config.archive_datasets = ['/groups-backup/public+cbi/sites/roundup/datasets/4',
+                               '/groups-backup/public+cbi/sites/roundup/datasets/3',
+                               '/groups-backup/public+cbi/sites/roundup/datasets/2',
+                               '/groups-backup/public+cbi/sites/roundup/datasets/qfo_2013_04',
+                               '/groups-backup/public+cbi/sites/roundup/datasets/qfo_2011_04']
     config.current_dataset = config.archive_datasets[0]
     config.mail_service_type = 'orchestra'
     config.blast_bin_dir = '/opt/blast-2.2.24/bin'
@@ -178,9 +181,9 @@ def ds(dsid):
     env.hosts = ['orchestra.med.harvard.edu']
     config.deploy_env = 'dataset'
     config.website = False
-    config.system_python = '/groups/cbi/bin/python2.7'
-    config.deploy_dir = '/groups/public+cbi/sites/roundup/code/{}'.format(dsid)
-    config.site_dir = '/groups/public+cbi/sites/roundup'
+    config.system_python = '/home/td23/bin/python2.7'
+    config.deploy_dir = '/groups-backup/public+cbi/sites/roundup/code/{}'.format(dsid)
+    config.site_dir = '/groups-backup/public+cbi/sites/roundup'
     config.mail_service_type = 'orchestra'
     config.blast_bin_dir = '/opt/blast-2.2.24/bin'
     config.kalign_bin_dir = '/home/td23/bin'
@@ -198,25 +201,44 @@ def ds(dsid):
 @task
 def venv_create():
     require('configured')
-    diabric.venv.create(config.venv, config.system_python)
+    venv = fabvenv.Venv(config.venv, config.requirements)
+    if not venv.exists():
+        venv.create(config.system_python)
 
 
 @task
 def venv_install():
     require('configured')
-    diabric.venv.install(config.venv, REQUIREMENTS)
+    fabvenv.Venv(config.venv, config.requirements).install()
+
+
+@task
+def venv_upgrade():
+    require('configured')
+    fabvenv.Venv(config.venv, config.requirements).upgrade()
 
 
 @task
 def venv_freeze():
     require('configured')
-    diabric.venv.freeze(config.venv, REQUIREMENTS)
+    fabvenv.Venv(config.venv, config.requirements).freeze()
 
 
 @task
 def venv_remove():
     require('configured')
-    diabric.venv.remove(config.venv)
+    venv = fabvenv.Venv(config.venv, config.requirements)
+    if venv.exists():
+        venv.remove()
+
+
+@task
+def venv_pth():
+    '''
+    Add the code directory to the virtualenv sys.path.
+    '''
+    require('configured')
+    fabvenv.Venv(config.venv, config.requirements).venv_pth([config.code])
 
 
 ############
@@ -378,6 +400,7 @@ def most():
     '''
     require('configured')
     execute(venv_install)
+    execute(venv_pth)
     execute(clean)
     execute(init)
     execute(conf)

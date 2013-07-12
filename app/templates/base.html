@@ -94,7 +94,10 @@ div.panel-flexible div.panel-row-3 div.panel-col-1 { width: 98%; }
 <div id="container">
 <div id="container2">
 {% if site_maintenance %}
-<p class="maintenance">Roundup is currently undergoing routine maintenance.  Thank you for your patience while the site is unavailable.</p>
+<p class="maintenance">Roundup is currently experiencing technical difficulties.  Thank you for your patience while the site is unavailable.</p>
+{% comment %}
+<p class="maintenance">Roundup is currently maintenance.  Thank you for your patience while the site is unavailable.</p>
+{% endcomment %}
 {% else %}
 {% block content %}Under construction.{% endblock %}
 {% endif %}

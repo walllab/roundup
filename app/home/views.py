@@ -80,10 +80,18 @@ def displayName(key, nameMap=DISPLAY_NAME_MAP):
 
 
 def home(request):
-    stats = roundup_util.getDatasetStats() # keys: numGenomes, numPairs, numOrthologs
-    release = roundup_util.getRelease()
-    releaseDate = roundup_util.getReleaseDate()
-    kw = {'nav_id': 'home', 'release': release, 'release_date': releaseDate}
+    site_maintenance = True
+    if not site_maintenance:
+        stats = roundup_util.getDatasetStats() # keys: numGenomes, numPairs, numOrthologs
+        release = roundup_util.getRelease()
+        releaseDate = roundup_util.getReleaseDate()
+    else:
+        stats = {}
+        release = None
+        releaseDate = None
+
+    kw = {'nav_id': 'home', 'release': release, 'release_date': releaseDate,
+          'site_maintenance': site_maintenance}
     kw.update(stats)
     return django.shortcuts.render(request, 'home.html', kw)
 
