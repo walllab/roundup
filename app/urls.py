@@ -1,7 +1,21 @@
 from django.conf.urls.defaults import patterns, url
 from django.http import HttpResponse
 
+import webconfig
+
 urlpatterns = patterns(
+    '',
+    url(r'^contact/$', 'home.views.contact', name='contact'),
+)
+
+if webconfig.maintenance:
+    urlpatterns += patterns(
+        '',
+        # a pattern to put all pages into maintenance.
+        url(r'^.*$', 'home.views.maintenance'),
+    )
+
+urlpatterns += patterns(
     '',
     url(r'^$', 'home.views.home', name='home'),
 
@@ -12,7 +26,6 @@ urlpatterns = patterns(
     url(r'^robots.txt$', lambda r: HttpResponse('User-agent: *\nDisallow: /api/download/', mimetype="text/plain")),
 
     url(r'^documentation/$', 'home.views.documentation', name='documentation'),
-    url(r'^contact/$', 'home.views.contact', name='contact'),
     url(r'^about/$', 'home.views.about', name='about'),
     url(r'^updates/$', 'home.views.updates', name='updates'),
     url(r'^genomes/$', 'home.views.genomes', name='genomes'),

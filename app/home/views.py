@@ -1,6 +1,5 @@
 
 # stdlib modules
-import glob
 import hashlib
 import io
 import json
@@ -20,7 +19,6 @@ import django.utils.html
 # our modules
 sys.path.append('..')
 import BioUtilities
-import config
 import webconfig
 import lsf
 import orthresult
@@ -77,6 +75,17 @@ RELEASE_DOWNLOAD_FILES = {}
 
 def displayName(key, nameMap=DISPLAY_NAME_MAP):
     return nameMap.get(key, key)
+
+
+def maintenance(request):
+    '''
+    Display a maintenance page.  Used to put the entire site into "maintenance"
+    for when Orchestra is not working properly.
+    '''
+    message = webconfig.maintenance_message
+    logging.debug('message: {}'.format(message))
+    kw = {'nav_id': 'maintenance', 'message': message}
+    return django.shortcuts.render(request, 'maintenance.html', kw)
 
 
 def home(request):
