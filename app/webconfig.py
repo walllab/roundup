@@ -6,12 +6,10 @@ Configuration that is specific to the website only, not dataset computation.
 import os
 
 from webdeployenv import (ARCHIVE_DATASETS, CURRENT_DATASET, DJANGO_DEBUG,
-                          NO_LSF, maintenance, maintenance_message,
-                          groups_filesystem_meltdown)
+                          NO_LSF, maintenance, maintenance_message)
 
 # Silence pyflakes complaints about imports not being used. :-(
 DJANGO_DEBUG, NO_LSF, ARCHIVE_DATASETS, maintenance, maintenance_message
-groups_filesystem_meltdown
 
 # Roundup Datasets and Releases
 CURRENT_DATASET = os.path.expanduser(CURRENT_DATASET)

@@ -42,13 +42,7 @@ def get_dataset_download_datas(ds):
         'path': '/groups/cbi/sites/roundup/datasets/4/download/roundup-4-genomes.tar.gz'},
     '''
     datas = []
-    if webconfig.groups_filesystem_meltdown:
-        # hack: Because of orchestra filesystem meltdown of 2013/07, downloads
-        # are located in /scratch, not in /groups.
-        download_dir = '/scratch/roundup/datasets/{}/download'.format(
-            roundup.dataset.getDatasetId(ds))
-    else:
-        download_dir = roundup.dataset.getDownloadDir(ds)
+    download_dir = roundup.dataset.getDownloadDir(ds)
     paths = glob.glob(os.path.join(download_dir, '*'))
     files = sorted([p for p in paths if os.path.isfile(p)])
     for path in files:
