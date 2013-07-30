@@ -57,7 +57,7 @@ os.environ['TEMPS_DIR'] = TMP_DIR
 # LOGGING
 
 LOG_FILE = os.path.join(LOG_DIR, 'app.log')
-LOG_TO_ADDRS = ['todddeluca@gmail.com']
+LOG_TO_ADDRS = ['todd_deluca@hms.harvard.edu', 'dennis_wall@hms.harvard.edu']
 LOG_SUBJECT = 'Roundup Logging Message'
 
 # configure the root logger to log all messages (>= DEBUG) to a file and email messages (>= WARNING) to admins.
