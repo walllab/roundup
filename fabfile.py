@@ -159,12 +159,12 @@ def prod():
     config.deploy_env = 'prod'
     config.system_python = '/home/td23/bin/python2.7'
     config.deploy_dir = '/www/roundup.hms.harvard.edu'
-    config.site_dir = '/scratch/roundup'
-    config.archive_datasets = ['/scratch/roundup/datasets/4',
-                               '/scratch/roundup/datasets/3',
-                               '/scratch/roundup/datasets/2',
-                               '/scratch/roundup/datasets/qfo_2013_04',
-                               '/scratch/roundup/datasets/qfo_2011_04']
+    config.site_dir = '/groups/public+cbi/sites/roundup'
+    config.archive_datasets = ['/groups/public+cbi/sites/roundup/datasets/4',
+                               '/groups/public+cbi/sites/roundup/datasets/3',
+                               '/groups/public+cbi/sites/roundup/datasets/2',
+                               '/groups/public+cbi/sites/roundup/datasets/qfo_2013_04',
+                               '/groups/public+cbi/sites/roundup/datasets/qfo_2011_04']
     config.current_dataset = config.archive_datasets[0]
     config.mail_service_type = 'orchestra'
     config.blast_bin_dir = '/opt/blast-2.2.24/bin'
