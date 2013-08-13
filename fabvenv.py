@@ -3,7 +3,7 @@
 import os
 import StringIO
 
-from fabric.api import run, put, get
+from fabric.api import run, put, get, cd
 from fabric.contrib.files import exists
 
 
@@ -48,36 +48,36 @@ class Venv(object):
         '''
         return exists(self.venv) and exists(self.python())
 
-    def create(self, python='python', virtualenv_script=None):
+    def create(self, python='python'):
         '''
-        venv: virtual environment directory to create.  venv MUST NOT already exist.
+        On the remote host, download the latest virtualenv installation from
+        github and create a virtual environment using it.  The venv directory
+        MUST NOT already exist.
         python: path or name of python executable to use to create the venv.
         Defaults to 'python'.
-        virtualenv_script: Optional local path to virtualenv.py.  If given, it will
-        be copied to venv and run by python to create venv.  If not given,
-        virtualenv.py will be downloaded from the internet, which could be less
-        reliable, slower, and does not guarantee a fixed version.  
-
-        Create a virtual environment located at venv on the remote host.  Raise an exception if venv already exists.
         '''
-        script_path = os.path.join(self.venv, 'virtualenv.py')
-        script_url = 'https://raw.github.com/pypa/virtualenv/master/virtualenv.py'
+        script_path = os.path.join(self.venv, 'virtualenv', 'virtualenv.py')
 
         # require that the venv does not yet exist.
-        if exists(self.venv):
+        if self.exists():
             raise Exception('Path already exists. Abort creation. venv={}'.format(self.venv))
 
         # create the venv dir for virtualenv.py
         run('mkdir -p {}'.format(self.venv))
 
+        # download the latest virtualenv.
+        with cd(self.venv):
+            run('git clone https://github.com/pypa/virtualenv')
+
+        # create the virtual environment
         # put virtualenv.py in venv or download it.
-        if virtualenv_script:
-            put(virtualenv_script, script_path)
-        else:
-            run('curl -o {} {}'.format(script_path, script_url))
+        # if virtualenv_script:
+            # put(virtualenv_script, script_path)
+        # else:
+            # run('curl -o {} {}'.format(script_path, script_url))
 
         # create the venv
-        run('{} {} --distribute {}'.format(python, script_path, self.venv))
+        run('{} {} {}'.format(python, script_path, self.venv))
 
     def install(self):
         '''
@@ -112,7 +112,8 @@ class Venv(object):
         '''
         Remove the virtual environment completely
         '''
-        if exists(self.venv):
+        print 'remove'
+        if self.exists():
             print 'cleaning', self.venv
             run('rm -rf {}'.format(self.venv))
 
