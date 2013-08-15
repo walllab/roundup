@@ -77,8 +77,6 @@ def post_config(config):
     Called by one of the deployment environment configuration tasks: dev, prod,
     etc.  Sets some values in `config`.
     '''
-    # config.log = os.path.join(config.site_dir, 'log')
-    # config.tmp = os.path.join(config.site_dir, 'tmp')
     config.log = os.path.join(config.deploy_dir, 'log')
     config.tmp = os.path.join(config.deploy_dir, 'tmp')
     config.venv = os.path.join(config.deploy_dir, 'venv')
@@ -100,7 +98,6 @@ def local():
     config.website = True
     config.system_python = '/usr/local/bin/python'
     config.deploy_dir = os.path.expanduser('~/www/local.roundup.hms.harvard.edu')
-    config.site_dir = os.path.expanduser('~/sites/local.roundup')
     config.archive_datasets = [os.path.expanduser('~/sites/local.roundup/datasets/test_dataset')]
     config.current_dataset = config.archive_datasets[0]
     config.mail_service_type = 'amazon_ses'
@@ -128,7 +125,6 @@ def dev():
     # config.system_python = '/groups/cbi/bin/python2.7'
     config.system_python = '/home/td23/bin/python2.7'
     config.deploy_dir = '/www/dev.roundup.hms.harvard.edu'
-    config.site_dir = '/groups/public+cbi/sites/dev.roundup'
     config.archive_datasets = ['/groups/public+cbi/sites/roundup/datasets/4',
                                '/groups/public+cbi/sites/roundup/datasets/3',
                                '/groups/public+cbi/sites/roundup/datasets/2',
@@ -159,7 +155,6 @@ def prod():
     config.deploy_env = 'prod'
     config.system_python = '/home/td23/bin/python2.7'
     config.deploy_dir = '/www/roundup.hms.harvard.edu'
-    config.site_dir = '/groups/public+cbi/sites/roundup'
     config.archive_datasets = ['/groups/public+cbi/sites/roundup/datasets/4',
                                '/groups/public+cbi/sites/roundup/datasets/3',
                                '/groups/public+cbi/sites/roundup/datasets/2',
@@ -201,7 +196,6 @@ def ds(dsid):
     config.website = False
     config.system_python = '/home/td23/bin/python2.7'
     config.deploy_dir = '/groups/public+cbi/sites/roundup/code/{}'.format(dsid)
-    config.site_dir = '/groups/public+cbi/sites/roundup'
     config.mail_service_type = 'orchestra'
     config.blast_bin_dir = '/opt/blast-2.2.24/bin'
     config.kalign_bin_dir = '/home/td23/bin'
