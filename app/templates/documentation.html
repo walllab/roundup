@@ -85,6 +85,7 @@ the next set of orthologs follows the end row of the previous set of orthologs.
 It is easy to write a streaming, ad-hoc parser for this format.  Or 
 <a href="{% url 'home.views.contact' %}">contact us</a>
 if you would like a parser written in Python.
+</p>
 <p>
 Example snippet:
 <pre>
@@ -95,6 +96,20 @@ OR      C5BKE0  D9RR03  2.1041
 PA      502025  521010  0.2     1e-20
 //
 </pre>
+</p>
+<p>
+The terms 'query genome' and 'subject genome' come from the RSD algorithm used
+to compute orthologs.  Since RSD is a reciprocal algorithm, it does not matter
+which genome in a pair of genomes is the query and which is the subject; the
+orthologs inferred are the same either way.  It only matters as a way of
+keeping track of which column in the text file contains sequence identifiers
+for which genome.  Given a pair of genomes, like human (9606) and mouse
+(10090), we arbitrarily choose one to be the query genome and the other be the
+subject genome based on lexicographic order.  Therefore, 10090 would be the
+query genome and 9606 would be the subject genome.  In order to find all
+orthologs for human in a ortholog text format file with many pairs of genomes,
+you would need to search for 9606 in the subject and the query positions of the
+PA rows.
 </p>
 
 <p><a id="download"></a></p> 
