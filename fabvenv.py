@@ -56,13 +56,11 @@ class Venv(object):
         python: path or name of python executable to use to create the venv.
         Defaults to 'python'.
         '''
-        script_path = os.path.join(self.venv, 'virtualenv', 'virtualenv.py')
-
         # require that the venv does not yet exist.
         if self.exists():
             raise Exception('Path already exists. Abort creation. venv={}'.format(self.venv))
 
-        # create the venv dir for virtualenv.py
+        # create the venv dir
         run('mkdir -p {}'.format(self.venv))
 
         # download the latest virtualenv.
@@ -70,14 +68,11 @@ class Venv(object):
             run('git clone https://github.com/pypa/virtualenv')
 
         # create the virtual environment
-        # put virtualenv.py in venv or download it.
-        # if virtualenv_script:
-            # put(virtualenv_script, script_path)
-        # else:
-            # run('curl -o {} {}'.format(script_path, script_url))
-
-        # create the venv
-        run('{} {} {}'.format(python, script_path, self.venv))
+        # Need to run virtualenv.py from the repo directory, so it
+        # successfully installs pip and setuptools using the archives in
+        # virtualenv_support/
+        with cd(os.path.join(self.venv, 'virtualenv')):
+            run('{} virtualenv.py --distribute {}'.format(python, self.venv))
 
     def install(self):
         '''
