@@ -61,9 +61,9 @@ environment (for the convenience of writing commands):
     export DSID=5
     export DSDIR=/groups/public+cbi/sites/roundup/datasets/$DSID
     # The previous dataset is presumably one less than this dataset
-    export PREV_DS=/groups/public+cbi/sites/roundup/datasets/`dc -e "$DSID 1 - p"`
+    export PREV_DSDIR=/groups/public+cbi/sites/roundup/datasets/`dc -e "$DSID 1 - p"`
     export DSCODE=/groups/public+cbi/sites/roundup/code/$DSID
-    echo $DSID $DSDIR $DSCODE
+    echo $DSID $DSDIR $DSCODE $PREV_DSDIR
 
 Fabric (http://fabfile.org) is used to copy code to the production host
 (orchestra.med.harvard.edu), configure the application, create a virtualenv,
@@ -79,10 +79,11 @@ e.g. `ROUNDUP_DEPLOY_USER=td23`.  The fabfile will log in using this name if
 it is defined.  Also, you should be set up for passwordless login to the host
 using an ssh keypair.
 
-Once the code is deployed and configured, log in to the remote host (orchestra)
-and run the dataset workflow to compute the orthologs:
+Once the code is deployed and configured, log in to a compute node with a lot
+of memory and run the dataset workflow to compute the orthologs:
 
-    cd $DSCODE && time venv/bin/python app/roundup/dataset.py workflow $DSDIR $PREV_DS
+    bsub -Is -q interactive -W 720 -R "rusage[mem=32768]" bash
+    cd $DSCODE && time venv/bin/python app/roundup/dataset.py workflow --previous-dataset $PREV_DSDIR $DSDIR
 
 This last command actually does the following things:
 
