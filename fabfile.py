@@ -192,6 +192,7 @@ def ds(dsid):
     assert dsid
 
     env.hosts = ['orchestra.med.harvard.edu']
+    env.user = os.environ.get('ROUNDUP_DEPLOY_USER') or os.environ['USER']
     config.deploy_env = 'dataset'
     config.website = False
     config.system_python = '/home/td23/bin/python2.7'
