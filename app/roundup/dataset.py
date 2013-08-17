@@ -603,17 +603,25 @@ def updateGenomeCounts(ds):
 
 def format_genomes(ds):
     '''
-    Format genomes for blast.
+    Format genomes for blast, distributing the formatting via LSF.
     ds: dataset for which to format genomes
     '''
     print 'formatting genomes. {}'.format(ds)
     ns = 'roundup_dataset_{}_dones'.format(getDatasetId(ds))
     genomes = getGenomes(ds)
-    tasks = [lsfdo.FuncTask('format_genome_{}'.format(genome), 
-                            format_genome, [ds, genome]) 
-             for genome in genomes]
+    # Since the Orchestra LSF queues require jobs of a certain length, format a
+    # batch of genomes as a single job.
+    tasks = [lsfdo.FuncNameTask('format_some_genomes_{}'.format(i),
+                                'roundup.dataset.format_some_genomes',
+                                [ds, some])
+             for i, some in enumerate(util.groupsOfN(genomes, 10))]
     opts = [['-q', 'short', '-W', '60'] for task in tasks]
     lsfdo.bsubmany(ns, tasks, opts)
+
+
+def format_some_genomes(ds, genomes):
+    for genome in genomes:
+        format_genome(ds, genome)
 
 
 def format_genome(ds, genome):
@@ -1166,8 +1174,8 @@ def compute_jobs(ds):
     names = ['roundup_compute_job_{}_{}'.format(dsid, job) for job in jobs]
     opts = [['-R', 'rusage[tmp=500]', '-q', 'long', '-W', '720:0'] for job in
             jobs]
-    tasks = [lsfdo.FuncTask(name, compute_job, [ds, job]) for name, job in 
-             zip(names, jobs)]
+    tasks = [lsfdo.FuncNameTask(name, 'roundup.dataset.compute_job', [ds, job])
+             for name, job in zip(names, jobs)]
 
     lsfdo.bsubmany(ns, tasks, opts, timeout=0)
 
