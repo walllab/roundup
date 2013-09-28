@@ -12,7 +12,7 @@ DEBUG = webconfig.DJANGO_DEBUG
 TEMPLATE_DEBUG = DEBUG
 
 ADMINS = (
-    ('Todd DeLuca', 'todd_deluca@hms.harvard.edu'),
+    ('Dennis Wall', 'dennis_wall@hms.harvard.edu'),
 )
 
 

@@ -2,7 +2,7 @@
 Author: Todd F. DeLuca
 Date: 2011
 This work is licensed under a Creative Commons Attribution 3.0 Unported License.
-Please direct "pull" requests to todd_deluca@hms.harvard.edu.
+Please direct "pull" requests to @todddeluca on github.
 
 From http://orthoxml.org/0.3/orthoxml_doc_v0.3.html:
 OrthoXML is an XML schema designed to describe orthology relations. Orthologs are defined as genes in different species deriving from a single gene in the last common ancestor. This relationship makes them interesting, as they are likely to have the same function.
